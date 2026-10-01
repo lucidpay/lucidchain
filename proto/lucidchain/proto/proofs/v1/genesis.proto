@@ -1,0 +1,13 @@
+syntax = "proto3";
+package lucidchain.proto.proofs.v1;
+
+option go_package = "github.com/lucidpay/lucidchain/x/proofs/types";
+
+import "gogoproto/gogo.proto";
+import "lucidchain/proto/proofs/v1/proofs.proto";
+
+message GenesisState {
+  Params params = 1 [(gogoproto.nullable) = false];
+  repeated VerifierRegistration verifiers = 2 [(gogoproto.nullable) = false];
+  repeated ProofRecord proofs = 3 [(gogoproto.nullable) = false];
+}

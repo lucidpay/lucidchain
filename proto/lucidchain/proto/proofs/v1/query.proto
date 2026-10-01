@@ -1,0 +1,52 @@
+syntax = "proto3";
+package lucidchain.proto.proofs.v1;
+
+option go_package = "github.com/lucidpay/lucidchain/x/proofs/types";
+
+import "gogoproto/gogo.proto";
+import "google/api/annotations.proto";
+import "cosmos/base/query/v1beta1/pagination.proto";
+import "lucidchain/proto/proofs/v1/proofs.proto";
+
+service Query {
+  rpc Verifier(QueryVerifierRequest) returns (QueryVerifierResponse) {
+    option (google.api.http).get = "/lucidchain/proofs/v1/verifiers/{proof_system_id}";
+  }
+  rpc Verifiers(QueryVerifiersRequest) returns (QueryVerifiersResponse) {
+    option (google.api.http).get = "/lucidchain/proofs/v1/verifiers";
+  }
+  rpc ProofRecord(QueryProofRecordRequest) returns (QueryProofRecordResponse) {
+    option (google.api.http).get = "/lucidchain/proofs/v1/proofs/{id}";
+  }
+  rpc ProofsForCheckpoint(QueryProofsForCheckpointRequest) returns (QueryProofsForCheckpointResponse) {
+    option (google.api.http).get = "/lucidchain/proofs/v1/sidechains/{sidechain_id}/checkpoints/{checkpoint_sequence}/proofs";
+  }
+  rpc Params(QueryParamsRequest) returns (QueryParamsResponse) {
+    option (google.api.http).get = "/lucidchain/proofs/v1/params";
+  }
+}
+
+message QueryVerifierRequest { string proof_system_id = 1; }
+message QueryVerifierResponse { VerifierRegistration verifier = 1 [(gogoproto.nullable) = false]; }
+
+message QueryVerifiersRequest {
+  cosmos.base.query.v1beta1.PageRequest pagination = 1;
+}
+message QueryVerifiersResponse {
+  repeated VerifierRegistration verifiers = 1 [(gogoproto.nullable) = false];
+  cosmos.base.query.v1beta1.PageResponse pagination = 2;
+}
+
+message QueryProofRecordRequest { string id = 1; }
+message QueryProofRecordResponse { ProofRecord proof = 1 [(gogoproto.nullable) = false]; }
+
+message QueryProofsForCheckpointRequest {
+  string sidechain_id = 1;
+  uint64 checkpoint_sequence = 2;
+}
+message QueryProofsForCheckpointResponse {
+  repeated ProofRecord proofs = 1 [(gogoproto.nullable) = false];
+}
+
+message QueryParamsRequest {}
+message QueryParamsResponse { Params params = 1 [(gogoproto.nullable) = false]; }

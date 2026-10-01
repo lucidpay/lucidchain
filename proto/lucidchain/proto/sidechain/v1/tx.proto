@@ -1,0 +1,95 @@
+syntax = "proto3";
+package lucidchain.proto.sidechain.v1;
+
+option go_package = "github.com/lucidpay/lucidchain/x/sidechain/types";
+
+import "gogoproto/gogo.proto";
+import "google/protobuf/timestamp.proto";
+import "cosmos/msg/v1/msg.proto";
+import "lucidchain/proto/sidechain/v1/sidechain.proto";
+
+// Msg defines the x/sidechain Msg service.
+service Msg {
+  // RegisterSidechain registers a new sidechain and posts its bond.
+  rpc RegisterSidechain(MsgRegisterSidechain) returns (MsgRegisterSidechainResponse);
+
+  // UpdateSigners rotates the set of authorized checkpoint signer keys.
+  rpc UpdateSigners(MsgUpdateSigners) returns (MsgUpdateSignersResponse);
+
+  // RequestTierUpgrade requests a move to a higher assurance tier (e.g. Notarized -> Attested).
+  // Subject to additional bond and, for Tier 2+, attestor availability.
+  rpc RequestTierUpgrade(MsgRequestTierUpgrade) returns (MsgRequestTierUpgradeResponse);
+
+  // InitiateExit begins voluntary deregistration; bond is returned after the cooldown.
+  rpc InitiateExit(MsgInitiateExit) returns (MsgInitiateExitResponse);
+
+  // UpdateParams updates module parameters via governance.
+  rpc UpdateParams(MsgUpdateParams) returns (MsgUpdateParamsResponse);
+}
+
+message MsgRegisterSidechain {
+  option (cosmos.msg.v1.signer) = "operator";
+
+  string operator = 1;
+  string id = 2;
+  string name = 3;
+  repeated string checkpoint_signer_pubkeys = 4;
+  uint32 signature_threshold = 5;
+  AssuranceTier tier = 6;
+  string bond_amount = 7 [
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.nullable) = false
+  ];
+  uint64 checkpoint_interval_seconds = 8;
+  string metadata_uri = 9;
+}
+
+message MsgRegisterSidechainResponse {
+  string id = 1;
+}
+
+message MsgUpdateSigners {
+  option (cosmos.msg.v1.signer) = "operator";
+
+  string operator = 1;
+  string id = 2;
+  repeated string checkpoint_signer_pubkeys = 3;
+  uint32 signature_threshold = 4;
+}
+
+message MsgUpdateSignersResponse {}
+
+message MsgRequestTierUpgrade {
+  option (cosmos.msg.v1.signer) = "operator";
+
+  string operator = 1;
+  string id = 2;
+  AssuranceTier requested_tier = 3;
+  string additional_bond = 4 [
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.nullable) = false
+  ];
+}
+
+message MsgRequestTierUpgradeResponse {}
+
+message MsgInitiateExit {
+  option (cosmos.msg.v1.signer) = "operator";
+
+  string operator = 1;
+  string id = 2;
+}
+
+message MsgInitiateExitResponse {
+  google.protobuf.Timestamp bond_return_at = 1;
+}
+
+message MsgUpdateParams {
+  option (cosmos.msg.v1.signer) = "authority";
+
+  // Authority is the governance module account by default.
+  string authority = 1;
+  Params params = 2;
+}
+
+message MsgUpdateParamsResponse {}

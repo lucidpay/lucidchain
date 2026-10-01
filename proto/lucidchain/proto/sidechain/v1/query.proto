@@ -1,0 +1,49 @@
+syntax = "proto3";
+package lucidchain.proto.sidechain.v1;
+
+option go_package = "github.com/lucidpay/lucidchain/x/sidechain/types";
+
+import "gogoproto/gogo.proto";
+import "google/api/annotations.proto";
+import "cosmos/base/query/v1beta1/pagination.proto";
+import "lucidchain/proto/sidechain/v1/sidechain.proto";
+
+service Query {
+  rpc Sidechain(QuerySidechainRequest) returns (QuerySidechainResponse) {
+    option (google.api.http).get = "/lucidchain/sidechain/v1/sidechains/{id}";
+  }
+
+  rpc Sidechains(QuerySidechainsRequest) returns (QuerySidechainsResponse) {
+    option (google.api.http).get = "/lucidchain/sidechain/v1/sidechains";
+  }
+
+  rpc Params(QueryParamsRequest) returns (QueryParamsResponse) {
+    option (google.api.http).get = "/lucidchain/sidechain/v1/params";
+  }
+}
+
+message QuerySidechainRequest {
+  string id = 1;
+}
+
+message QuerySidechainResponse {
+  Sidechain sidechain = 1 [(gogoproto.nullable) = false];
+}
+
+message QuerySidechainsRequest {
+  // Optional filters
+  AssuranceTier tier = 1;
+  SidechainStatus status = 2;
+  cosmos.base.query.v1beta1.PageRequest pagination = 3;
+}
+
+message QuerySidechainsResponse {
+  repeated Sidechain sidechains = 1 [(gogoproto.nullable) = false];
+  cosmos.base.query.v1beta1.PageResponse pagination = 2;
+}
+
+message QueryParamsRequest {}
+
+message QueryParamsResponse {
+  Params params = 1 [(gogoproto.nullable) = false];
+}

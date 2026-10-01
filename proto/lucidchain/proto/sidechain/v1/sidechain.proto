@@ -1,0 +1,87 @@
+syntax = "proto3";
+package lucidchain.proto.sidechain.v1;
+
+option go_package = "github.com/lucidpay/lucidchain/x/sidechain/types";
+
+import "gogoproto/gogo.proto";
+import "google/protobuf/timestamp.proto";
+
+// AssuranceTier defines the level of validation a sidechain has registered for.
+enum AssuranceTier {
+  ASSURANCE_TIER_UNSPECIFIED = 0;
+  ASSURANCE_TIER_NOTARIZED   = 1; // Tier 1: timestamped commitment only
+  ASSURANCE_TIER_ATTESTED    = 2; // Tier 2: notarized + attestor sign-off
+  ASSURANCE_TIER_PROVEN      = 3; // Tier 3: notarized + validity proof verification
+}
+
+// SidechainStatus defines the lifecycle state of a registered sidechain.
+enum SidechainStatus {
+  SIDECHAIN_STATUS_UNSPECIFIED = 0;
+  SIDECHAIN_STATUS_PENDING     = 1; // registered, bond posted, awaiting activation
+  SIDECHAIN_STATUS_ACTIVE      = 2; // accepting checkpoints
+  SIDECHAIN_STATUS_SUSPENDED   = 3; // temporarily halted (e.g. missed interval, dispute)
+  SIDECHAIN_STATUS_SLASHED     = 4; // bond slashed for a provable fault
+  SIDECHAIN_STATUS_EXITED      = 5; // voluntarily deregistered, bond returned after cooldown
+}
+
+// Sidechain is the on-chain registration record for a private sidechain.
+message Sidechain {
+  option (gogoproto.equal) = true;
+
+  // Unique identifier, assigned at registration (e.g. "hospitality-platform-01").
+  string id = 1;
+
+  // Human-readable name, shown in explorers and dashboards.
+  string name = 2;
+
+  // Bech32 address of the sidechain operator (registration owner, admin actions).
+  string operator = 3;
+
+  // Public key(s) authorized to sign checkpoints on behalf of this sidechain.
+  // Multiple keys support key rotation and multi-signer setups.
+  repeated string checkpoint_signer_pubkeys = 4;
+
+  // Minimum number of signer signatures required per checkpoint (for multi-signer setups).
+  uint32 signature_threshold = 5;
+
+  AssuranceTier tier = 6;
+  SidechainStatus status = 7;
+
+  // Bond amount posted at registration, denominated in the native token.
+  string bond_amount = 8 [
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.nullable) = false
+  ];
+
+  // Expected interval between checkpoints, in seconds. Used to detect missed checkpoints.
+  uint64 checkpoint_interval_seconds = 9;
+
+  // Height/sequence of the last accepted checkpoint. 0 if none yet.
+  uint64 last_checkpoint_height = 10;
+
+  // Hash of the last accepted checkpoint, for chaining verification.
+  bytes last_checkpoint_hash = 11;
+
+  google.protobuf.Timestamp registered_at = 12 [(gogoproto.stdtime) = true, (gogoproto.nullable) = false];
+  google.protobuf.Timestamp last_checkpoint_at = 13 [(gogoproto.stdtime) = true, (gogoproto.nullable) = true];
+
+  // Free-form metadata URI (off-chain document describing the sidechain, its data schema, etc.).
+  string metadata_uri = 14;
+}
+
+// Params defines module-wide parameters, settable via governance.
+message Params {
+  option (gogoproto.equal) = true;
+
+  // Minimum bond required to register a sidechain, per tier.
+  map<string, string> min_bond_by_tier = 1;
+
+  // Grace period (seconds) before a missed checkpoint interval triggers suspension.
+  uint64 missed_checkpoint_grace_seconds = 2;
+
+  // Cooldown period (seconds) before a bond is returned after voluntary exit.
+  uint64 exit_cooldown_seconds = 3;
+
+  // Maximum number of checkpoint signer keys allowed per sidechain.
+  uint32 max_signer_keys = 4;
+}

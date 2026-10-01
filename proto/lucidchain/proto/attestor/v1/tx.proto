@@ -1,0 +1,123 @@
+syntax = "proto3";
+package lucidchain.proto.attestor.v1;
+
+option go_package = "github.com/lucidpay/lucidchain/x/attestor/types";
+
+import "gogoproto/gogo.proto";
+import "cosmos/msg/v1/msg.proto";
+import "lucidchain/proto/attestor/v1/attestor.proto";
+
+service Msg {
+  rpc RegisterAttestor(MsgRegisterAttestor) returns (MsgRegisterAttestorResponse);
+  rpc UpdateAttestorSigners(MsgUpdateAttestorSigners) returns (MsgUpdateAttestorSignersResponse);
+  rpc InitiateAttestorExit(MsgInitiateAttestorExit) returns (MsgInitiateAttestorExitResponse);
+
+  // SubmitAttestation publishes a signed claim about a specific checkpoint,
+  // under a specific, governance-approved schema.
+  rpc SubmitAttestation(MsgSubmitAttestation) returns (MsgSubmitAttestationResponse);
+
+  // RaiseDispute challenges an active attestation within its dispute window.
+  rpc RaiseDispute(MsgRaiseDispute) returns (MsgRaiseDisputeResponse);
+
+  // ResolveDispute is called by the dispute_resolver_authority (initially the
+  // gov module) to settle a raised dispute.
+  rpc ResolveDispute(MsgResolveDispute) returns (MsgResolveDisputeResponse);
+
+  // Governance-only.
+  rpc CreateAttestationSchema(MsgCreateAttestationSchema) returns (MsgCreateAttestationSchemaResponse);
+  rpc RetireAttestationSchema(MsgRetireAttestationSchema) returns (MsgRetireAttestationSchemaResponse);
+  rpc UpdateParams(MsgUpdateParams) returns (MsgUpdateParamsResponse);
+}
+
+message MsgRegisterAttestor {
+  option (cosmos.msg.v1.signer) = "operator";
+
+  string operator = 1;
+  string id = 2;
+  string name = 3;
+  repeated string authorized_schema_ids = 4;
+  repeated string signer_pubkeys = 5;
+  uint32 signature_threshold = 6;
+  string bond_amount = 7 [
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.nullable) = false
+  ];
+  string credential_uri = 8;
+}
+message MsgRegisterAttestorResponse { string id = 1; }
+
+message MsgUpdateAttestorSigners {
+  option (cosmos.msg.v1.signer) = "operator";
+  string operator = 1;
+  string id = 2;
+  repeated string signer_pubkeys = 3;
+  uint32 signature_threshold = 4;
+}
+message MsgUpdateAttestorSignersResponse {}
+
+message MsgInitiateAttestorExit {
+  option (cosmos.msg.v1.signer) = "operator";
+  string operator = 1;
+  string id = 2;
+}
+message MsgInitiateAttestorExitResponse {}
+
+message MsgSubmitAttestation {
+  // Submitter pays tx fees; must be the attestor's registered operator or a
+  // delegated account (x/authz). Signature verification is against the
+  // attestor's registered signer keys, checked in the handler.
+  option (cosmos.msg.v1.signer) = "submitter";
+
+  string submitter = 1;
+  string schema_id = 2;
+  string attestor_id = 3;
+  string sidechain_id = 4;
+  uint64 checkpoint_sequence = 5;
+  bytes claim_payload = 6;
+  repeated Signature signatures = 7;
+}
+message MsgSubmitAttestationResponse {
+  string attestation_id = 1;
+}
+
+message MsgRaiseDispute {
+  option (cosmos.msg.v1.signer) = "challenger";
+  string challenger = 1;
+  string attestation_id = 2;
+  string evidence_uri = 3;
+  string bond_amount = 4 [
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.nullable) = false
+  ];
+}
+message MsgRaiseDisputeResponse { string dispute_id = 1; }
+
+message MsgResolveDispute {
+  option (cosmos.msg.v1.signer) = "authority";
+  string authority = 1;
+  string dispute_id = 2;
+  bool upheld = 3;
+  string rationale_uri = 4; // off-chain record of the resolution reasoning
+}
+message MsgResolveDisputeResponse {}
+
+message MsgCreateAttestationSchema {
+  option (cosmos.msg.v1.signer) = "authority";
+  string authority = 1;
+  AttestationSchema schema = 2;
+}
+message MsgCreateAttestationSchemaResponse {}
+
+message MsgRetireAttestationSchema {
+  option (cosmos.msg.v1.signer) = "authority";
+  string authority = 1;
+  string schema_id = 2;
+}
+message MsgRetireAttestationSchemaResponse {}
+
+message MsgUpdateParams {
+  option (cosmos.msg.v1.signer) = "authority";
+  string authority = 1;
+  Params params = 2;
+}
+message MsgUpdateParamsResponse {}
