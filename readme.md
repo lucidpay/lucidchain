@@ -1,3 +1,9 @@
+# LucidChain: A Public Assurance Layer for Private Chains
+
+**Summary**
+Lucidchain is a public, proof-of-stake (PoS) blockchain that acts as a neutral assurance layer for private sidechains. Sidechains keep their data and execution private and publish compact cryptographic commitments to our public chain. In return they receive a temper-evident, independently timestamped record and, at higher tiers, signed attestations from qualified third parties.
+The chain is deliberately minimal: no general-purpose smart contract VM, only a small set of purpose-built native modules.
+
 # Technical Specification: `x/sidechain`, `x/checkpoint`, `x/attestor`, `x/proofs` Modules
 
 **Draft v0.3**
