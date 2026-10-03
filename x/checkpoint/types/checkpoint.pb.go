@@ -5,8 +5,8 @@ package types
 
 import (
 	bytes "bytes"
-	cosmossdk_io_math "cosmossdk.io/math"
 	fmt "fmt"
+	types "github.com/cosmos/cosmos-sdk/types"
 	_ "github.com/cosmos/gogoproto/gogoproto"
 	proto "github.com/cosmos/gogoproto/proto"
 	github_com_cosmos_gogoproto_types "github.com/cosmos/gogoproto/types"
@@ -46,15 +46,21 @@ type Checkpoint struct {
 	// Number of individual records/events committed in this batch.
 	// Informational; used for fee calculation and monitoring, not consensus-critical.
 	RecordCount uint64 `protobuf:"varint,5,opt,name=record_count,json=recordCount,proto3" json:"record_count,omitempty"`
-	// Signatures from the sidechain's authorized checkpoint signer key(s).
-	// Must meet the sidechain's configured signature_threshold.
-	Signatures []*Signature `protobuf:"bytes,6,rep,name=signatures,proto3" json:"signatures,omitempty"`
-	// Block height and time at which this checkpoint was finalized on this chain.
-	FinalizedHeight uint64    `protobuf:"varint,7,opt,name=finalized_height,json=finalizedHeight,proto3" json:"finalized_height,omitempty"`
-	FinalizedAt     time.Time `protobuf:"bytes,8,opt,name=finalized_at,json=finalizedAt,proto3,stdtime" json:"finalized_at"`
-	// Optional off-chain pointer (e.g. IPFS CID, URI) to where the full batch
-	// data or an index is retrievable. Not verified on-chain.
-	DataPointer string `protobuf:"bytes,9,opt,name=data_pointer,json=dataPointer,proto3" json:"data_pointer,omitempty"`
+	// SHA-256 over the sign bytes of CheckpointSignDoc (see below).
+	CheckpointHash []byte `protobuf:"bytes,6,opt,name=checkpoint_hash,json=checkpointHash,proto3" json:"checkpoint_hash,omitempty"`
+	// Sidechain.signer_set_version under which this checkpoint was verified.
+	SignerSetVersion uint64 `protobuf:"varint,7,opt,name=signer_set_version,json=signerSetVersion,proto3" json:"signer_set_version,omitempty"`
+	// Bit i set => the key at Sidechain.signer_keys[i] (at signer_set_version)
+	// produced a valid signature. Length = ceil(len(signer_keys) / 8).
+	SignerBitmap []byte `protobuf:"bytes,8,opt,name=signer_bitmap,json=signerBitmap,proto3" json:"signer_bitmap,omitempty"`
+	// SHA-256 of the concatenation of the verified signatures, ordered by
+	// signer_index. Lets an auditor holding the original signatures prove they
+	// are the ones the chain accepted, without storing ~3.3 KB per signer.
+	SignaturesDigest []byte    `protobuf:"bytes,9,opt,name=signatures_digest,json=signaturesDigest,proto3" json:"signatures_digest,omitempty"`
+	FinalizedHeight  int64     `protobuf:"varint,10,opt,name=finalized_height,json=finalizedHeight,proto3" json:"finalized_height,omitempty"`
+	FinalizedAt      time.Time `protobuf:"bytes,11,opt,name=finalized_at,json=finalizedAt,proto3,stdtime" json:"finalized_at"`
+	// Optional off-chain pointer (IPFS CID, URI). Covered by the signatures, not verified on-chain.
+	DataPointer string `protobuf:"bytes,12,opt,name=data_pointer,json=dataPointer,proto3" json:"data_pointer,omitempty"`
 }
 
 func (m *Checkpoint) Reset()         { *m = Checkpoint{} }
@@ -125,14 +131,35 @@ func (m *Checkpoint) GetRecordCount() uint64 {
 	return 0
 }
 
-func (m *Checkpoint) GetSignatures() []*Signature {
+func (m *Checkpoint) GetCheckpointHash() []byte {
 	if m != nil {
-		return m.Signatures
+		return m.CheckpointHash
 	}
 	return nil
 }
 
-func (m *Checkpoint) GetFinalizedHeight() uint64 {
+func (m *Checkpoint) GetSignerSetVersion() uint64 {
+	if m != nil {
+		return m.SignerSetVersion
+	}
+	return 0
+}
+
+func (m *Checkpoint) GetSignerBitmap() []byte {
+	if m != nil {
+		return m.SignerBitmap
+	}
+	return nil
+}
+
+func (m *Checkpoint) GetSignaturesDigest() []byte {
+	if m != nil {
+		return m.SignaturesDigest
+	}
+	return nil
+}
+
+func (m *Checkpoint) GetFinalizedHeight() int64 {
 	if m != nil {
 		return m.FinalizedHeight
 	}
@@ -153,8 +180,11 @@ func (m *Checkpoint) GetDataPointer() string {
 	return ""
 }
 
+// Signature is one signer's signature over the checkpoint sign bytes.
 type Signature struct {
-	Pubkey    string `protobuf:"bytes,1,opt,name=pubkey,proto3" json:"pubkey,omitempty"`
+	// Index into Sidechain.signer_keys at MsgSubmitCheckpoint.signer_set_version.
+	SignerIndex uint32 `protobuf:"varint,1,opt,name=signer_index,json=signerIndex,proto3" json:"signer_index,omitempty"`
+	// Raw signature. ML-DSA-65 signatures are 3309 bytes.
 	Signature []byte `protobuf:"bytes,2,opt,name=signature,proto3" json:"signature,omitempty"`
 }
 
@@ -191,11 +221,11 @@ func (m *Signature) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_Signature proto.InternalMessageInfo
 
-func (m *Signature) GetPubkey() string {
+func (m *Signature) GetSignerIndex() uint32 {
 	if m != nil {
-		return m.Pubkey
+		return m.SignerIndex
 	}
-	return ""
+	return 0
 }
 
 func (m *Signature) GetSignature() []byte {
@@ -208,13 +238,19 @@ func (m *Signature) GetSignature() []byte {
 // Params defines module-wide parameters, settable via governance.
 type Params struct {
 	// Base fee per checkpoint submission, in the native token's smallest denom.
-	BaseFee cosmossdk_io_math.Int `protobuf:"bytes,1,opt,name=base_fee,json=baseFee,proto3,customtype=cosmossdk.io/math.Int" json:"base_fee"`
+	BaseFee types.Coin `protobuf:"bytes,1,opt,name=base_fee,json=baseFee,proto3" json:"base_fee"`
 	// Additional fee per record in the batch (record_count), to price large batches fairly.
-	PerRecordFee cosmossdk_io_math.Int `protobuf:"bytes,2,opt,name=per_record_fee,json=perRecordFee,proto3,customtype=cosmossdk.io/math.Int" json:"per_record_fee"`
+	PerRecordFee types.Coin `protobuf:"bytes,2,opt,name=per_record_fee,json=perRecordFee,proto3" json:"per_record_fee"`
 	// Maximum record_count allowed to be declared in a single checkpoint.
 	MaxRecordsPerCheckpoint uint64 `protobuf:"varint,3,opt,name=max_records_per_checkpoint,json=maxRecordsPerCheckpoint,proto3" json:"max_records_per_checkpoint,omitempty"`
 	// Maximum size in bytes of the data_pointer field.
 	MaxDataPointerBytes uint32 `protobuf:"varint,4,opt,name=max_data_pointer_bytes,json=maxDataPointerBytes,proto3" json:"max_data_pointer_bytes,omitempty"`
+	// Upper bound on signatures in one message.
+	MaxSignaturesPerCheckpoint uint32 `protobuf:"varint,5,opt,name=max_signatures_per_checkpoint,json=maxSignaturesPerCheckpoint,proto3" json:"max_signatures_per_checkpoint,omitempty"`
+	// Upper bound on total signature bytes in one message. With ML-DSA-65
+	// (3309 B/sig), 7 signatures is ~23 KB; size this together with the block
+	// max_bytes consensus param and charge gas per signature verified.
+	MaxSignatureBytesPerCheckpoint uint32 `protobuf:"varint,6,opt,name=max_signature_bytes_per_checkpoint,json=maxSignatureBytesPerCheckpoint,proto3" json:"max_signature_bytes_per_checkpoint,omitempty"`
 }
 
 func (m *Params) Reset()         { *m = Params{} }
@@ -250,6 +286,20 @@ func (m *Params) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_Params proto.InternalMessageInfo
 
+func (m *Params) GetBaseFee() types.Coin {
+	if m != nil {
+		return m.BaseFee
+	}
+	return types.Coin{}
+}
+
+func (m *Params) GetPerRecordFee() types.Coin {
+	if m != nil {
+		return m.PerRecordFee
+	}
+	return types.Coin{}
+}
+
 func (m *Params) GetMaxRecordsPerCheckpoint() uint64 {
 	if m != nil {
 		return m.MaxRecordsPerCheckpoint
@@ -260,6 +310,20 @@ func (m *Params) GetMaxRecordsPerCheckpoint() uint64 {
 func (m *Params) GetMaxDataPointerBytes() uint32 {
 	if m != nil {
 		return m.MaxDataPointerBytes
+	}
+	return 0
+}
+
+func (m *Params) GetMaxSignaturesPerCheckpoint() uint32 {
+	if m != nil {
+		return m.MaxSignaturesPerCheckpoint
+	}
+	return 0
+}
+
+func (m *Params) GetMaxSignatureBytesPerCheckpoint() uint32 {
+	if m != nil {
+		return m.MaxSignatureBytesPerCheckpoint
 	}
 	return 0
 }
@@ -275,43 +339,51 @@ func init() {
 }
 
 var fileDescriptor_7ca59191fd323e4f = []byte{
-	// 572 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x84, 0x53, 0xc1, 0x6e, 0xd3, 0x4a,
-	0x14, 0x8d, 0xdb, 0xbc, 0x34, 0x99, 0xe4, 0x01, 0x1a, 0xa0, 0x58, 0x11, 0x75, 0x42, 0x57, 0xe9,
-	0xc6, 0x56, 0xda, 0x4d, 0x05, 0xab, 0x26, 0x08, 0x1a, 0xb1, 0x89, 0x0c, 0x2b, 0x36, 0xd6, 0xd8,
-	0xbe, 0xb1, 0x47, 0x89, 0x3d, 0xc6, 0x33, 0x8e, 0x12, 0xbe, 0xa2, 0x9f, 0xc0, 0x1f, 0xf0, 0x1b,
-	0x5d, 0x76, 0x89, 0x58, 0x14, 0x94, 0x6c, 0xf8, 0x0b, 0x90, 0x67, 0x12, 0xdb, 0x2b, 0xd8, 0x79,
-	0xce, 0xdc, 0x73, 0xee, 0xf1, 0xb9, 0x73, 0x91, 0xb5, 0xc8, 0x3c, 0xea, 0x7b, 0x21, 0xa1, 0xb1,
-	0x95, 0xa4, 0x4c, 0x30, 0xcb, 0x0b, 0xc1, 0x9b, 0x27, 0x8c, 0xc6, 0xc2, 0x5a, 0x0e, 0x2b, 0x27,
-	0x53, 0x5e, 0x63, 0xa3, 0x24, 0x28, 0xc4, 0xac, 0x94, 0x2c, 0x87, 0xdd, 0x27, 0x01, 0x0b, 0x98,
-	0x52, 0xca, 0xbf, 0x54, 0x4d, 0xb7, 0x17, 0x30, 0x16, 0x2c, 0x40, 0xb5, 0x70, 0xb3, 0x99, 0x25,
-	0x68, 0x04, 0x5c, 0x90, 0x28, 0x51, 0x05, 0xa7, 0x5f, 0x0f, 0x11, 0x1a, 0x17, 0x42, 0xf8, 0x05,
-	0xea, 0x70, 0xea, 0x83, 0x6c, 0xe3, 0x50, 0x5f, 0xd7, 0xfa, 0xda, 0xa0, 0x65, 0xb7, 0x0b, 0x6c,
-	0xe2, 0xe3, 0x2e, 0x6a, 0x72, 0xf8, 0x94, 0x41, 0xec, 0x81, 0x7e, 0xd0, 0xd7, 0x06, 0x75, 0xbb,
-	0x38, 0xe3, 0x13, 0x84, 0xb8, 0x20, 0x02, 0x9c, 0x94, 0x31, 0xa1, 0x1f, 0xf6, 0xb5, 0x41, 0xc7,
-	0x6e, 0x49, 0xc4, 0x66, 0x4c, 0xe0, 0x4b, 0xa4, 0x27, 0x29, 0x2c, 0x29, 0xcb, 0xb8, 0x53, 0xba,
-	0x77, 0x42, 0xc2, 0x43, 0xbd, 0x2e, 0x8b, 0x8f, 0xf7, 0xf7, 0xa5, 0xa7, 0x6b, 0xc2, 0xc3, 0xdc,
-	0x57, 0x0a, 0x1e, 0x4b, 0x7d, 0xc7, 0x63, 0x59, 0x2c, 0xf4, 0xff, 0x64, 0xe3, 0xb6, 0xc2, 0xc6,
-	0x39, 0x84, 0x27, 0x08, 0x71, 0x1a, 0xc4, 0x44, 0x64, 0x29, 0x70, 0xbd, 0xd1, 0x3f, 0x1c, 0xb4,
-	0xcf, 0xcf, 0xcc, 0xbf, 0xa7, 0x66, 0xbe, 0xdf, 0x33, 0xec, 0x0a, 0x19, 0x9f, 0xa1, 0x47, 0x33,
-	0x1a, 0x93, 0x05, 0xfd, 0x0c, 0xbe, 0x13, 0x02, 0x0d, 0x42, 0xa1, 0x1f, 0xc9, 0x8e, 0x0f, 0x0b,
-	0xfc, 0x5a, 0xc2, 0xf8, 0x2d, 0xea, 0x94, 0xa5, 0x44, 0xe8, 0xcd, 0xbe, 0x36, 0x68, 0x9f, 0x77,
-	0x4d, 0x95, 0xbb, 0xb9, 0xcf, 0xdd, 0xfc, 0xb0, 0xcf, 0x7d, 0xd4, 0xbc, 0xbd, 0xef, 0xd5, 0x6e,
-	0x7e, 0xf4, 0x34, 0xbb, 0x5d, 0x30, 0xaf, 0x64, 0xf2, 0x3e, 0x11, 0xc4, 0x91, 0xd6, 0x20, 0xd5,
-	0x5b, 0x2a, 0xf9, 0x1c, 0x9b, 0x2a, 0xe8, 0x65, 0xfd, 0xd7, 0x97, 0x9e, 0x76, 0x7a, 0x85, 0x5a,
-	0x85, 0x6b, 0x7c, 0x8c, 0x1a, 0x49, 0xe6, 0xce, 0x61, 0xbd, 0x9b, 0xd4, 0xee, 0x84, 0x9f, 0xa3,
-	0x56, 0xf1, 0x3f, 0xfa, 0xc1, 0x6e, 0x0e, 0x7b, 0xe0, 0xf4, 0xb7, 0x86, 0x1a, 0x53, 0x92, 0x92,
-	0x88, 0xe3, 0x4b, 0xd4, 0x74, 0x09, 0x07, 0x67, 0x06, 0xa0, 0x24, 0x46, 0x27, 0xb9, 0xbf, 0xef,
-	0xf7, 0xbd, 0xa7, 0x1e, 0xe3, 0x11, 0xe3, 0xdc, 0x9f, 0x9b, 0x94, 0x59, 0x11, 0x11, 0xa1, 0x39,
-	0x89, 0x85, 0x7d, 0x94, 0x97, 0xbf, 0x01, 0xc0, 0x63, 0xf4, 0x20, 0x81, 0xd4, 0xd9, 0x8d, 0x65,
-	0x06, 0xaa, 0xcf, 0x3f, 0xf9, 0x9d, 0x04, 0x52, 0x5b, 0x72, 0x72, 0x91, 0x57, 0xa8, 0x1b, 0x91,
-	0xd5, 0x4e, 0x84, 0x3b, 0xb9, 0x60, 0x39, 0x20, 0xf9, 0x80, 0xea, 0xf6, 0xb3, 0x88, 0xac, 0x14,
-	0x83, 0x4f, 0x21, 0xad, 0x3c, 0xd6, 0x0b, 0x74, 0x9c, 0x93, 0xab, 0xb1, 0x39, 0xee, 0x5a, 0x00,
-	0x97, 0x8f, 0xe9, 0x7f, 0xfb, 0x71, 0x44, 0x56, 0xaf, 0xcb, 0xfc, 0x46, 0xf9, 0x95, 0x0a, 0x71,
-	0xf4, 0xee, 0x76, 0x63, 0x68, 0x77, 0x1b, 0x43, 0xfb, 0xb9, 0x31, 0xb4, 0x9b, 0xad, 0x51, 0xbb,
-	0xdb, 0x1a, 0xb5, 0x6f, 0x5b, 0xa3, 0xf6, 0x71, 0x18, 0x50, 0x11, 0x66, 0xae, 0xe9, 0xb1, 0x48,
-	0xed, 0x68, 0x42, 0xd6, 0xd5, 0x65, 0x5d, 0x55, 0x17, 0x55, 0xac, 0x13, 0xe0, 0x6e, 0x43, 0x4e,
-	0xf9, 0xe2, 0xcf, 0x00, 0x6e, 0x58, 0xac, 0xd4, 0xd4, 0x03, 0x00, 0x00,
+	// 694 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x94, 0xcf, 0x72, 0xd3, 0x3a,
+	0x14, 0xc6, 0xe3, 0x36, 0x4d, 0x13, 0x25, 0x69, 0x73, 0x75, 0xef, 0x2d, 0x26, 0x43, 0x9d, 0x10,
+	0x16, 0x84, 0x81, 0xb1, 0x27, 0xed, 0x86, 0x29, 0xab, 0xa6, 0x05, 0xda, 0xc2, 0xa2, 0xe3, 0x32,
+	0x2c, 0xd8, 0x78, 0x14, 0xfb, 0xc4, 0xd6, 0x50, 0x5b, 0xc6, 0x52, 0x32, 0x29, 0x4f, 0xd1, 0x81,
+	0x17, 0xe0, 0x71, 0xba, 0xec, 0x92, 0x15, 0x30, 0xed, 0x86, 0xc7, 0x60, 0x24, 0xe5, 0x8f, 0x9b,
+	0x15, 0xbb, 0xf8, 0x3b, 0xe7, 0xfc, 0xce, 0x91, 0xce, 0x17, 0x21, 0xe7, 0x7c, 0xe4, 0xd3, 0xc0,
+	0x8f, 0x08, 0x4d, 0x9c, 0x34, 0x63, 0x82, 0x39, 0x7e, 0x04, 0xfe, 0xc7, 0x94, 0xd1, 0x44, 0x38,
+	0xe3, 0x5e, 0xee, 0xcb, 0x56, 0x61, 0x6c, 0x2d, 0x0a, 0xb4, 0x62, 0xe7, 0x52, 0xc6, 0xbd, 0xe6,
+	0x7f, 0x21, 0x0b, 0x99, 0x26, 0xc9, 0x5f, 0x3a, 0xa7, 0x69, 0xf9, 0x8c, 0xc7, 0x8c, 0x3b, 0x03,
+	0xc2, 0xc1, 0x19, 0xf7, 0x06, 0x20, 0x48, 0xcf, 0xf1, 0xd9, 0x8c, 0xd1, 0x6c, 0x85, 0x8c, 0x85,
+	0xe7, 0xa0, 0x47, 0x18, 0x8c, 0x86, 0x8e, 0xa0, 0x31, 0x70, 0x41, 0xe2, 0x54, 0x27, 0x74, 0xbe,
+	0x16, 0x11, 0x3a, 0x98, 0x37, 0xc2, 0x0f, 0x51, 0x8d, 0xd3, 0x00, 0xd4, 0x18, 0x1e, 0x0d, 0x4c,
+	0xa3, 0x6d, 0x74, 0x2b, 0x6e, 0x75, 0xae, 0x1d, 0x07, 0xb8, 0x89, 0xca, 0x1c, 0x3e, 0x8d, 0x20,
+	0xf1, 0xc1, 0x5c, 0x69, 0x1b, 0xdd, 0xa2, 0x3b, 0xff, 0xc6, 0xdb, 0x08, 0x71, 0x41, 0x04, 0x78,
+	0x19, 0x63, 0xc2, 0x5c, 0x6d, 0x1b, 0xdd, 0x9a, 0x5b, 0x51, 0x8a, 0xcb, 0x98, 0xc0, 0xcf, 0x91,
+	0x99, 0x66, 0x30, 0xa6, 0x6c, 0xc4, 0xbd, 0xc5, 0xe9, 0xbc, 0x88, 0xf0, 0xc8, 0x2c, 0xaa, 0xe4,
+	0xad, 0x59, 0x7c, 0x31, 0xd3, 0x11, 0xe1, 0x91, 0x9c, 0x2b, 0x03, 0x9f, 0x65, 0x81, 0xe7, 0xb3,
+	0x51, 0x22, 0xcc, 0x35, 0xd5, 0xb8, 0xaa, 0xb5, 0x03, 0x29, 0xe1, 0xc7, 0x68, 0x73, 0x99, 0x59,
+	0x52, 0xcc, 0x0d, 0xff, 0x2e, 0xeb, 0x19, 0xc2, 0x9c, 0x86, 0x09, 0x64, 0x1e, 0x07, 0xe1, 0x8d,
+	0x21, 0xe3, 0x94, 0x25, 0xe6, 0xba, 0x22, 0x36, 0x74, 0xe4, 0x0c, 0xc4, 0x7b, 0xad, 0xe3, 0x47,
+	0xa8, 0x3e, 0xcd, 0x1e, 0x50, 0x11, 0x93, 0xd4, 0x2c, 0x2b, 0x68, 0x4d, 0x8b, 0x7d, 0xa5, 0xe1,
+	0xa7, 0xe8, 0x1f, 0xf9, 0x4d, 0xc4, 0x28, 0x03, 0xee, 0x05, 0x34, 0x04, 0x2e, 0xcc, 0x8a, 0x4a,
+	0x6c, 0x2c, 0x02, 0x87, 0x4a, 0xc7, 0x4f, 0x50, 0x63, 0x48, 0x13, 0x72, 0x4e, 0x3f, 0x43, 0xe0,
+	0x45, 0x40, 0xc3, 0x48, 0x98, 0xa8, 0x6d, 0x74, 0x57, 0xdd, 0xcd, 0xb9, 0x7e, 0xa4, 0x64, 0xfc,
+	0x1a, 0xd5, 0x16, 0xa9, 0x44, 0x98, 0xd5, 0xb6, 0xd1, 0xad, 0xee, 0x34, 0x6d, 0xbd, 0x55, 0x7b,
+	0xb6, 0x55, 0xfb, 0xdd, 0x6c, 0xab, 0xfd, 0xf2, 0xd5, 0x8f, 0x56, 0xe1, 0xf2, 0x67, 0xcb, 0x70,
+	0xab, 0xf3, 0xca, 0x7d, 0xb5, 0xd7, 0x80, 0x08, 0xe2, 0xa9, 0x5b, 0x80, 0xcc, 0xac, 0xe9, 0xbd,
+	0x4a, 0xed, 0x54, 0x4b, 0x7b, 0xc5, 0xdf, 0xdf, 0x5a, 0xc6, 0x49, 0xb1, 0x5c, 0x6f, 0xfc, 0xdf,
+	0x79, 0x8b, 0x2a, 0x67, 0xb3, 0xb1, 0xb5, 0x27, 0xd4, 0x0d, 0xd0, 0x24, 0x80, 0x89, 0xf2, 0x44,
+	0xdd, 0xad, 0x6a, 0xed, 0x58, 0x4a, 0xf8, 0x01, 0xaa, 0xcc, 0x8f, 0x69, 0xae, 0x4c, 0xd7, 0x3e,
+	0x13, 0x3a, 0x5f, 0x56, 0x51, 0xe9, 0x94, 0x64, 0x24, 0xe6, 0x78, 0x0f, 0x95, 0xa5, 0x55, 0xbd,
+	0x21, 0x80, 0xe2, 0x54, 0x77, 0xee, 0xdb, 0xda, 0xc2, 0xb6, 0xd4, 0xed, 0xa9, 0x85, 0xed, 0x03,
+	0x46, 0x93, 0x7e, 0x51, 0x9e, 0xc5, 0x5d, 0x97, 0x81, 0x57, 0x00, 0xf8, 0x25, 0xda, 0x48, 0x21,
+	0xf3, 0xa6, 0x3e, 0x18, 0x82, 0xee, 0xf4, 0x17, 0x84, 0x5a, 0x0a, 0x99, 0xab, 0xaa, 0x24, 0xe6,
+	0x05, 0x6a, 0xc6, 0x64, 0x32, 0xc5, 0x70, 0x4f, 0x22, 0x17, 0x06, 0x51, 0x9e, 0x2d, 0xba, 0xf7,
+	0x62, 0x32, 0xd1, 0x15, 0xfc, 0x14, 0xb2, 0xdc, 0xff, 0x63, 0x17, 0x6d, 0xc9, 0xe2, 0xfc, 0x5d,
+	0x7a, 0x83, 0x0b, 0x01, 0x5c, 0xf9, 0xb7, 0xee, 0xfe, 0x1b, 0x93, 0xc9, 0xe1, 0xe2, 0x52, 0xfb,
+	0x32, 0x84, 0xf7, 0xd1, 0xb6, 0x2c, 0xca, 0x39, 0x64, 0xa9, 0xe9, 0x9a, 0xaa, 0x95, 0x63, 0xcd,
+	0x6f, 0x7d, 0xa9, 0xef, 0x09, 0xea, 0xdc, 0x41, 0xe8, 0xa6, 0xcb, 0x9c, 0x92, 0xe2, 0x58, 0x79,
+	0x8e, 0x9a, 0xe0, 0x0e, 0x4b, 0x2f, 0xba, 0xff, 0xe6, 0xea, 0xc6, 0x32, 0xae, 0x6f, 0x2c, 0xe3,
+	0xd7, 0x8d, 0x65, 0x5c, 0xde, 0x5a, 0x85, 0xeb, 0x5b, 0xab, 0xf0, 0xfd, 0xd6, 0x2a, 0x7c, 0xe8,
+	0x85, 0x54, 0x44, 0xa3, 0x81, 0xed, 0xb3, 0x58, 0xbf, 0x62, 0x29, 0xb9, 0xc8, 0x3f, 0x67, 0x93,
+	0xfc, 0x53, 0x26, 0x2e, 0x52, 0xe0, 0x83, 0x92, 0x72, 0xe2, 0xee, 0x9f, 0x01, 0x00, 0xd8, 0x76,
+	0xc8, 0xa3, 0xf6, 0x04, 0x00, 0x00,
 }
 
 func (this *Checkpoint) Equal(that interface{}) bool {
@@ -348,13 +420,17 @@ func (this *Checkpoint) Equal(that interface{}) bool {
 	if this.RecordCount != that1.RecordCount {
 		return false
 	}
-	if len(this.Signatures) != len(that1.Signatures) {
+	if !bytes.Equal(this.CheckpointHash, that1.CheckpointHash) {
 		return false
 	}
-	for i := range this.Signatures {
-		if !this.Signatures[i].Equal(that1.Signatures[i]) {
-			return false
-		}
+	if this.SignerSetVersion != that1.SignerSetVersion {
+		return false
+	}
+	if !bytes.Equal(this.SignerBitmap, that1.SignerBitmap) {
+		return false
+	}
+	if !bytes.Equal(this.SignaturesDigest, that1.SignaturesDigest) {
+		return false
 	}
 	if this.FinalizedHeight != that1.FinalizedHeight {
 		return false
@@ -386,16 +462,22 @@ func (this *Params) Equal(that interface{}) bool {
 	} else if this == nil {
 		return false
 	}
-	if !this.BaseFee.Equal(that1.BaseFee) {
+	if !this.BaseFee.Equal(&that1.BaseFee) {
 		return false
 	}
-	if !this.PerRecordFee.Equal(that1.PerRecordFee) {
+	if !this.PerRecordFee.Equal(&that1.PerRecordFee) {
 		return false
 	}
 	if this.MaxRecordsPerCheckpoint != that1.MaxRecordsPerCheckpoint {
 		return false
 	}
 	if this.MaxDataPointerBytes != that1.MaxDataPointerBytes {
+		return false
+	}
+	if this.MaxSignaturesPerCheckpoint != that1.MaxSignaturesPerCheckpoint {
+		return false
+	}
+	if this.MaxSignatureBytesPerCheckpoint != that1.MaxSignatureBytesPerCheckpoint {
 		return false
 	}
 	return true
@@ -425,7 +507,7 @@ func (m *Checkpoint) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 		copy(dAtA[i:], m.DataPointer)
 		i = encodeVarintCheckpoint(dAtA, i, uint64(len(m.DataPointer)))
 		i--
-		dAtA[i] = 0x4a
+		dAtA[i] = 0x62
 	}
 	n1, err1 := github_com_cosmos_gogoproto_types.StdTimeMarshalTo(m.FinalizedAt, dAtA[i-github_com_cosmos_gogoproto_types.SizeOfStdTime(m.FinalizedAt):])
 	if err1 != nil {
@@ -434,25 +516,37 @@ func (m *Checkpoint) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i -= n1
 	i = encodeVarintCheckpoint(dAtA, i, uint64(n1))
 	i--
-	dAtA[i] = 0x42
+	dAtA[i] = 0x5a
 	if m.FinalizedHeight != 0 {
 		i = encodeVarintCheckpoint(dAtA, i, uint64(m.FinalizedHeight))
 		i--
+		dAtA[i] = 0x50
+	}
+	if len(m.SignaturesDigest) > 0 {
+		i -= len(m.SignaturesDigest)
+		copy(dAtA[i:], m.SignaturesDigest)
+		i = encodeVarintCheckpoint(dAtA, i, uint64(len(m.SignaturesDigest)))
+		i--
+		dAtA[i] = 0x4a
+	}
+	if len(m.SignerBitmap) > 0 {
+		i -= len(m.SignerBitmap)
+		copy(dAtA[i:], m.SignerBitmap)
+		i = encodeVarintCheckpoint(dAtA, i, uint64(len(m.SignerBitmap)))
+		i--
+		dAtA[i] = 0x42
+	}
+	if m.SignerSetVersion != 0 {
+		i = encodeVarintCheckpoint(dAtA, i, uint64(m.SignerSetVersion))
+		i--
 		dAtA[i] = 0x38
 	}
-	if len(m.Signatures) > 0 {
-		for iNdEx := len(m.Signatures) - 1; iNdEx >= 0; iNdEx-- {
-			{
-				size, err := m.Signatures[iNdEx].MarshalToSizedBuffer(dAtA[:i])
-				if err != nil {
-					return 0, err
-				}
-				i -= size
-				i = encodeVarintCheckpoint(dAtA, i, uint64(size))
-			}
-			i--
-			dAtA[i] = 0x32
-		}
+	if len(m.CheckpointHash) > 0 {
+		i -= len(m.CheckpointHash)
+		copy(dAtA[i:], m.CheckpointHash)
+		i = encodeVarintCheckpoint(dAtA, i, uint64(len(m.CheckpointHash)))
+		i--
+		dAtA[i] = 0x32
 	}
 	if m.RecordCount != 0 {
 		i = encodeVarintCheckpoint(dAtA, i, uint64(m.RecordCount))
@@ -515,12 +609,10 @@ func (m *Signature) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 		i--
 		dAtA[i] = 0x12
 	}
-	if len(m.Pubkey) > 0 {
-		i -= len(m.Pubkey)
-		copy(dAtA[i:], m.Pubkey)
-		i = encodeVarintCheckpoint(dAtA, i, uint64(len(m.Pubkey)))
+	if m.SignerIndex != 0 {
+		i = encodeVarintCheckpoint(dAtA, i, uint64(m.SignerIndex))
 		i--
-		dAtA[i] = 0xa
+		dAtA[i] = 0x8
 	}
 	return len(dAtA) - i, nil
 }
@@ -545,6 +637,16 @@ func (m *Params) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if m.MaxSignatureBytesPerCheckpoint != 0 {
+		i = encodeVarintCheckpoint(dAtA, i, uint64(m.MaxSignatureBytesPerCheckpoint))
+		i--
+		dAtA[i] = 0x30
+	}
+	if m.MaxSignaturesPerCheckpoint != 0 {
+		i = encodeVarintCheckpoint(dAtA, i, uint64(m.MaxSignaturesPerCheckpoint))
+		i--
+		dAtA[i] = 0x28
+	}
 	if m.MaxDataPointerBytes != 0 {
 		i = encodeVarintCheckpoint(dAtA, i, uint64(m.MaxDataPointerBytes))
 		i--
@@ -556,21 +658,21 @@ func (m *Params) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 		dAtA[i] = 0x18
 	}
 	{
-		size := m.PerRecordFee.Size()
-		i -= size
-		if _, err := m.PerRecordFee.MarshalTo(dAtA[i:]); err != nil {
+		size, err := m.PerRecordFee.MarshalToSizedBuffer(dAtA[:i])
+		if err != nil {
 			return 0, err
 		}
+		i -= size
 		i = encodeVarintCheckpoint(dAtA, i, uint64(size))
 	}
 	i--
 	dAtA[i] = 0x12
 	{
-		size := m.BaseFee.Size()
-		i -= size
-		if _, err := m.BaseFee.MarshalTo(dAtA[i:]); err != nil {
+		size, err := m.BaseFee.MarshalToSizedBuffer(dAtA[:i])
+		if err != nil {
 			return 0, err
 		}
+		i -= size
 		i = encodeVarintCheckpoint(dAtA, i, uint64(size))
 	}
 	i--
@@ -613,11 +715,20 @@ func (m *Checkpoint) Size() (n int) {
 	if m.RecordCount != 0 {
 		n += 1 + sovCheckpoint(uint64(m.RecordCount))
 	}
-	if len(m.Signatures) > 0 {
-		for _, e := range m.Signatures {
-			l = e.Size()
-			n += 1 + l + sovCheckpoint(uint64(l))
-		}
+	l = len(m.CheckpointHash)
+	if l > 0 {
+		n += 1 + l + sovCheckpoint(uint64(l))
+	}
+	if m.SignerSetVersion != 0 {
+		n += 1 + sovCheckpoint(uint64(m.SignerSetVersion))
+	}
+	l = len(m.SignerBitmap)
+	if l > 0 {
+		n += 1 + l + sovCheckpoint(uint64(l))
+	}
+	l = len(m.SignaturesDigest)
+	if l > 0 {
+		n += 1 + l + sovCheckpoint(uint64(l))
 	}
 	if m.FinalizedHeight != 0 {
 		n += 1 + sovCheckpoint(uint64(m.FinalizedHeight))
@@ -637,9 +748,8 @@ func (m *Signature) Size() (n int) {
 	}
 	var l int
 	_ = l
-	l = len(m.Pubkey)
-	if l > 0 {
-		n += 1 + l + sovCheckpoint(uint64(l))
+	if m.SignerIndex != 0 {
+		n += 1 + sovCheckpoint(uint64(m.SignerIndex))
 	}
 	l = len(m.Signature)
 	if l > 0 {
@@ -663,6 +773,12 @@ func (m *Params) Size() (n int) {
 	}
 	if m.MaxDataPointerBytes != 0 {
 		n += 1 + sovCheckpoint(uint64(m.MaxDataPointerBytes))
+	}
+	if m.MaxSignaturesPerCheckpoint != 0 {
+		n += 1 + sovCheckpoint(uint64(m.MaxSignaturesPerCheckpoint))
+	}
+	if m.MaxSignatureBytesPerCheckpoint != 0 {
+		n += 1 + sovCheckpoint(uint64(m.MaxSignatureBytesPerCheckpoint))
 	}
 	return n
 }
@@ -842,9 +958,9 @@ func (m *Checkpoint) Unmarshal(dAtA []byte) error {
 			}
 		case 6:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Signatures", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field CheckpointHash", wireType)
 			}
-			var msglen int
+			var byteLen int
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowCheckpoint
@@ -854,27 +970,114 @@ func (m *Checkpoint) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				msglen |= int(b&0x7F) << shift
+				byteLen |= int(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			if msglen < 0 {
+			if byteLen < 0 {
 				return ErrInvalidLengthCheckpoint
 			}
-			postIndex := iNdEx + msglen
+			postIndex := iNdEx + byteLen
 			if postIndex < 0 {
 				return ErrInvalidLengthCheckpoint
 			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Signatures = append(m.Signatures, &Signature{})
-			if err := m.Signatures[len(m.Signatures)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
+			m.CheckpointHash = append(m.CheckpointHash[:0], dAtA[iNdEx:postIndex]...)
+			if m.CheckpointHash == nil {
+				m.CheckpointHash = []byte{}
 			}
 			iNdEx = postIndex
 		case 7:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SignerSetVersion", wireType)
+			}
+			m.SignerSetVersion = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCheckpoint
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.SignerSetVersion |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 8:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SignerBitmap", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCheckpoint
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				byteLen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthCheckpoint
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCheckpoint
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.SignerBitmap = append(m.SignerBitmap[:0], dAtA[iNdEx:postIndex]...)
+			if m.SignerBitmap == nil {
+				m.SignerBitmap = []byte{}
+			}
+			iNdEx = postIndex
+		case 9:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SignaturesDigest", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCheckpoint
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				byteLen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthCheckpoint
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCheckpoint
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.SignaturesDigest = append(m.SignaturesDigest[:0], dAtA[iNdEx:postIndex]...)
+			if m.SignaturesDigest == nil {
+				m.SignaturesDigest = []byte{}
+			}
+			iNdEx = postIndex
+		case 10:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field FinalizedHeight", wireType)
 			}
@@ -888,12 +1091,12 @@ func (m *Checkpoint) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.FinalizedHeight |= uint64(b&0x7F) << shift
+				m.FinalizedHeight |= int64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-		case 8:
+		case 11:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field FinalizedAt", wireType)
 			}
@@ -926,7 +1129,7 @@ func (m *Checkpoint) Unmarshal(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 9:
+		case 12:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field DataPointer", wireType)
 			}
@@ -1009,10 +1212,10 @@ func (m *Signature) Unmarshal(dAtA []byte) error {
 		}
 		switch fieldNum {
 		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Pubkey", wireType)
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SignerIndex", wireType)
 			}
-			var stringLen uint64
+			m.SignerIndex = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowCheckpoint
@@ -1022,24 +1225,11 @@ func (m *Signature) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
+				m.SignerIndex |= uint32(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthCheckpoint
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthCheckpoint
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Pubkey = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Signature", wireType)
@@ -1128,7 +1318,7 @@ func (m *Params) Unmarshal(dAtA []byte) error {
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field BaseFee", wireType)
 			}
-			var stringLen uint64
+			var msglen int
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowCheckpoint
@@ -1138,16 +1328,15 @@ func (m *Params) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
+				msglen |= int(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
+			if msglen < 0 {
 				return ErrInvalidLengthCheckpoint
 			}
-			postIndex := iNdEx + intStringLen
+			postIndex := iNdEx + msglen
 			if postIndex < 0 {
 				return ErrInvalidLengthCheckpoint
 			}
@@ -1162,7 +1351,7 @@ func (m *Params) Unmarshal(dAtA []byte) error {
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field PerRecordFee", wireType)
 			}
-			var stringLen uint64
+			var msglen int
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowCheckpoint
@@ -1172,16 +1361,15 @@ func (m *Params) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
+				msglen |= int(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
+			if msglen < 0 {
 				return ErrInvalidLengthCheckpoint
 			}
-			postIndex := iNdEx + intStringLen
+			postIndex := iNdEx + msglen
 			if postIndex < 0 {
 				return ErrInvalidLengthCheckpoint
 			}
@@ -1226,6 +1414,44 @@ func (m *Params) Unmarshal(dAtA []byte) error {
 				b := dAtA[iNdEx]
 				iNdEx++
 				m.MaxDataPointerBytes |= uint32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 5:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MaxSignaturesPerCheckpoint", wireType)
+			}
+			m.MaxSignaturesPerCheckpoint = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCheckpoint
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.MaxSignaturesPerCheckpoint |= uint32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 6:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MaxSignatureBytesPerCheckpoint", wireType)
+			}
+			m.MaxSignatureBytesPerCheckpoint = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCheckpoint
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.MaxSignatureBytesPerCheckpoint |= uint32(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}

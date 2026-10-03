@@ -22,6 +22,7 @@ require (
 	cosmossdk.io/tools/confix v0.2.0-rc.4
 	github.com/cometbft/cometbft v0.40.0
 	github.com/cosmos/cosmos-db v1.1.3
+	github.com/cosmos/cosmos-proto v1.0.0-beta.5
 	github.com/cosmos/cosmos-sdk v0.55.0
 	github.com/cosmos/cosmos-sdk/store/v2 v2.0.0
 	github.com/cosmos/gogoproto v1.7.2
@@ -162,7 +163,6 @@ require (
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
 	github.com/cosmos/btcutil v1.0.5 // indirect
 	github.com/cosmos/btree v1.0.0 // indirect
-	github.com/cosmos/cosmos-proto v1.0.0-beta.5 // indirect
 	github.com/cosmos/go-bip39 v1.0.0 // indirect
 	github.com/cosmos/gogogateway v1.2.0 // indirect
 	github.com/cosmos/iavl v1.2.8 // indirect

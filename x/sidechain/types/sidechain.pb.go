@@ -5,11 +5,13 @@ package types
 
 import (
 	bytes "bytes"
-	cosmossdk_io_math "cosmossdk.io/math"
 	fmt "fmt"
+	_ "github.com/cosmos/cosmos-proto"
+	types "github.com/cosmos/cosmos-sdk/types"
 	_ "github.com/cosmos/gogoproto/gogoproto"
 	proto "github.com/cosmos/gogoproto/proto"
 	github_com_cosmos_gogoproto_types "github.com/cosmos/gogoproto/types"
+	any "github.com/cosmos/gogoproto/types/any"
 	_ "google.golang.org/protobuf/types/known/timestamppb"
 	io "io"
 	math "math"
@@ -107,25 +109,35 @@ type Sidechain struct {
 	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	// Bech32 address of the sidechain operator (registration owner, admin actions).
 	Operator string `protobuf:"bytes,3,opt,name=operator,proto3" json:"operator,omitempty"`
-	// Public key(s) authorized to sign checkpoints on behalf of this sidechain.
-	// Multiple keys support key rotation and multi-signer setups.
-	CheckpointSignerPubkeys []string `protobuf:"bytes,4,rep,name=checkpoint_signer_pubkeys,json=checkpointSignerPubkeys,proto3" json:"checkpoint_signer_pubkeys,omitempty"`
-	// Minimum number of signer signatures required per checkpoint (for multi-signer setups).
-	SignatureThreshold uint32          `protobuf:"varint,5,opt,name=signature_threshold,json=signatureThreshold,proto3" json:"signature_threshold,omitempty"`
-	Tier               AssuranceTier   `protobuf:"varint,6,opt,name=tier,proto3,enum=lucidchain.proto.sidechain.v1.AssuranceTier" json:"tier,omitempty"`
-	Status             SidechainStatus `protobuf:"varint,7,opt,name=status,proto3,enum=lucidchain.proto.sidechain.v1.SidechainStatus" json:"status,omitempty"`
-	// Bond amount posted at registration, denominated in the native token.
-	BondAmount cosmossdk_io_math.Int `protobuf:"bytes,8,opt,name=bond_amount,json=bondAmount,proto3,customtype=cosmossdk.io/math.Int" json:"bond_amount"`
-	// Expected interval between checkpoints, in seconds. Used to detect missed checkpoints.
-	CheckpointIntervalSeconds uint64 `protobuf:"varint,9,opt,name=checkpoint_interval_seconds,json=checkpointIntervalSeconds,proto3" json:"checkpoint_interval_seconds,omitempty"`
-	// Height/sequence of the last accepted checkpoint. 0 if none yet.
-	LastCheckpointHeight uint64 `protobuf:"varint,10,opt,name=last_checkpoint_height,json=lastCheckpointHeight,proto3" json:"last_checkpoint_height,omitempty"`
-	// Hash of the last accepted checkpoint, for chaining verification.
-	LastCheckpointHash []byte     `protobuf:"bytes,11,opt,name=last_checkpoint_hash,json=lastCheckpointHash,proto3" json:"last_checkpoint_hash,omitempty"`
-	RegisteredAt       time.Time  `protobuf:"bytes,12,opt,name=registered_at,json=registeredAt,proto3,stdtime" json:"registered_at"`
-	LastCheckpointAt   *time.Time `protobuf:"bytes,13,opt,name=last_checkpoint_at,json=lastCheckpointAt,proto3,stdtime" json:"last_checkpoint_at,omitempty"`
-	// Free-form metadata URI (off-chain document describing the sidechain, its data schema, etc.).
-	MetadataUri string `protobuf:"bytes,14,opt,name=metadata_uri,json=metadataUri,proto3" json:"metadata_uri,omitempty"`
+	// Keys authorized to sign checkpoints, as SDK public keys. Post-quantum
+	// deployments use /cosmos.crypto.mldsa65.PubKey (ML-DSA-65, FIPS 204).
+	// Allowed type URLs are restricted by Params.allowed_pubkey_type_urls.
+	// Order is significant: Signature.signer_index refers to a position in this list.
+	SignerKeys []*any.Any `protobuf:"bytes,4,rep,name=signer_keys,json=signerKeys,proto3" json:"signer_keys,omitempty"`
+	// Minimum number of distinct signers required per checkpoint.
+	SignatureThreshold uint32 `protobuf:"varint,5,opt,name=signature_threshold,json=signatureThreshold,proto3" json:"signature_threshold,omitempty"`
+	// Incremented on every change to signer_keys or signature_threshold.
+	// Checkpoints record the version they were signed under, so signer indices
+	// stay unambiguous across rotations.
+	SignerSetVersion uint64          `protobuf:"varint,6,opt,name=signer_set_version,json=signerSetVersion,proto3" json:"signer_set_version,omitempty"`
+	Tier             AssuranceTier   `protobuf:"varint,7,opt,name=tier,proto3,enum=lucidchain.proto.sidechain.v1.AssuranceTier" json:"tier,omitempty"`
+	Status           SidechainStatus `protobuf:"varint,8,opt,name=status,proto3,enum=lucidchain.proto.sidechain.v1.SidechainStatus" json:"status,omitempty"`
+	// Bond posted at registration (amount and denom).
+	Bond types.Coin `protobuf:"bytes,9,opt,name=bond,proto3" json:"bond"`
+	// Expected interval between checkpoints, in seconds.
+	CheckpointIntervalSeconds uint64 `protobuf:"varint,10,opt,name=checkpoint_interval_seconds,json=checkpointIntervalSeconds,proto3" json:"checkpoint_interval_seconds,omitempty"`
+	// Owned by x/sidechain; updated by x/checkpoint via the expected-keeper call
+	// RecordCheckpoint. Zero / empty until the first checkpoint is accepted.
+	LastCheckpointSequence uint64     `protobuf:"varint,11,opt,name=last_checkpoint_sequence,json=lastCheckpointSequence,proto3" json:"last_checkpoint_sequence,omitempty"`
+	LastCheckpointHeight   int64      `protobuf:"varint,12,opt,name=last_checkpoint_height,json=lastCheckpointHeight,proto3" json:"last_checkpoint_height,omitempty"`
+	LastCheckpointHash     []byte     `protobuf:"bytes,13,opt,name=last_checkpoint_hash,json=lastCheckpointHash,proto3" json:"last_checkpoint_hash,omitempty"`
+	RegisteredAt           time.Time  `protobuf:"bytes,14,opt,name=registered_at,json=registeredAt,proto3,stdtime" json:"registered_at"`
+	LastCheckpointAt       *time.Time `protobuf:"bytes,15,opt,name=last_checkpoint_at,json=lastCheckpointAt,proto3,stdtime" json:"last_checkpoint_at,omitempty"`
+	// Set by InitiateExit.
+	ExitRequestedAt *time.Time `protobuf:"bytes,16,opt,name=exit_requested_at,json=exitRequestedAt,proto3,stdtime" json:"exit_requested_at,omitempty"`
+	BondReturnAt    *time.Time `protobuf:"bytes,17,opt,name=bond_return_at,json=bondReturnAt,proto3,stdtime" json:"bond_return_at,omitempty"`
+	// Off-chain metadata document URI.
+	MetadataUri string `protobuf:"bytes,18,opt,name=metadata_uri,json=metadataUri,proto3" json:"metadata_uri,omitempty"`
 }
 
 func (m *Sidechain) Reset()         { *m = Sidechain{} }
@@ -182,9 +194,9 @@ func (m *Sidechain) GetOperator() string {
 	return ""
 }
 
-func (m *Sidechain) GetCheckpointSignerPubkeys() []string {
+func (m *Sidechain) GetSignerKeys() []*any.Any {
 	if m != nil {
-		return m.CheckpointSignerPubkeys
+		return m.SignerKeys
 	}
 	return nil
 }
@@ -192,6 +204,13 @@ func (m *Sidechain) GetCheckpointSignerPubkeys() []string {
 func (m *Sidechain) GetSignatureThreshold() uint32 {
 	if m != nil {
 		return m.SignatureThreshold
+	}
+	return 0
+}
+
+func (m *Sidechain) GetSignerSetVersion() uint64 {
+	if m != nil {
+		return m.SignerSetVersion
 	}
 	return 0
 }
@@ -210,6 +229,13 @@ func (m *Sidechain) GetStatus() SidechainStatus {
 	return SidechainStatus_SIDECHAIN_STATUS_UNSPECIFIED
 }
 
+func (m *Sidechain) GetBond() types.Coin {
+	if m != nil {
+		return m.Bond
+	}
+	return types.Coin{}
+}
+
 func (m *Sidechain) GetCheckpointIntervalSeconds() uint64 {
 	if m != nil {
 		return m.CheckpointIntervalSeconds
@@ -217,7 +243,14 @@ func (m *Sidechain) GetCheckpointIntervalSeconds() uint64 {
 	return 0
 }
 
-func (m *Sidechain) GetLastCheckpointHeight() uint64 {
+func (m *Sidechain) GetLastCheckpointSequence() uint64 {
+	if m != nil {
+		return m.LastCheckpointSequence
+	}
+	return 0
+}
+
+func (m *Sidechain) GetLastCheckpointHeight() int64 {
 	if m != nil {
 		return m.LastCheckpointHeight
 	}
@@ -245,6 +278,20 @@ func (m *Sidechain) GetLastCheckpointAt() *time.Time {
 	return nil
 }
 
+func (m *Sidechain) GetExitRequestedAt() *time.Time {
+	if m != nil {
+		return m.ExitRequestedAt
+	}
+	return nil
+}
+
+func (m *Sidechain) GetBondReturnAt() *time.Time {
+	if m != nil {
+		return m.BondReturnAt
+	}
+	return nil
+}
+
 func (m *Sidechain) GetMetadataUri() string {
 	if m != nil {
 		return m.MetadataUri
@@ -252,23 +299,80 @@ func (m *Sidechain) GetMetadataUri() string {
 	return ""
 }
 
+// TierBond is the minimum bond for one assurance tier.
+type TierBond struct {
+	Tier    AssuranceTier `protobuf:"varint,1,opt,name=tier,proto3,enum=lucidchain.proto.sidechain.v1.AssuranceTier" json:"tier,omitempty"`
+	MinBond types.Coin    `protobuf:"bytes,2,opt,name=min_bond,json=minBond,proto3" json:"min_bond"`
+}
+
+func (m *TierBond) Reset()         { *m = TierBond{} }
+func (m *TierBond) String() string { return proto.CompactTextString(m) }
+func (*TierBond) ProtoMessage()    {}
+func (*TierBond) Descriptor() ([]byte, []int) {
+	return fileDescriptor_5bf6f261bc1948d1, []int{1}
+}
+func (m *TierBond) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *TierBond) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_TierBond.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *TierBond) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_TierBond.Merge(m, src)
+}
+func (m *TierBond) XXX_Size() int {
+	return m.Size()
+}
+func (m *TierBond) XXX_DiscardUnknown() {
+	xxx_messageInfo_TierBond.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_TierBond proto.InternalMessageInfo
+
+func (m *TierBond) GetTier() AssuranceTier {
+	if m != nil {
+		return m.Tier
+	}
+	return AssuranceTier_ASSURANCE_TIER_UNSPECIFIED
+}
+
+func (m *TierBond) GetMinBond() types.Coin {
+	if m != nil {
+		return m.MinBond
+	}
+	return types.Coin{}
+}
+
 // Params defines module-wide parameters, settable via governance.
 type Params struct {
-	// Minimum bond required to register a sidechain, per tier.
-	MinBondByTier map[string]string `protobuf:"bytes,1,rep,name=min_bond_by_tier,json=minBondByTier,proto3" json:"min_bond_by_tier,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
-	// Grace period (seconds) before a missed checkpoint interval triggers suspension.
-	MissedCheckpointGraceSeconds uint64 `protobuf:"varint,2,opt,name=missed_checkpoint_grace_seconds,json=missedCheckpointGraceSeconds,proto3" json:"missed_checkpoint_grace_seconds,omitempty"`
-	// Cooldown period (seconds) before a bond is returned after voluntary exit.
-	ExitCooldownSeconds uint64 `protobuf:"varint,3,opt,name=exit_cooldown_seconds,json=exitCooldownSeconds,proto3" json:"exit_cooldown_seconds,omitempty"`
-	// Maximum number of checkpoint signer keys allowed per sidechain.
+	// One entry per tier; Validate() rejects duplicates and UNSPECIFIED.
+	MinBondByTier                []TierBond `protobuf:"bytes,1,rep,name=min_bond_by_tier,json=minBondByTier,proto3" json:"min_bond_by_tier"`
+	MissedCheckpointGraceSeconds uint64     `protobuf:"varint,2,opt,name=missed_checkpoint_grace_seconds,json=missedCheckpointGraceSeconds,proto3" json:"missed_checkpoint_grace_seconds,omitempty"`
+	ExitCooldownSeconds          uint64     `protobuf:"varint,3,opt,name=exit_cooldown_seconds,json=exitCooldownSeconds,proto3" json:"exit_cooldown_seconds,omitempty"`
+	// Maximum signer keys per sidechain. ML-DSA-65 pubkeys are 1952 bytes each,
+	// so this directly bounds per-sidechain state size.
 	MaxSignerKeys uint32 `protobuf:"varint,4,opt,name=max_signer_keys,json=maxSignerKeys,proto3" json:"max_signer_keys,omitempty"`
+	// Protobuf type URLs of public keys accepted as checkpoint signers, e.g.
+	// "/cosmos.crypto.mldsa65.PubKey". For a quantum-resistant deployment set this
+	// to ML-DSA-65 only; adding classical types (ed25519, secp256k1) re-opens the
+	// sidechain to quantum forgery of its checkpoint signatures.
+	AllowedPubkeyTypeUrls []string `protobuf:"bytes,5,rep,name=allowed_pubkey_type_urls,json=allowedPubkeyTypeUrls,proto3" json:"allowed_pubkey_type_urls,omitempty"`
 }
 
 func (m *Params) Reset()         { *m = Params{} }
 func (m *Params) String() string { return proto.CompactTextString(m) }
 func (*Params) ProtoMessage()    {}
 func (*Params) Descriptor() ([]byte, []int) {
-	return fileDescriptor_5bf6f261bc1948d1, []int{1}
+	return fileDescriptor_5bf6f261bc1948d1, []int{2}
 }
 func (m *Params) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -297,7 +401,7 @@ func (m *Params) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_Params proto.InternalMessageInfo
 
-func (m *Params) GetMinBondByTier() map[string]string {
+func (m *Params) GetMinBondByTier() []TierBond {
 	if m != nil {
 		return m.MinBondByTier
 	}
@@ -325,12 +429,19 @@ func (m *Params) GetMaxSignerKeys() uint32 {
 	return 0
 }
 
+func (m *Params) GetAllowedPubkeyTypeUrls() []string {
+	if m != nil {
+		return m.AllowedPubkeyTypeUrls
+	}
+	return nil
+}
+
 func init() {
 	proto.RegisterEnum("lucidchain.proto.sidechain.v1.AssuranceTier", AssuranceTier_name, AssuranceTier_value)
 	proto.RegisterEnum("lucidchain.proto.sidechain.v1.SidechainStatus", SidechainStatus_name, SidechainStatus_value)
 	proto.RegisterType((*Sidechain)(nil), "lucidchain.proto.sidechain.v1.Sidechain")
+	proto.RegisterType((*TierBond)(nil), "lucidchain.proto.sidechain.v1.TierBond")
 	proto.RegisterType((*Params)(nil), "lucidchain.proto.sidechain.v1.Params")
-	proto.RegisterMapType((map[string]string)(nil), "lucidchain.proto.sidechain.v1.Params.MinBondByTierEntry")
 }
 
 func init() {
@@ -338,63 +449,72 @@ func init() {
 }
 
 var fileDescriptor_5bf6f261bc1948d1 = []byte{
-	// 882 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x55, 0x4f, 0x6f, 0xdb, 0x36,
-	0x14, 0x37, 0x6d, 0x27, 0x6b, 0xe8, 0x38, 0x15, 0xd8, 0x64, 0x55, 0xdd, 0xd4, 0xf6, 0x7a, 0x18,
-	0x8c, 0x62, 0x93, 0xdb, 0x6c, 0x87, 0x22, 0x87, 0xa2, 0xb2, 0xad, 0x36, 0xda, 0x1f, 0xd7, 0x90,
-	0xe4, 0x62, 0xe8, 0x45, 0xa0, 0x25, 0x4e, 0x22, 0x62, 0x89, 0x86, 0x48, 0x65, 0xf1, 0x07, 0xd8,
-	0xbd, 0x1f, 0x61, 0x1f, 0xa7, 0xbb, 0xf5, 0x34, 0x0c, 0x3b, 0x74, 0x43, 0x72, 0xd9, 0x79, 0x9f,
-	0x60, 0x10, 0x65, 0xd9, 0xae, 0x5d, 0xac, 0xbb, 0x91, 0xef, 0xf7, 0x47, 0x7c, 0x8f, 0xef, 0x89,
-	0xf0, 0xcb, 0x69, 0xea, 0x51, 0xdf, 0x0b, 0x31, 0x8d, 0xbb, 0xb3, 0x84, 0x09, 0xd6, 0xe5, 0xd4,
-	0x27, 0xf9, 0xfe, 0xe2, 0xd1, 0x6a, 0xa3, 0x49, 0x10, 0xdd, 0x5b, 0xd1, 0xf3, 0x88, 0xb6, 0x62,
-	0x5c, 0x3c, 0x6a, 0x1c, 0x06, 0x2c, 0x60, 0xb9, 0x4d, 0xb6, 0xca, 0x29, 0x8d, 0x56, 0xc0, 0x58,
-	0x30, 0x25, 0xb9, 0xff, 0x24, 0xfd, 0xb1, 0x2b, 0x68, 0x44, 0xb8, 0xc0, 0xd1, 0x2c, 0x27, 0xdc,
-	0xff, 0x67, 0x07, 0xee, 0xd9, 0x85, 0x0f, 0x3a, 0x80, 0x65, 0xea, 0xab, 0xa0, 0x0d, 0x3a, 0x7b,
-	0x56, 0x99, 0xfa, 0x08, 0xc1, 0x6a, 0x8c, 0x23, 0xa2, 0x96, 0x65, 0x44, 0xae, 0x51, 0x03, 0xde,
-	0x60, 0x33, 0x92, 0x60, 0xc1, 0x12, 0xb5, 0x22, 0xe3, 0xcb, 0x3d, 0x3a, 0x85, 0x77, 0xbc, 0x90,
-	0x78, 0xe7, 0x33, 0x46, 0x63, 0xe1, 0x72, 0x1a, 0xc4, 0x24, 0x71, 0x67, 0xe9, 0xe4, 0x9c, 0xcc,
-	0xb9, 0x5a, 0x6d, 0x57, 0x3a, 0x7b, 0xd6, 0xed, 0x15, 0xc1, 0x96, 0xf8, 0x28, 0x87, 0x51, 0x17,
-	0xde, 0xca, 0x04, 0x58, 0xa4, 0x09, 0x71, 0x45, 0x98, 0x10, 0x1e, 0xb2, 0xa9, 0xaf, 0xee, 0xb4,
-	0x41, 0xa7, 0x6e, 0xa1, 0x25, 0xe4, 0x14, 0x08, 0x7a, 0x0a, 0xab, 0x82, 0x92, 0x44, 0xdd, 0x6d,
-	0x83, 0xce, 0xc1, 0xc9, 0x17, 0xda, 0x7f, 0xd6, 0x47, 0xd3, 0x39, 0x4f, 0x13, 0x1c, 0x7b, 0xc4,
-	0xa1, 0x24, 0xb1, 0xa4, 0x12, 0x3d, 0x83, 0xbb, 0x5c, 0x60, 0x91, 0x72, 0xf5, 0x13, 0xe9, 0xa1,
-	0x7d, 0xc4, 0x63, 0x59, 0x28, 0x5b, 0xaa, 0xac, 0x85, 0x1a, 0x3d, 0x81, 0xb5, 0x09, 0x8b, 0x7d,
-	0x17, 0x47, 0x2c, 0x8d, 0x85, 0x7a, 0x23, 0xab, 0x4a, 0xef, 0xde, 0x9b, 0x77, 0xad, 0xd2, 0x1f,
-	0xef, 0x5a, 0x47, 0x1e, 0xe3, 0x11, 0xe3, 0xdc, 0x3f, 0xd7, 0x28, 0xeb, 0x46, 0x58, 0x84, 0x9a,
-	0x19, 0x0b, 0x0b, 0x66, 0x0a, 0x5d, 0x0a, 0xd0, 0x13, 0x78, 0x77, 0xad, 0x6c, 0x34, 0x16, 0x24,
-	0xb9, 0xc0, 0x53, 0x97, 0x13, 0x8f, 0xc5, 0x3e, 0x57, 0xf7, 0xda, 0xa0, 0x53, 0xb5, 0xd6, 0x2a,
-	0x6b, 0x2e, 0x18, 0x76, 0x4e, 0x40, 0x5f, 0xc3, 0x4f, 0xa7, 0x98, 0x0b, 0x77, 0xcd, 0x24, 0x24,
-	0x34, 0x08, 0x85, 0x0a, 0xa5, 0xf4, 0x30, 0x43, 0xfb, 0x4b, 0xf0, 0x4c, 0x62, 0xe8, 0x21, 0x3c,
-	0xdc, 0x52, 0x61, 0x1e, 0xaa, 0xb5, 0x36, 0xe8, 0xec, 0x5b, 0x68, 0x43, 0x83, 0x79, 0x88, 0x4c,
-	0x58, 0x4f, 0x48, 0x40, 0xb9, 0x20, 0x09, 0xf1, 0x5d, 0x2c, 0xd4, 0xfd, 0x36, 0xe8, 0xd4, 0x4e,
-	0x1a, 0x5a, 0xde, 0x65, 0x5a, 0xd1, 0x65, 0x9a, 0x53, 0x74, 0x59, 0xef, 0x46, 0x56, 0x85, 0xd7,
-	0x7f, 0xb6, 0x80, 0xb5, 0xbf, 0x92, 0xea, 0x02, 0x59, 0x10, 0x6d, 0x7e, 0x1c, 0x0b, 0xb5, 0xfe,
-	0xbf, 0xfc, 0x80, 0xf4, 0x53, 0xde, 0x3f, 0xa0, 0x2e, 0xd0, 0x67, 0x70, 0x3f, 0x22, 0x02, 0xfb,
-	0x58, 0x60, 0x37, 0x4d, 0xa8, 0x7a, 0x20, 0xbb, 0xb3, 0x56, 0xc4, 0xc6, 0x09, 0x3d, 0xad, 0xfe,
-	0xfd, 0x4b, 0x0b, 0xdc, 0xff, 0xad, 0x0c, 0x77, 0x47, 0x38, 0xc1, 0x11, 0x47, 0x18, 0x2a, 0x11,
-	0x8d, 0x5d, 0x79, 0x7d, 0x93, 0xb9, 0x2b, 0x1b, 0x0a, 0xb4, 0x2b, 0x9d, 0xda, 0xc9, 0xe3, 0x8f,
-	0x34, 0x43, 0x6e, 0xa0, 0x7d, 0x4f, 0xe3, 0x1e, 0x8b, 0xfd, 0xde, 0x3c, 0xeb, 0x2b, 0x23, 0x16,
-	0xc9, 0xdc, 0xaa, 0x47, 0xeb, 0x31, 0x64, 0xc0, 0x56, 0x44, 0x39, 0x27, 0xfe, 0x7a, 0xb2, 0x41,
-	0x82, 0x3d, 0xb2, 0xbc, 0xe1, 0xb2, 0xbc, 0xa6, 0xe3, 0x9c, 0xb6, 0xca, 0xe9, 0x79, 0x46, 0x2a,
-	0x2e, 0xf9, 0x04, 0x1e, 0x91, 0x4b, 0x2a, 0x5c, 0x8f, 0xb1, 0xa9, 0xcf, 0x7e, 0x8a, 0x97, 0xe2,
-	0x8a, 0x14, 0xdf, 0xca, 0xc0, 0xfe, 0x02, 0x2b, 0x34, 0x9f, 0xc3, 0x9b, 0x11, 0xbe, 0x2c, 0x06,
-	0x71, 0x31, 0x85, 0xd9, 0x3c, 0xd5, 0x23, 0x7c, 0x99, 0x8f, 0xdf, 0xb7, 0x64, 0xce, 0x1b, 0x4f,
-	0x21, 0xda, 0xce, 0x03, 0x29, 0xb0, 0x72, 0x4e, 0xe6, 0x8b, 0xdf, 0x41, 0xb6, 0x44, 0x87, 0x70,
-	0xe7, 0x02, 0x4f, 0xd3, 0xe2, 0x87, 0x90, 0x6f, 0x4e, 0xcb, 0x8f, 0x41, 0x5e, 0xd8, 0x07, 0x3f,
-	0x03, 0x58, 0x7f, 0x6f, 0xd0, 0x50, 0x13, 0x36, 0x74, 0xdb, 0x1e, 0x5b, 0xfa, 0xb0, 0x6f, 0xb8,
-	0x8e, 0x69, 0x58, 0xee, 0x78, 0x68, 0x8f, 0x8c, 0xbe, 0xf9, 0xcc, 0x34, 0x06, 0x4a, 0x09, 0x1d,
-	0x43, 0x75, 0x03, 0x1f, 0xbe, 0x70, 0x74, 0xcb, 0x7c, 0x65, 0x0c, 0x14, 0x80, 0xee, 0xc2, 0xdb,
-	0x1b, 0xa8, 0xee, 0x38, 0x86, 0xed, 0x18, 0x03, 0xa5, 0x8c, 0xee, 0xc0, 0xa3, 0x0d, 0x70, 0x64,
-	0xbd, 0x78, 0x69, 0x0c, 0x95, 0xca, 0x83, 0x5f, 0x01, 0xbc, 0xb9, 0x31, 0xac, 0xa8, 0x0d, 0x8f,
-	0x6d, 0x73, 0x60, 0xf4, 0xcf, 0x74, 0x73, 0xe8, 0xda, 0x8e, 0xee, 0x8c, 0xed, 0xed, 0xb3, 0x6c,
-	0x31, 0x46, 0xc6, 0x70, 0x60, 0x0e, 0x9f, 0xe7, 0x67, 0xd9, 0x42, 0xf5, 0xbe, 0x63, 0xbe, 0x34,
-	0x94, 0x72, 0x96, 0xe6, 0x16, 0x68, 0x8f, 0xed, 0x4c, 0x6d, 0x0c, 0x94, 0xca, 0x07, 0xad, 0xed,
-	0xef, 0x74, 0xfb, 0xcc, 0x18, 0x28, 0xd5, 0x0f, 0x5a, 0x1b, 0x3f, 0x98, 0x59, 0x9a, 0x3b, 0xbd,
-	0x6f, 0xde, 0x5c, 0x35, 0xc1, 0xdb, 0xab, 0x26, 0xf8, 0xeb, 0xaa, 0x09, 0x5e, 0x5f, 0x37, 0x4b,
-	0x6f, 0xaf, 0x9b, 0xa5, 0xdf, 0xaf, 0x9b, 0xa5, 0x57, 0x0f, 0x03, 0x2a, 0xc2, 0x74, 0xa2, 0x79,
-	0x2c, 0xea, 0xca, 0x5e, 0x9d, 0xe1, 0x79, 0x77, 0xed, 0x51, 0xb9, 0x5c, 0x7b, 0x50, 0xc4, 0x7c,
-	0x46, 0xf8, 0x64, 0x57, 0xf6, 0xf1, 0x57, 0xff, 0x0e, 0x00, 0xe0, 0x2d, 0x91, 0x1e, 0x7b, 0x06,
-	0x00, 0x00,
+	// 1040 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x9c, 0x96, 0x41, 0x6f, 0xdb, 0x36,
+	0x14, 0xc7, 0x23, 0xdb, 0x4d, 0x1d, 0x26, 0x4e, 0x5c, 0x36, 0xed, 0x14, 0xb7, 0x73, 0xbc, 0x1c,
+	0x36, 0xa3, 0x68, 0xe5, 0x26, 0x1d, 0xb0, 0xa1, 0x87, 0x61, 0xb2, 0xad, 0x36, 0x6a, 0x07, 0xc7,
+	0x90, 0xe4, 0x60, 0xe8, 0x45, 0xa0, 0x25, 0xce, 0x16, 0x62, 0x89, 0x1e, 0x49, 0xa5, 0xd1, 0x75,
+	0xc0, 0x80, 0x1d, 0xfb, 0x11, 0xf6, 0x21, 0xf6, 0x09, 0x76, 0xea, 0x76, 0xea, 0x71, 0xa7, 0x6d,
+	0x48, 0x2e, 0xfb, 0x18, 0x03, 0x29, 0xc9, 0x4e, 0xec, 0x62, 0x6d, 0x77, 0xf3, 0xe3, 0xef, 0xfd,
+	0xff, 0x7e, 0xe4, 0x7b, 0x24, 0x04, 0x1e, 0x4c, 0x62, 0x2f, 0xf0, 0xbd, 0x31, 0x0a, 0xa2, 0xd6,
+	0x94, 0x12, 0x4e, 0x5a, 0x2c, 0xf0, 0x71, 0x1a, 0x9f, 0xee, 0xcf, 0x03, 0x4d, 0x42, 0xf8, 0xf1,
+	0x3c, 0x3d, 0x5d, 0xd1, 0xe6, 0x19, 0xa7, 0xfb, 0xb5, 0xed, 0x11, 0x19, 0x91, 0xd4, 0x46, 0xfc,
+	0x4a, 0x53, 0x6a, 0x3b, 0x1e, 0x61, 0x21, 0x61, 0x6e, 0x0a, 0xd2, 0x20, 0x43, 0xf5, 0x34, 0x6a,
+	0x0d, 0x11, 0xc3, 0xad, 0xd3, 0xfd, 0x21, 0xe6, 0x68, 0xbf, 0xe5, 0x91, 0xdc, 0xbd, 0xb6, 0x33,
+	0x22, 0x64, 0x34, 0xc1, 0x69, 0x69, 0xc3, 0xf8, 0xbb, 0x16, 0x8a, 0x92, 0x0c, 0xed, 0x2e, 0x22,
+	0x1e, 0x84, 0x98, 0x71, 0x14, 0x4e, 0xd3, 0x84, 0xbd, 0x1f, 0xca, 0x60, 0xcd, 0xce, 0xab, 0x83,
+	0x9b, 0xa0, 0x10, 0xf8, 0xaa, 0xd2, 0x50, 0x9a, 0x6b, 0x56, 0x21, 0xf0, 0x21, 0x04, 0xa5, 0x08,
+	0x85, 0x58, 0x2d, 0xc8, 0x15, 0xf9, 0x1b, 0xd6, 0x40, 0x99, 0x4c, 0x31, 0x45, 0x9c, 0x50, 0xb5,
+	0x28, 0xd7, 0x67, 0x31, 0x3c, 0x02, 0xeb, 0x2c, 0x18, 0x45, 0x98, 0xba, 0x27, 0x38, 0x61, 0x6a,
+	0xa9, 0x51, 0x6c, 0xae, 0x1f, 0x6c, 0x6b, 0x69, 0x11, 0x5a, 0x5e, 0x84, 0xa6, 0x47, 0x49, 0x5b,
+	0xfd, 0xfd, 0x97, 0x07, 0xdb, 0xd9, 0x36, 0x3d, 0x9a, 0x4c, 0x39, 0xd1, 0xfa, 0xf1, 0xf0, 0x39,
+	0x4e, 0x2c, 0x90, 0x5a, 0x3c, 0xc7, 0x09, 0x83, 0x2d, 0x70, 0x53, 0x44, 0x88, 0xc7, 0x14, 0xbb,
+	0x7c, 0x4c, 0x31, 0x1b, 0x93, 0x89, 0xaf, 0x5e, 0x6b, 0x28, 0xcd, 0x8a, 0x05, 0x67, 0xc8, 0xc9,
+	0x09, 0xbc, 0x0f, 0x60, 0x56, 0x01, 0xc3, 0xdc, 0x3d, 0xc5, 0x94, 0x05, 0x24, 0x52, 0x57, 0x1b,
+	0x4a, 0xb3, 0x64, 0x55, 0x53, 0x62, 0x63, 0x7e, 0x9c, 0xae, 0xc3, 0xaf, 0x41, 0x89, 0x07, 0x98,
+	0xaa, 0xd7, 0x1b, 0x4a, 0x73, 0xf3, 0xe0, 0xbe, 0xf6, 0x9f, 0x8d, 0xd3, 0x74, 0xc6, 0x62, 0x8a,
+	0x22, 0x0f, 0x3b, 0x01, 0xa6, 0x96, 0x54, 0xc2, 0x27, 0x60, 0x95, 0x71, 0xc4, 0x63, 0xa6, 0x96,
+	0xa5, 0x87, 0xf6, 0x0e, 0x8f, 0xd9, 0x59, 0xdb, 0x52, 0x65, 0x65, 0x6a, 0xf8, 0x08, 0x94, 0x86,
+	0x24, 0xf2, 0xd5, 0xb5, 0x86, 0xd2, 0x5c, 0x3f, 0xd8, 0xd1, 0xb2, 0x93, 0x11, 0x2d, 0xd7, 0xb2,
+	0x96, 0x6b, 0x1d, 0x12, 0x44, 0xed, 0xd2, 0xeb, 0x3f, 0x77, 0x57, 0x2c, 0x99, 0x0c, 0xbf, 0x02,
+	0x77, 0xbc, 0x31, 0xf6, 0x4e, 0xa6, 0x24, 0x88, 0xb8, 0x1b, 0x44, 0x1c, 0xd3, 0x53, 0x34, 0x71,
+	0x19, 0xf6, 0x48, 0xe4, 0x33, 0x15, 0xc8, 0x5d, 0xef, 0xcc, 0x53, 0xcc, 0x2c, 0xc3, 0x4e, 0x13,
+	0xe0, 0x97, 0x40, 0x9d, 0x20, 0xc6, 0xdd, 0x4b, 0x26, 0x0c, 0x7f, 0x1f, 0xe3, 0xc8, 0xc3, 0xea,
+	0xba, 0x14, 0xdf, 0x16, 0xbc, 0x33, 0xc3, 0x76, 0x46, 0xe1, 0xe7, 0xe0, 0xf6, 0xa2, 0x72, 0x8c,
+	0x83, 0xd1, 0x98, 0xab, 0x1b, 0x0d, 0xa5, 0x59, 0xb4, 0xb6, 0xaf, 0xea, 0x0e, 0x25, 0x83, 0x0f,
+	0xc1, 0xf6, 0x92, 0x0a, 0xb1, 0xb1, 0x5a, 0x69, 0x28, 0xcd, 0x0d, 0x0b, 0x2e, 0x68, 0x10, 0x1b,
+	0x43, 0x13, 0x54, 0x28, 0x1e, 0x05, 0x8c, 0x63, 0x8a, 0x7d, 0x17, 0x71, 0x75, 0x53, 0x9e, 0x4f,
+	0x6d, 0x69, 0xa4, 0x9c, 0x7c, 0xae, 0xdb, 0x65, 0x71, 0x40, 0xaf, 0xfe, 0xda, 0x55, 0xac, 0x8d,
+	0xb9, 0x54, 0xe7, 0xd0, 0x02, 0x70, 0xf1, 0xcf, 0x11, 0x57, 0xb7, 0xde, 0xcb, 0x4f, 0x91, 0x7e,
+	0xd5, 0xab, 0x05, 0xea, 0x1c, 0xf6, 0xc1, 0x0d, 0x7c, 0x16, 0x70, 0x97, 0x8a, 0x73, 0x61, 0x3c,
+	0x2d, 0xb1, 0xfa, 0x01, 0x96, 0x5b, 0x42, 0x6e, 0xe5, 0x6a, 0x9d, 0xc3, 0x67, 0x60, 0x53, 0xb4,
+	0xd6, 0xa5, 0x98, 0xc7, 0x34, 0x12, 0x76, 0x37, 0x3e, 0xc0, 0x6e, 0x43, 0x68, 0x2d, 0x29, 0xd5,
+	0x39, 0xfc, 0x04, 0x6c, 0x84, 0x98, 0x23, 0x1f, 0x71, 0xe4, 0xc6, 0x34, 0x50, 0xa1, 0xbc, 0xad,
+	0xeb, 0xf9, 0xda, 0x80, 0x06, 0x8f, 0x4b, 0xff, 0xfc, 0xbc, 0xab, 0xec, 0xfd, 0xa4, 0x80, 0xb2,
+	0x98, 0xe9, 0xb6, 0x18, 0xaa, 0xfc, 0x4e, 0x28, 0xff, 0xfb, 0x4e, 0x3c, 0x06, 0xe5, 0x30, 0x88,
+	0x5c, 0x39, 0xcf, 0x85, 0xf7, 0x9b, 0xe7, 0xeb, 0x61, 0x10, 0x89, 0x7f, 0xdf, 0xfb, 0xb5, 0x00,
+	0x56, 0xfb, 0x88, 0xa2, 0x90, 0xc1, 0x63, 0x50, 0xcd, 0x6d, 0xdc, 0x61, 0xe2, 0x66, 0x45, 0x89,
+	0x17, 0xe5, 0xb3, 0x77, 0x14, 0x95, 0xef, 0x25, 0x33, 0xaf, 0x64, 0xe6, 0xed, 0x44, 0x00, 0x68,
+	0x80, 0xdd, 0x30, 0x60, 0x0c, 0xfb, 0x97, 0x47, 0x61, 0x44, 0x91, 0x87, 0x67, 0x37, 0xa7, 0x20,
+	0x87, 0xff, 0x6e, 0x9a, 0x36, 0xef, 0xf8, 0x53, 0x91, 0x94, 0x5f, 0x9e, 0x03, 0x70, 0x4b, 0xf6,
+	0xde, 0x23, 0x64, 0xe2, 0x93, 0x97, 0xd1, 0x4c, 0x5c, 0x94, 0xe2, 0x9b, 0x02, 0x76, 0x32, 0x96,
+	0x6b, 0x3e, 0x05, 0x5b, 0x21, 0x3a, 0x73, 0xaf, 0xbe, 0x91, 0xe2, 0x29, 0xab, 0x84, 0xe8, 0xcc,
+	0x9e, 0x3f, 0x7b, 0x5f, 0x00, 0x15, 0x4d, 0x26, 0xe4, 0x25, 0xf6, 0xdd, 0x69, 0x3c, 0x3c, 0xc1,
+	0x89, 0xcb, 0x93, 0x29, 0x76, 0x63, 0x3a, 0x61, 0xea, 0xb5, 0x46, 0xb1, 0xb9, 0x66, 0xdd, 0xca,
+	0x78, 0x5f, 0x62, 0x27, 0x99, 0xe2, 0x01, 0x9d, 0xb0, 0xb4, 0x9f, 0xf7, 0x7e, 0x54, 0x40, 0xe5,
+	0x4a, 0x63, 0x60, 0x1d, 0xd4, 0x74, 0xdb, 0x1e, 0x58, 0x7a, 0xaf, 0x63, 0xb8, 0x8e, 0x69, 0x58,
+	0xee, 0xa0, 0x67, 0xf7, 0x8d, 0x8e, 0xf9, 0xc4, 0x34, 0xba, 0xd5, 0x15, 0x78, 0x17, 0xa8, 0x0b,
+	0xbc, 0x77, 0xe4, 0xe8, 0x96, 0xf9, 0xc2, 0xe8, 0x56, 0x15, 0x78, 0x07, 0x7c, 0xb4, 0x40, 0x75,
+	0xc7, 0x31, 0x6c, 0xc7, 0xe8, 0x56, 0x0b, 0x70, 0x07, 0xdc, 0x5a, 0x80, 0x7d, 0xeb, 0xe8, 0xd8,
+	0xe8, 0x55, 0x8b, 0xf7, 0x7e, 0x53, 0xc0, 0xd6, 0xc2, 0x83, 0x07, 0x1b, 0xe0, 0xae, 0x6d, 0x76,
+	0x8d, 0xce, 0xa1, 0x6e, 0xf6, 0x5c, 0xdb, 0xd1, 0x9d, 0x81, 0xbd, 0x5c, 0xcb, 0x52, 0x46, 0xdf,
+	0xe8, 0x75, 0xcd, 0xde, 0xd3, 0xb4, 0x96, 0x25, 0xaa, 0x77, 0x1c, 0xf3, 0xd8, 0xa8, 0x16, 0xc4,
+	0x36, 0x97, 0xa0, 0x3d, 0xb0, 0x85, 0xda, 0xe8, 0x56, 0x8b, 0x6f, 0xb5, 0xb6, 0xbf, 0xd1, 0xed,
+	0x43, 0xa3, 0x5b, 0x2d, 0xbd, 0xd5, 0xda, 0xf8, 0xd6, 0x14, 0xdb, 0xbc, 0xd6, 0x7e, 0xf6, 0xfa,
+	0xbc, 0xae, 0xbc, 0x39, 0xaf, 0x2b, 0x7f, 0x9f, 0xd7, 0x95, 0x57, 0x17, 0xf5, 0x95, 0x37, 0x17,
+	0xf5, 0x95, 0x3f, 0x2e, 0xea, 0x2b, 0x2f, 0x1e, 0x8e, 0x02, 0x3e, 0x8e, 0x87, 0x9a, 0x47, 0xc2,
+	0x96, 0x9c, 0xcb, 0x29, 0x4a, 0x5a, 0x97, 0xbe, 0x18, 0xce, 0x2e, 0x7d, 0x2d, 0x88, 0x36, 0xb2,
+	0xe1, 0xaa, 0x9c, 0xd9, 0x47, 0xff, 0x0e, 0x00, 0xc9, 0x8d, 0xd1, 0xc6, 0x58, 0x08, 0x00, 0x00,
 }
 
 func (this *Sidechain) Equal(that interface{}) bool {
@@ -425,15 +545,18 @@ func (this *Sidechain) Equal(that interface{}) bool {
 	if this.Operator != that1.Operator {
 		return false
 	}
-	if len(this.CheckpointSignerPubkeys) != len(that1.CheckpointSignerPubkeys) {
+	if len(this.SignerKeys) != len(that1.SignerKeys) {
 		return false
 	}
-	for i := range this.CheckpointSignerPubkeys {
-		if this.CheckpointSignerPubkeys[i] != that1.CheckpointSignerPubkeys[i] {
+	for i := range this.SignerKeys {
+		if !this.SignerKeys[i].Equal(that1.SignerKeys[i]) {
 			return false
 		}
 	}
 	if this.SignatureThreshold != that1.SignatureThreshold {
+		return false
+	}
+	if this.SignerSetVersion != that1.SignerSetVersion {
 		return false
 	}
 	if this.Tier != that1.Tier {
@@ -442,10 +565,13 @@ func (this *Sidechain) Equal(that interface{}) bool {
 	if this.Status != that1.Status {
 		return false
 	}
-	if !this.BondAmount.Equal(that1.BondAmount) {
+	if !this.Bond.Equal(&that1.Bond) {
 		return false
 	}
 	if this.CheckpointIntervalSeconds != that1.CheckpointIntervalSeconds {
+		return false
+	}
+	if this.LastCheckpointSequence != that1.LastCheckpointSequence {
 		return false
 	}
 	if this.LastCheckpointHeight != that1.LastCheckpointHeight {
@@ -462,6 +588,20 @@ func (this *Sidechain) Equal(that interface{}) bool {
 			return false
 		}
 	} else if !this.LastCheckpointAt.Equal(*that1.LastCheckpointAt) {
+		return false
+	}
+	if that1.ExitRequestedAt == nil {
+		if this.ExitRequestedAt != nil {
+			return false
+		}
+	} else if !this.ExitRequestedAt.Equal(*that1.ExitRequestedAt) {
+		return false
+	}
+	if that1.BondReturnAt == nil {
+		if this.BondReturnAt != nil {
+			return false
+		}
+	} else if !this.BondReturnAt.Equal(*that1.BondReturnAt) {
 		return false
 	}
 	if this.MetadataUri != that1.MetadataUri {
@@ -492,7 +632,7 @@ func (this *Params) Equal(that interface{}) bool {
 		return false
 	}
 	for i := range this.MinBondByTier {
-		if this.MinBondByTier[i] != that1.MinBondByTier[i] {
+		if !this.MinBondByTier[i].Equal(&that1.MinBondByTier[i]) {
 			return false
 		}
 	}
@@ -504,6 +644,14 @@ func (this *Params) Equal(that interface{}) bool {
 	}
 	if this.MaxSignerKeys != that1.MaxSignerKeys {
 		return false
+	}
+	if len(this.AllowedPubkeyTypeUrls) != len(that1.AllowedPubkeyTypeUrls) {
+		return false
+	}
+	for i := range this.AllowedPubkeyTypeUrls {
+		if this.AllowedPubkeyTypeUrls[i] != that1.AllowedPubkeyTypeUrls[i] {
+			return false
+		}
 	}
 	return true
 }
@@ -532,60 +680,96 @@ func (m *Sidechain) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 		copy(dAtA[i:], m.MetadataUri)
 		i = encodeVarintSidechain(dAtA, i, uint64(len(m.MetadataUri)))
 		i--
-		dAtA[i] = 0x72
+		dAtA[i] = 0x1
+		i--
+		dAtA[i] = 0x92
 	}
-	if m.LastCheckpointAt != nil {
-		n1, err1 := github_com_cosmos_gogoproto_types.StdTimeMarshalTo(*m.LastCheckpointAt, dAtA[i-github_com_cosmos_gogoproto_types.SizeOfStdTime(*m.LastCheckpointAt):])
+	if m.BondReturnAt != nil {
+		n1, err1 := github_com_cosmos_gogoproto_types.StdTimeMarshalTo(*m.BondReturnAt, dAtA[i-github_com_cosmos_gogoproto_types.SizeOfStdTime(*m.BondReturnAt):])
 		if err1 != nil {
 			return 0, err1
 		}
 		i -= n1
 		i = encodeVarintSidechain(dAtA, i, uint64(n1))
 		i--
-		dAtA[i] = 0x6a
+		dAtA[i] = 0x1
+		i--
+		dAtA[i] = 0x8a
 	}
-	n2, err2 := github_com_cosmos_gogoproto_types.StdTimeMarshalTo(m.RegisteredAt, dAtA[i-github_com_cosmos_gogoproto_types.SizeOfStdTime(m.RegisteredAt):])
-	if err2 != nil {
-		return 0, err2
+	if m.ExitRequestedAt != nil {
+		n2, err2 := github_com_cosmos_gogoproto_types.StdTimeMarshalTo(*m.ExitRequestedAt, dAtA[i-github_com_cosmos_gogoproto_types.SizeOfStdTime(*m.ExitRequestedAt):])
+		if err2 != nil {
+			return 0, err2
+		}
+		i -= n2
+		i = encodeVarintSidechain(dAtA, i, uint64(n2))
+		i--
+		dAtA[i] = 0x1
+		i--
+		dAtA[i] = 0x82
 	}
-	i -= n2
-	i = encodeVarintSidechain(dAtA, i, uint64(n2))
+	if m.LastCheckpointAt != nil {
+		n3, err3 := github_com_cosmos_gogoproto_types.StdTimeMarshalTo(*m.LastCheckpointAt, dAtA[i-github_com_cosmos_gogoproto_types.SizeOfStdTime(*m.LastCheckpointAt):])
+		if err3 != nil {
+			return 0, err3
+		}
+		i -= n3
+		i = encodeVarintSidechain(dAtA, i, uint64(n3))
+		i--
+		dAtA[i] = 0x7a
+	}
+	n4, err4 := github_com_cosmos_gogoproto_types.StdTimeMarshalTo(m.RegisteredAt, dAtA[i-github_com_cosmos_gogoproto_types.SizeOfStdTime(m.RegisteredAt):])
+	if err4 != nil {
+		return 0, err4
+	}
+	i -= n4
+	i = encodeVarintSidechain(dAtA, i, uint64(n4))
 	i--
-	dAtA[i] = 0x62
+	dAtA[i] = 0x72
 	if len(m.LastCheckpointHash) > 0 {
 		i -= len(m.LastCheckpointHash)
 		copy(dAtA[i:], m.LastCheckpointHash)
 		i = encodeVarintSidechain(dAtA, i, uint64(len(m.LastCheckpointHash)))
 		i--
-		dAtA[i] = 0x5a
+		dAtA[i] = 0x6a
 	}
 	if m.LastCheckpointHeight != 0 {
 		i = encodeVarintSidechain(dAtA, i, uint64(m.LastCheckpointHeight))
 		i--
-		dAtA[i] = 0x50
+		dAtA[i] = 0x60
+	}
+	if m.LastCheckpointSequence != 0 {
+		i = encodeVarintSidechain(dAtA, i, uint64(m.LastCheckpointSequence))
+		i--
+		dAtA[i] = 0x58
 	}
 	if m.CheckpointIntervalSeconds != 0 {
 		i = encodeVarintSidechain(dAtA, i, uint64(m.CheckpointIntervalSeconds))
 		i--
-		dAtA[i] = 0x48
+		dAtA[i] = 0x50
 	}
 	{
-		size := m.BondAmount.Size()
-		i -= size
-		if _, err := m.BondAmount.MarshalTo(dAtA[i:]); err != nil {
+		size, err := m.Bond.MarshalToSizedBuffer(dAtA[:i])
+		if err != nil {
 			return 0, err
 		}
+		i -= size
 		i = encodeVarintSidechain(dAtA, i, uint64(size))
 	}
 	i--
-	dAtA[i] = 0x42
+	dAtA[i] = 0x4a
 	if m.Status != 0 {
 		i = encodeVarintSidechain(dAtA, i, uint64(m.Status))
 		i--
-		dAtA[i] = 0x38
+		dAtA[i] = 0x40
 	}
 	if m.Tier != 0 {
 		i = encodeVarintSidechain(dAtA, i, uint64(m.Tier))
+		i--
+		dAtA[i] = 0x38
+	}
+	if m.SignerSetVersion != 0 {
+		i = encodeVarintSidechain(dAtA, i, uint64(m.SignerSetVersion))
 		i--
 		dAtA[i] = 0x30
 	}
@@ -594,11 +778,16 @@ func (m *Sidechain) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 		i--
 		dAtA[i] = 0x28
 	}
-	if len(m.CheckpointSignerPubkeys) > 0 {
-		for iNdEx := len(m.CheckpointSignerPubkeys) - 1; iNdEx >= 0; iNdEx-- {
-			i -= len(m.CheckpointSignerPubkeys[iNdEx])
-			copy(dAtA[i:], m.CheckpointSignerPubkeys[iNdEx])
-			i = encodeVarintSidechain(dAtA, i, uint64(len(m.CheckpointSignerPubkeys[iNdEx])))
+	if len(m.SignerKeys) > 0 {
+		for iNdEx := len(m.SignerKeys) - 1; iNdEx >= 0; iNdEx-- {
+			{
+				size, err := m.SignerKeys[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarintSidechain(dAtA, i, uint64(size))
+			}
 			i--
 			dAtA[i] = 0x22
 		}
@@ -627,6 +816,44 @@ func (m *Sidechain) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
+func (m *TierBond) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *TierBond) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *TierBond) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	{
+		size, err := m.MinBond.MarshalToSizedBuffer(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = encodeVarintSidechain(dAtA, i, uint64(size))
+	}
+	i--
+	dAtA[i] = 0x12
+	if m.Tier != 0 {
+		i = encodeVarintSidechain(dAtA, i, uint64(m.Tier))
+		i--
+		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
+}
+
 func (m *Params) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
@@ -647,6 +874,15 @@ func (m *Params) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if len(m.AllowedPubkeyTypeUrls) > 0 {
+		for iNdEx := len(m.AllowedPubkeyTypeUrls) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.AllowedPubkeyTypeUrls[iNdEx])
+			copy(dAtA[i:], m.AllowedPubkeyTypeUrls[iNdEx])
+			i = encodeVarintSidechain(dAtA, i, uint64(len(m.AllowedPubkeyTypeUrls[iNdEx])))
+			i--
+			dAtA[i] = 0x2a
+		}
+	}
 	if m.MaxSignerKeys != 0 {
 		i = encodeVarintSidechain(dAtA, i, uint64(m.MaxSignerKeys))
 		i--
@@ -663,20 +899,15 @@ func (m *Params) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 		dAtA[i] = 0x10
 	}
 	if len(m.MinBondByTier) > 0 {
-		for k := range m.MinBondByTier {
-			v := m.MinBondByTier[k]
-			baseI := i
-			i -= len(v)
-			copy(dAtA[i:], v)
-			i = encodeVarintSidechain(dAtA, i, uint64(len(v)))
-			i--
-			dAtA[i] = 0x12
-			i -= len(k)
-			copy(dAtA[i:], k)
-			i = encodeVarintSidechain(dAtA, i, uint64(len(k)))
-			i--
-			dAtA[i] = 0xa
-			i = encodeVarintSidechain(dAtA, i, uint64(baseI-i))
+		for iNdEx := len(m.MinBondByTier) - 1; iNdEx >= 0; iNdEx-- {
+			{
+				size, err := m.MinBondByTier[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarintSidechain(dAtA, i, uint64(size))
+			}
 			i--
 			dAtA[i] = 0xa
 		}
@@ -713,14 +944,17 @@ func (m *Sidechain) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovSidechain(uint64(l))
 	}
-	if len(m.CheckpointSignerPubkeys) > 0 {
-		for _, s := range m.CheckpointSignerPubkeys {
-			l = len(s)
+	if len(m.SignerKeys) > 0 {
+		for _, e := range m.SignerKeys {
+			l = e.Size()
 			n += 1 + l + sovSidechain(uint64(l))
 		}
 	}
 	if m.SignatureThreshold != 0 {
 		n += 1 + sovSidechain(uint64(m.SignatureThreshold))
+	}
+	if m.SignerSetVersion != 0 {
+		n += 1 + sovSidechain(uint64(m.SignerSetVersion))
 	}
 	if m.Tier != 0 {
 		n += 1 + sovSidechain(uint64(m.Tier))
@@ -728,10 +962,13 @@ func (m *Sidechain) Size() (n int) {
 	if m.Status != 0 {
 		n += 1 + sovSidechain(uint64(m.Status))
 	}
-	l = m.BondAmount.Size()
+	l = m.Bond.Size()
 	n += 1 + l + sovSidechain(uint64(l))
 	if m.CheckpointIntervalSeconds != 0 {
 		n += 1 + sovSidechain(uint64(m.CheckpointIntervalSeconds))
+	}
+	if m.LastCheckpointSequence != 0 {
+		n += 1 + sovSidechain(uint64(m.LastCheckpointSequence))
 	}
 	if m.LastCheckpointHeight != 0 {
 		n += 1 + sovSidechain(uint64(m.LastCheckpointHeight))
@@ -746,10 +983,32 @@ func (m *Sidechain) Size() (n int) {
 		l = github_com_cosmos_gogoproto_types.SizeOfStdTime(*m.LastCheckpointAt)
 		n += 1 + l + sovSidechain(uint64(l))
 	}
+	if m.ExitRequestedAt != nil {
+		l = github_com_cosmos_gogoproto_types.SizeOfStdTime(*m.ExitRequestedAt)
+		n += 2 + l + sovSidechain(uint64(l))
+	}
+	if m.BondReturnAt != nil {
+		l = github_com_cosmos_gogoproto_types.SizeOfStdTime(*m.BondReturnAt)
+		n += 2 + l + sovSidechain(uint64(l))
+	}
 	l = len(m.MetadataUri)
 	if l > 0 {
-		n += 1 + l + sovSidechain(uint64(l))
+		n += 2 + l + sovSidechain(uint64(l))
 	}
+	return n
+}
+
+func (m *TierBond) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Tier != 0 {
+		n += 1 + sovSidechain(uint64(m.Tier))
+	}
+	l = m.MinBond.Size()
+	n += 1 + l + sovSidechain(uint64(l))
 	return n
 }
 
@@ -760,11 +1019,9 @@ func (m *Params) Size() (n int) {
 	var l int
 	_ = l
 	if len(m.MinBondByTier) > 0 {
-		for k, v := range m.MinBondByTier {
-			_ = k
-			_ = v
-			mapEntrySize := 1 + len(k) + sovSidechain(uint64(len(k))) + 1 + len(v) + sovSidechain(uint64(len(v)))
-			n += mapEntrySize + 1 + sovSidechain(uint64(mapEntrySize))
+		for _, e := range m.MinBondByTier {
+			l = e.Size()
+			n += 1 + l + sovSidechain(uint64(l))
 		}
 	}
 	if m.MissedCheckpointGraceSeconds != 0 {
@@ -775,6 +1032,12 @@ func (m *Params) Size() (n int) {
 	}
 	if m.MaxSignerKeys != 0 {
 		n += 1 + sovSidechain(uint64(m.MaxSignerKeys))
+	}
+	if len(m.AllowedPubkeyTypeUrls) > 0 {
+		for _, s := range m.AllowedPubkeyTypeUrls {
+			l = len(s)
+			n += 1 + l + sovSidechain(uint64(l))
+		}
 	}
 	return n
 }
@@ -912,9 +1175,9 @@ func (m *Sidechain) Unmarshal(dAtA []byte) error {
 			iNdEx = postIndex
 		case 4:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field CheckpointSignerPubkeys", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field SignerKeys", wireType)
 			}
-			var stringLen uint64
+			var msglen int
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowSidechain
@@ -924,23 +1187,25 @@ func (m *Sidechain) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
+				msglen |= int(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
+			if msglen < 0 {
 				return ErrInvalidLengthSidechain
 			}
-			postIndex := iNdEx + intStringLen
+			postIndex := iNdEx + msglen
 			if postIndex < 0 {
 				return ErrInvalidLengthSidechain
 			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.CheckpointSignerPubkeys = append(m.CheckpointSignerPubkeys, string(dAtA[iNdEx:postIndex]))
+			m.SignerKeys = append(m.SignerKeys, &any.Any{})
+			if err := m.SignerKeys[len(m.SignerKeys)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
 			iNdEx = postIndex
 		case 5:
 			if wireType != 0 {
@@ -963,6 +1228,25 @@ func (m *Sidechain) Unmarshal(dAtA []byte) error {
 			}
 		case 6:
 			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SignerSetVersion", wireType)
+			}
+			m.SignerSetVersion = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowSidechain
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.SignerSetVersion |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 7:
+			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Tier", wireType)
 			}
 			m.Tier = 0
@@ -980,7 +1264,7 @@ func (m *Sidechain) Unmarshal(dAtA []byte) error {
 					break
 				}
 			}
-		case 7:
+		case 8:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Status", wireType)
 			}
@@ -999,11 +1283,11 @@ func (m *Sidechain) Unmarshal(dAtA []byte) error {
 					break
 				}
 			}
-		case 8:
+		case 9:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field BondAmount", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Bond", wireType)
 			}
-			var stringLen uint64
+			var msglen int
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowSidechain
@@ -1013,27 +1297,26 @@ func (m *Sidechain) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
+				msglen |= int(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
+			if msglen < 0 {
 				return ErrInvalidLengthSidechain
 			}
-			postIndex := iNdEx + intStringLen
+			postIndex := iNdEx + msglen
 			if postIndex < 0 {
 				return ErrInvalidLengthSidechain
 			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if err := m.BondAmount.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+			if err := m.Bond.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
-		case 9:
+		case 10:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field CheckpointIntervalSeconds", wireType)
 			}
@@ -1052,7 +1335,26 @@ func (m *Sidechain) Unmarshal(dAtA []byte) error {
 					break
 				}
 			}
-		case 10:
+		case 11:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field LastCheckpointSequence", wireType)
+			}
+			m.LastCheckpointSequence = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowSidechain
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.LastCheckpointSequence |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 12:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field LastCheckpointHeight", wireType)
 			}
@@ -1066,12 +1368,12 @@ func (m *Sidechain) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.LastCheckpointHeight |= uint64(b&0x7F) << shift
+				m.LastCheckpointHeight |= int64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-		case 11:
+		case 13:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field LastCheckpointHash", wireType)
 			}
@@ -1105,7 +1407,7 @@ func (m *Sidechain) Unmarshal(dAtA []byte) error {
 				m.LastCheckpointHash = []byte{}
 			}
 			iNdEx = postIndex
-		case 12:
+		case 14:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field RegisteredAt", wireType)
 			}
@@ -1138,7 +1440,7 @@ func (m *Sidechain) Unmarshal(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 13:
+		case 15:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field LastCheckpointAt", wireType)
 			}
@@ -1174,7 +1476,79 @@ func (m *Sidechain) Unmarshal(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 14:
+		case 16:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ExitRequestedAt", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowSidechain
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthSidechain
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthSidechain
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.ExitRequestedAt == nil {
+				m.ExitRequestedAt = new(time.Time)
+			}
+			if err := github_com_cosmos_gogoproto_types.StdTimeUnmarshal(m.ExitRequestedAt, dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 17:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BondReturnAt", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowSidechain
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthSidechain
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthSidechain
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.BondReturnAt == nil {
+				m.BondReturnAt = new(time.Time)
+			}
+			if err := github_com_cosmos_gogoproto_types.StdTimeUnmarshal(m.BondReturnAt, dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 18:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field MetadataUri", wireType)
 			}
@@ -1205,6 +1579,108 @@ func (m *Sidechain) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.MetadataUri = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipSidechain(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthSidechain
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *TierBond) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowSidechain
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: TierBond: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: TierBond: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Tier", wireType)
+			}
+			m.Tier = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowSidechain
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Tier |= AssuranceTier(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MinBond", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowSidechain
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthSidechain
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthSidechain
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.MinBond.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -1285,103 +1761,10 @@ func (m *Params) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.MinBondByTier == nil {
-				m.MinBondByTier = make(map[string]string)
+			m.MinBondByTier = append(m.MinBondByTier, TierBond{})
+			if err := m.MinBondByTier[len(m.MinBondByTier)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
 			}
-			var mapkey string
-			var mapvalue string
-			for iNdEx < postIndex {
-				entryPreIndex := iNdEx
-				var wire uint64
-				for shift := uint(0); ; shift += 7 {
-					if shift >= 64 {
-						return ErrIntOverflowSidechain
-					}
-					if iNdEx >= l {
-						return io.ErrUnexpectedEOF
-					}
-					b := dAtA[iNdEx]
-					iNdEx++
-					wire |= uint64(b&0x7F) << shift
-					if b < 0x80 {
-						break
-					}
-				}
-				fieldNum := int32(wire >> 3)
-				if fieldNum == 1 {
-					var stringLenmapkey uint64
-					for shift := uint(0); ; shift += 7 {
-						if shift >= 64 {
-							return ErrIntOverflowSidechain
-						}
-						if iNdEx >= l {
-							return io.ErrUnexpectedEOF
-						}
-						b := dAtA[iNdEx]
-						iNdEx++
-						stringLenmapkey |= uint64(b&0x7F) << shift
-						if b < 0x80 {
-							break
-						}
-					}
-					intStringLenmapkey := int(stringLenmapkey)
-					if intStringLenmapkey < 0 {
-						return ErrInvalidLengthSidechain
-					}
-					postStringIndexmapkey := iNdEx + intStringLenmapkey
-					if postStringIndexmapkey < 0 {
-						return ErrInvalidLengthSidechain
-					}
-					if postStringIndexmapkey > l {
-						return io.ErrUnexpectedEOF
-					}
-					mapkey = string(dAtA[iNdEx:postStringIndexmapkey])
-					iNdEx = postStringIndexmapkey
-				} else if fieldNum == 2 {
-					var stringLenmapvalue uint64
-					for shift := uint(0); ; shift += 7 {
-						if shift >= 64 {
-							return ErrIntOverflowSidechain
-						}
-						if iNdEx >= l {
-							return io.ErrUnexpectedEOF
-						}
-						b := dAtA[iNdEx]
-						iNdEx++
-						stringLenmapvalue |= uint64(b&0x7F) << shift
-						if b < 0x80 {
-							break
-						}
-					}
-					intStringLenmapvalue := int(stringLenmapvalue)
-					if intStringLenmapvalue < 0 {
-						return ErrInvalidLengthSidechain
-					}
-					postStringIndexmapvalue := iNdEx + intStringLenmapvalue
-					if postStringIndexmapvalue < 0 {
-						return ErrInvalidLengthSidechain
-					}
-					if postStringIndexmapvalue > l {
-						return io.ErrUnexpectedEOF
-					}
-					mapvalue = string(dAtA[iNdEx:postStringIndexmapvalue])
-					iNdEx = postStringIndexmapvalue
-				} else {
-					iNdEx = entryPreIndex
-					skippy, err := skipSidechain(dAtA[iNdEx:])
-					if err != nil {
-						return err
-					}
-					if (skippy < 0) || (iNdEx+skippy) < 0 {
-						return ErrInvalidLengthSidechain
-					}
-					if (iNdEx + skippy) > postIndex {
-						return io.ErrUnexpectedEOF
-					}
-					iNdEx += skippy
-				}
-			}
-			m.MinBondByTier[mapkey] = mapvalue
 			iNdEx = postIndex
 		case 2:
 			if wireType != 0 {
@@ -1440,6 +1823,38 @@ func (m *Params) Unmarshal(dAtA []byte) error {
 					break
 				}
 			}
+		case 5:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field AllowedPubkeyTypeUrls", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowSidechain
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthSidechain
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthSidechain
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.AllowedPubkeyTypeUrls = append(m.AllowedPubkeyTypeUrls, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipSidechain(dAtA[iNdEx:])

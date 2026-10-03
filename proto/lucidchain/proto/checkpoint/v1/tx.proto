@@ -4,10 +4,14 @@ package lucidchain.proto.checkpoint.v1;
 option go_package = "github.com/lucidpay/lucidchain/x/checkpoint/types";
 
 import "gogoproto/gogo.proto";
+import "cosmos_proto/cosmos.proto";
 import "cosmos/msg/v1/msg.proto";
 import "lucidchain/proto/checkpoint/v1/checkpoint.proto";
 
 service Msg {
+  // add message service
+  option (cosmos.msg.v1.service) = true;
+
   // SubmitCheckpoint submits a new, signed checkpoint for a registered, active sidechain.
   rpc SubmitCheckpoint(MsgSubmitCheckpoint) returns (MsgSubmitCheckpointResponse);
 
@@ -22,14 +26,21 @@ message MsgSubmitCheckpoint {
   // independently of the tx signer.
   option (cosmos.msg.v1.signer) = "submitter";
 
-  string submitter = 1;
+  string submitter = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
   string sidechain_id = 2;
   uint64 sequence = 3;
   bytes state_root = 4;
   bytes previous_checkpoint_hash = 5;
   uint64 record_count = 6;
-  repeated Signature signatures = 7;
-  string data_pointer = 8;
+  string data_pointer = 7;
+  
+  // Must equal the sidechain's current signer_set_version, otherwise rejected.
+  uint64 signer_set_version = 8;
+
+  repeated Signature signatures = 9 [(gogoproto.nullable) = false];
+
+  reserved 10 to 15; // Tier 2/3 attestations and proofs
+
 }
 
 message MsgSubmitCheckpointResponse {
@@ -41,7 +52,7 @@ message MsgUpdateParams {
   option (cosmos.msg.v1.signer) = "authority";
 
   string authority = 1;
-  Params params = 2;
+  Params params = 2 [(gogoproto.nullable) = false];
 }
 
 message MsgUpdateParamsResponse {}

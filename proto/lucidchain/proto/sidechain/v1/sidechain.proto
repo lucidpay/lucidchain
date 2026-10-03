@@ -4,6 +4,9 @@ package lucidchain.proto.sidechain.v1;
 option go_package = "github.com/lucidpay/lucidchain/x/sidechain/types";
 
 import "gogoproto/gogo.proto";
+import "cosmos_proto/cosmos.proto";
+import "cosmos/base/v1beta1/coin.proto";
+import "google/protobuf/any.proto";
 import "google/protobuf/timestamp.proto";
 
 // AssuranceTier defines the level of validation a sidechain has registered for.
@@ -37,51 +40,74 @@ message Sidechain {
   // Bech32 address of the sidechain operator (registration owner, admin actions).
   string operator = 3;
 
-  // Public key(s) authorized to sign checkpoints on behalf of this sidechain.
-  // Multiple keys support key rotation and multi-signer setups.
-  repeated string checkpoint_signer_pubkeys = 4;
+  // Keys authorized to sign checkpoints, as SDK public keys. Post-quantum
+  // deployments use /cosmos.crypto.mldsa65.PubKey (ML-DSA-65, FIPS 204).
+  // Allowed type URLs are restricted by Params.allowed_pubkey_type_urls.
+  // Order is significant: Signature.signer_index refers to a position in this list.
+  repeated google.protobuf.Any signer_keys = 4
+      [(cosmos_proto.accepts_interface) = "cosmos.crypto.PubKey"];
 
-  // Minimum number of signer signatures required per checkpoint (for multi-signer setups).
+  // Minimum number of distinct signers required per checkpoint.
   uint32 signature_threshold = 5;
 
-  AssuranceTier tier = 6;
-  SidechainStatus status = 7;
+  // Incremented on every change to signer_keys or signature_threshold.
+  // Checkpoints record the version they were signed under, so signer indices
+  // stay unambiguous across rotations.
+  uint64 signer_set_version = 6;
 
-  // Bond amount posted at registration, denominated in the native token.
-  string bond_amount = 8 [
-    (gogoproto.customtype) = "cosmossdk.io/math.Int",
-    (gogoproto.nullable) = false
-  ];
+  AssuranceTier tier = 7;
+  SidechainStatus status = 8;
 
-  // Expected interval between checkpoints, in seconds. Used to detect missed checkpoints.
-  uint64 checkpoint_interval_seconds = 9;
+  // Bond posted at registration (amount and denom).
+  cosmos.base.v1beta1.Coin bond = 9 [(gogoproto.nullable) = false];
 
-  // Height/sequence of the last accepted checkpoint. 0 if none yet.
-  uint64 last_checkpoint_height = 10;
+  // Expected interval between checkpoints, in seconds.
+  uint64 checkpoint_interval_seconds = 10;
 
-  // Hash of the last accepted checkpoint, for chaining verification.
-  bytes last_checkpoint_hash = 11;
+  // Owned by x/sidechain; updated by x/checkpoint via the expected-keeper call
+  // RecordCheckpoint. Zero / empty until the first checkpoint is accepted.
+  uint64 last_checkpoint_sequence = 11;
+  int64 last_checkpoint_height = 12;
+  bytes last_checkpoint_hash = 13;
 
-  google.protobuf.Timestamp registered_at = 12 [(gogoproto.stdtime) = true, (gogoproto.nullable) = false];
-  google.protobuf.Timestamp last_checkpoint_at = 13 [(gogoproto.stdtime) = true, (gogoproto.nullable) = true];
+  google.protobuf.Timestamp registered_at = 14
+      [(gogoproto.stdtime) = true, (gogoproto.nullable) = false];
+  google.protobuf.Timestamp last_checkpoint_at = 15
+      [(gogoproto.stdtime) = true, (gogoproto.nullable) = true];
 
-  // Free-form metadata URI (off-chain document describing the sidechain, its data schema, etc.).
-  string metadata_uri = 14;
+  // Set by InitiateExit.
+  google.protobuf.Timestamp exit_requested_at = 16
+      [(gogoproto.stdtime) = true, (gogoproto.nullable) = true];
+  google.protobuf.Timestamp bond_return_at = 17
+      [(gogoproto.stdtime) = true, (gogoproto.nullable) = true];
+
+  // Off-chain metadata document URI.
+  string metadata_uri = 18;
+}
+
+// TierBond is the minimum bond for one assurance tier.
+message TierBond {
+  AssuranceTier tier = 1;
+  cosmos.base.v1beta1.Coin min_bond = 2 [(gogoproto.nullable) = false];
 }
 
 // Params defines module-wide parameters, settable via governance.
 message Params {
   option (gogoproto.equal) = true;
 
-  // Minimum bond required to register a sidechain, per tier.
-  map<string, string> min_bond_by_tier = 1;
+  // One entry per tier; Validate() rejects duplicates and UNSPECIFIED.
+  repeated TierBond min_bond_by_tier = 1 [(gogoproto.nullable) = false];
 
-  // Grace period (seconds) before a missed checkpoint interval triggers suspension.
   uint64 missed_checkpoint_grace_seconds = 2;
-
-  // Cooldown period (seconds) before a bond is returned after voluntary exit.
   uint64 exit_cooldown_seconds = 3;
 
-  // Maximum number of checkpoint signer keys allowed per sidechain.
+  // Maximum signer keys per sidechain. ML-DSA-65 pubkeys are 1952 bytes each,
+  // so this directly bounds per-sidechain state size.
   uint32 max_signer_keys = 4;
+
+  // Protobuf type URLs of public keys accepted as checkpoint signers, e.g.
+  // "/cosmos.crypto.mldsa65.PubKey". For a quantum-resistant deployment set this
+  // to ML-DSA-65 only; adding classical types (ed25519, secp256k1) re-opens the
+  // sidechain to quantum forgery of its checkpoint signatures.
+  repeated string allowed_pubkey_type_urls = 5;
 }
