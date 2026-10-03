@@ -1,10 +1,10 @@
 syntax = "proto3";
-package lucidchain.proto.attestor.v1;
+package lucidchain.attestor.v1;
 
 option go_package = "github.com/lucidpay/lucidchain/x/attestor/types";
 
 import "gogoproto/gogo.proto";
-import "lucidchain/proto/attestor/v1/attestor.proto";
+import "lucidchain/attestor/v1/attestor.proto";
 
 message GenesisState {
   Params params = 1 [(gogoproto.nullable) = false];

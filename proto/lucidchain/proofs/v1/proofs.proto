@@ -1,5 +1,5 @@
 syntax = "proto3";
-package lucidchain.proto.proofs.v1;
+package lucidchain.proofs.v1;
 
 option go_package = "github.com/lucidpay/lucidchain/x/proofs/types";
 

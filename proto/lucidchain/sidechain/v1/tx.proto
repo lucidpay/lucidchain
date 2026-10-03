@@ -1,5 +1,5 @@
 syntax = "proto3";
-package lucidchain.proto.sidechain.v1;
+package lucidchain.sidechain.v1;
 
 option go_package = "github.com/lucidpay/lucidchain/x/sidechain/types";
 
@@ -9,7 +9,7 @@ import "cosmos/msg/v1/msg.proto";
 import "cosmos/base/v1beta1/coin.proto";
 import "google/protobuf/any.proto";
 import "google/protobuf/timestamp.proto";
-import "lucidchain/proto/sidechain/v1/sidechain.proto";
+import "lucidchain/sidechain/v1/sidechain.proto";
 
 // Msg defines the x/sidechain Msg service.
 service Msg {

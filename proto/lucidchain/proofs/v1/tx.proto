@@ -1,11 +1,11 @@
 syntax = "proto3";
-package lucidchain.proto.proofs.v1;
+package lucidchain.proofs.v1;
 
 option go_package = "github.com/lucidpay/lucidchain/x/proofs/types";
 
 import "gogoproto/gogo.proto";
 import "cosmos/msg/v1/msg.proto";
-import "lucidchain/proto/proofs/v1/proofs.proto";
+import "lucidchain/proofs/v1/proofs.proto";
 
 service Msg {
   // SubmitProof verifies a validity proof against a registered verifier and,

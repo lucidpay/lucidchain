@@ -1,11 +1,11 @@
 syntax = "proto3";
-package lucidchain.proto.attestor.v1;
+package lucidchain.attestor.v1;
 
 option go_package = "github.com/lucidpay/lucidchain/x/attestor/types";
 
 import "gogoproto/gogo.proto";
 import "cosmos/msg/v1/msg.proto";
-import "lucidchain/proto/attestor/v1/attestor.proto";
+import "lucidchain/attestor/v1/attestor.proto";
 
 service Msg {
   rpc RegisterAttestor(MsgRegisterAttestor) returns (MsgRegisterAttestorResponse);

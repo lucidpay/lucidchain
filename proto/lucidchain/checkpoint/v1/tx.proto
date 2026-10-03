@@ -1,12 +1,12 @@
 syntax = "proto3";
-package lucidchain.proto.checkpoint.v1;
+package lucidchain.checkpoint.v1;
 
 option go_package = "github.com/lucidpay/lucidchain/x/checkpoint/types";
 
 import "gogoproto/gogo.proto";
 import "cosmos_proto/cosmos.proto";
 import "cosmos/msg/v1/msg.proto";
-import "lucidchain/proto/checkpoint/v1/checkpoint.proto";
+import "lucidchain/checkpoint/v1/checkpoint.proto";
 
 service Msg {
   // add message service

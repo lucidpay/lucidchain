@@ -1,5 +1,5 @@
 syntax = "proto3";
-package lucidchain.proto.sidechain.v1;
+package lucidchain.sidechain.v1;
 
 option go_package = "github.com/lucidpay/lucidchain/x/sidechain/types";
 
