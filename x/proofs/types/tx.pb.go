@@ -6,7 +6,9 @@ package types
 import (
 	context "context"
 	fmt "fmt"
+	_ "github.com/cosmos/cosmos-proto"
 	_ "github.com/cosmos/cosmos-sdk/types/msgservice"
+	_ "github.com/cosmos/cosmos-sdk/types/tx/amino"
 	_ "github.com/cosmos/gogoproto/gogoproto"
 	grpc1 "github.com/cosmos/gogoproto/grpc"
 	proto "github.com/cosmos/gogoproto/proto"
@@ -29,344 +31,21 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
-type MsgSubmitProof struct {
-	Submitter          string `protobuf:"bytes,1,opt,name=submitter,proto3" json:"submitter,omitempty"`
-	SidechainId        string `protobuf:"bytes,2,opt,name=sidechain_id,json=sidechainId,proto3" json:"sidechain_id,omitempty"`
-	CheckpointSequence uint64 `protobuf:"varint,3,opt,name=checkpoint_sequence,json=checkpointSequence,proto3" json:"checkpoint_sequence,omitempty"`
-	ProofSystemId      string `protobuf:"bytes,4,opt,name=proof_system_id,json=proofSystemId,proto3" json:"proof_system_id,omitempty"`
-	ClaimId            string `protobuf:"bytes,5,opt,name=claim_id,json=claimId,proto3" json:"claim_id,omitempty"`
-	PublicInputs       []byte `protobuf:"bytes,6,opt,name=public_inputs,json=publicInputs,proto3" json:"public_inputs,omitempty"`
-	Proof              []byte `protobuf:"bytes,7,opt,name=proof,proto3" json:"proof,omitempty"`
-}
-
-func (m *MsgSubmitProof) Reset()         { *m = MsgSubmitProof{} }
-func (m *MsgSubmitProof) String() string { return proto.CompactTextString(m) }
-func (*MsgSubmitProof) ProtoMessage()    {}
-func (*MsgSubmitProof) Descriptor() ([]byte, []int) {
-	return fileDescriptor_09fd2287026cf29a, []int{0}
-}
-func (m *MsgSubmitProof) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *MsgSubmitProof) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_MsgSubmitProof.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *MsgSubmitProof) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_MsgSubmitProof.Merge(m, src)
-}
-func (m *MsgSubmitProof) XXX_Size() int {
-	return m.Size()
-}
-func (m *MsgSubmitProof) XXX_DiscardUnknown() {
-	xxx_messageInfo_MsgSubmitProof.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_MsgSubmitProof proto.InternalMessageInfo
-
-func (m *MsgSubmitProof) GetSubmitter() string {
-	if m != nil {
-		return m.Submitter
-	}
-	return ""
-}
-
-func (m *MsgSubmitProof) GetSidechainId() string {
-	if m != nil {
-		return m.SidechainId
-	}
-	return ""
-}
-
-func (m *MsgSubmitProof) GetCheckpointSequence() uint64 {
-	if m != nil {
-		return m.CheckpointSequence
-	}
-	return 0
-}
-
-func (m *MsgSubmitProof) GetProofSystemId() string {
-	if m != nil {
-		return m.ProofSystemId
-	}
-	return ""
-}
-
-func (m *MsgSubmitProof) GetClaimId() string {
-	if m != nil {
-		return m.ClaimId
-	}
-	return ""
-}
-
-func (m *MsgSubmitProof) GetPublicInputs() []byte {
-	if m != nil {
-		return m.PublicInputs
-	}
-	return nil
-}
-
-func (m *MsgSubmitProof) GetProof() []byte {
-	if m != nil {
-		return m.Proof
-	}
-	return nil
-}
-
-type MsgSubmitProofResponse struct {
-	ProofRecordId string `protobuf:"bytes,1,opt,name=proof_record_id,json=proofRecordId,proto3" json:"proof_record_id,omitempty"`
-}
-
-func (m *MsgSubmitProofResponse) Reset()         { *m = MsgSubmitProofResponse{} }
-func (m *MsgSubmitProofResponse) String() string { return proto.CompactTextString(m) }
-func (*MsgSubmitProofResponse) ProtoMessage()    {}
-func (*MsgSubmitProofResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_09fd2287026cf29a, []int{1}
-}
-func (m *MsgSubmitProofResponse) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *MsgSubmitProofResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_MsgSubmitProofResponse.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *MsgSubmitProofResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_MsgSubmitProofResponse.Merge(m, src)
-}
-func (m *MsgSubmitProofResponse) XXX_Size() int {
-	return m.Size()
-}
-func (m *MsgSubmitProofResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_MsgSubmitProofResponse.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_MsgSubmitProofResponse proto.InternalMessageInfo
-
-func (m *MsgSubmitProofResponse) GetProofRecordId() string {
-	if m != nil {
-		return m.ProofRecordId
-	}
-	return ""
-}
-
-type MsgRegisterVerifier struct {
-	Authority       string `protobuf:"bytes,1,opt,name=authority,proto3" json:"authority,omitempty"`
-	ProofSystemId   string `protobuf:"bytes,2,opt,name=proof_system_id,json=proofSystemId,proto3" json:"proof_system_id,omitempty"`
-	Description     string `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
-	VerificationKey []byte `protobuf:"bytes,4,opt,name=verification_key,json=verificationKey,proto3" json:"verification_key,omitempty"`
-}
-
-func (m *MsgRegisterVerifier) Reset()         { *m = MsgRegisterVerifier{} }
-func (m *MsgRegisterVerifier) String() string { return proto.CompactTextString(m) }
-func (*MsgRegisterVerifier) ProtoMessage()    {}
-func (*MsgRegisterVerifier) Descriptor() ([]byte, []int) {
-	return fileDescriptor_09fd2287026cf29a, []int{2}
-}
-func (m *MsgRegisterVerifier) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *MsgRegisterVerifier) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_MsgRegisterVerifier.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *MsgRegisterVerifier) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_MsgRegisterVerifier.Merge(m, src)
-}
-func (m *MsgRegisterVerifier) XXX_Size() int {
-	return m.Size()
-}
-func (m *MsgRegisterVerifier) XXX_DiscardUnknown() {
-	xxx_messageInfo_MsgRegisterVerifier.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_MsgRegisterVerifier proto.InternalMessageInfo
-
-func (m *MsgRegisterVerifier) GetAuthority() string {
-	if m != nil {
-		return m.Authority
-	}
-	return ""
-}
-
-func (m *MsgRegisterVerifier) GetProofSystemId() string {
-	if m != nil {
-		return m.ProofSystemId
-	}
-	return ""
-}
-
-func (m *MsgRegisterVerifier) GetDescription() string {
-	if m != nil {
-		return m.Description
-	}
-	return ""
-}
-
-func (m *MsgRegisterVerifier) GetVerificationKey() []byte {
-	if m != nil {
-		return m.VerificationKey
-	}
-	return nil
-}
-
-type MsgRegisterVerifierResponse struct {
-}
-
-func (m *MsgRegisterVerifierResponse) Reset()         { *m = MsgRegisterVerifierResponse{} }
-func (m *MsgRegisterVerifierResponse) String() string { return proto.CompactTextString(m) }
-func (*MsgRegisterVerifierResponse) ProtoMessage()    {}
-func (*MsgRegisterVerifierResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_09fd2287026cf29a, []int{3}
-}
-func (m *MsgRegisterVerifierResponse) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *MsgRegisterVerifierResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_MsgRegisterVerifierResponse.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *MsgRegisterVerifierResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_MsgRegisterVerifierResponse.Merge(m, src)
-}
-func (m *MsgRegisterVerifierResponse) XXX_Size() int {
-	return m.Size()
-}
-func (m *MsgRegisterVerifierResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_MsgRegisterVerifierResponse.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_MsgRegisterVerifierResponse proto.InternalMessageInfo
-
-type MsgDeprecateVerifier struct {
-	Authority     string `protobuf:"bytes,1,opt,name=authority,proto3" json:"authority,omitempty"`
-	ProofSystemId string `protobuf:"bytes,2,opt,name=proof_system_id,json=proofSystemId,proto3" json:"proof_system_id,omitempty"`
-}
-
-func (m *MsgDeprecateVerifier) Reset()         { *m = MsgDeprecateVerifier{} }
-func (m *MsgDeprecateVerifier) String() string { return proto.CompactTextString(m) }
-func (*MsgDeprecateVerifier) ProtoMessage()    {}
-func (*MsgDeprecateVerifier) Descriptor() ([]byte, []int) {
-	return fileDescriptor_09fd2287026cf29a, []int{4}
-}
-func (m *MsgDeprecateVerifier) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *MsgDeprecateVerifier) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_MsgDeprecateVerifier.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *MsgDeprecateVerifier) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_MsgDeprecateVerifier.Merge(m, src)
-}
-func (m *MsgDeprecateVerifier) XXX_Size() int {
-	return m.Size()
-}
-func (m *MsgDeprecateVerifier) XXX_DiscardUnknown() {
-	xxx_messageInfo_MsgDeprecateVerifier.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_MsgDeprecateVerifier proto.InternalMessageInfo
-
-func (m *MsgDeprecateVerifier) GetAuthority() string {
-	if m != nil {
-		return m.Authority
-	}
-	return ""
-}
-
-func (m *MsgDeprecateVerifier) GetProofSystemId() string {
-	if m != nil {
-		return m.ProofSystemId
-	}
-	return ""
-}
-
-type MsgDeprecateVerifierResponse struct {
-}
-
-func (m *MsgDeprecateVerifierResponse) Reset()         { *m = MsgDeprecateVerifierResponse{} }
-func (m *MsgDeprecateVerifierResponse) String() string { return proto.CompactTextString(m) }
-func (*MsgDeprecateVerifierResponse) ProtoMessage()    {}
-func (*MsgDeprecateVerifierResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_09fd2287026cf29a, []int{5}
-}
-func (m *MsgDeprecateVerifierResponse) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *MsgDeprecateVerifierResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_MsgDeprecateVerifierResponse.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *MsgDeprecateVerifierResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_MsgDeprecateVerifierResponse.Merge(m, src)
-}
-func (m *MsgDeprecateVerifierResponse) XXX_Size() int {
-	return m.Size()
-}
-func (m *MsgDeprecateVerifierResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_MsgDeprecateVerifierResponse.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_MsgDeprecateVerifierResponse proto.InternalMessageInfo
-
+// MsgUpdateParams is the Msg/UpdateParams request type.
 type MsgUpdateParams struct {
-	Authority string  `protobuf:"bytes,1,opt,name=authority,proto3" json:"authority,omitempty"`
-	Params    *Params `protobuf:"bytes,2,opt,name=params,proto3" json:"params,omitempty"`
+	// authority is the address that controls the module (defaults to x/gov unless overwritten).
+	Authority string `protobuf:"bytes,1,opt,name=authority,proto3" json:"authority,omitempty"`
+	// params defines the module parameters to update.
+	//
+	// NOTE: All parameters must be supplied.
+	Params Params `protobuf:"bytes,2,opt,name=params,proto3" json:"params"`
 }
 
 func (m *MsgUpdateParams) Reset()         { *m = MsgUpdateParams{} }
 func (m *MsgUpdateParams) String() string { return proto.CompactTextString(m) }
 func (*MsgUpdateParams) ProtoMessage()    {}
 func (*MsgUpdateParams) Descriptor() ([]byte, []int) {
-	return fileDescriptor_09fd2287026cf29a, []int{6}
+	return fileDescriptor_09fd2287026cf29a, []int{0}
 }
 func (m *MsgUpdateParams) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -402,13 +81,15 @@ func (m *MsgUpdateParams) GetAuthority() string {
 	return ""
 }
 
-func (m *MsgUpdateParams) GetParams() *Params {
+func (m *MsgUpdateParams) GetParams() Params {
 	if m != nil {
 		return m.Params
 	}
-	return nil
+	return Params{}
 }
 
+// MsgUpdateParamsResponse defines the response structure for executing a
+// MsgUpdateParams message.
 type MsgUpdateParamsResponse struct {
 }
 
@@ -416,7 +97,7 @@ func (m *MsgUpdateParamsResponse) Reset()         { *m = MsgUpdateParamsResponse
 func (m *MsgUpdateParamsResponse) String() string { return proto.CompactTextString(m) }
 func (*MsgUpdateParamsResponse) ProtoMessage()    {}
 func (*MsgUpdateParamsResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_09fd2287026cf29a, []int{7}
+	return fileDescriptor_09fd2287026cf29a, []int{1}
 }
 func (m *MsgUpdateParamsResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -446,12 +127,6 @@ func (m *MsgUpdateParamsResponse) XXX_DiscardUnknown() {
 var xxx_messageInfo_MsgUpdateParamsResponse proto.InternalMessageInfo
 
 func init() {
-	proto.RegisterType((*MsgSubmitProof)(nil), "lucidchain.proofs.v1.MsgSubmitProof")
-	proto.RegisterType((*MsgSubmitProofResponse)(nil), "lucidchain.proofs.v1.MsgSubmitProofResponse")
-	proto.RegisterType((*MsgRegisterVerifier)(nil), "lucidchain.proofs.v1.MsgRegisterVerifier")
-	proto.RegisterType((*MsgRegisterVerifierResponse)(nil), "lucidchain.proofs.v1.MsgRegisterVerifierResponse")
-	proto.RegisterType((*MsgDeprecateVerifier)(nil), "lucidchain.proofs.v1.MsgDeprecateVerifier")
-	proto.RegisterType((*MsgDeprecateVerifierResponse)(nil), "lucidchain.proofs.v1.MsgDeprecateVerifierResponse")
 	proto.RegisterType((*MsgUpdateParams)(nil), "lucidchain.proofs.v1.MsgUpdateParams")
 	proto.RegisterType((*MsgUpdateParamsResponse)(nil), "lucidchain.proofs.v1.MsgUpdateParamsResponse")
 }
@@ -459,46 +134,30 @@ func init() {
 func init() { proto.RegisterFile("lucidchain/proofs/v1/tx.proto", fileDescriptor_09fd2287026cf29a) }
 
 var fileDescriptor_09fd2287026cf29a = []byte{
-	// 609 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x54, 0xcd, 0x6e, 0xd3, 0x40,
-	0x18, 0xac, 0xfb, 0x4b, 0xbf, 0xa4, 0x3f, 0xb8, 0x11, 0x4d, 0x4d, 0x6b, 0xa5, 0xe1, 0x47, 0x6d,
-	0x45, 0x6d, 0x35, 0x70, 0xe2, 0x84, 0x10, 0x12, 0x8a, 0x50, 0xa4, 0xca, 0x11, 0x1c, 0xb8, 0x44,
-	0xce, 0x7a, 0xeb, 0xac, 0x1a, 0x7b, 0x97, 0xdd, 0x75, 0x54, 0x5f, 0x79, 0x82, 0x3e, 0x0a, 0x17,
-	0x24, 0x1e, 0x81, 0x63, 0x8f, 0x1c, 0x51, 0x72, 0xe0, 0x35, 0x90, 0x37, 0x89, 0xe3, 0x34, 0x8e,
-	0xc8, 0x81, 0x9b, 0x77, 0xbe, 0xd1, 0xcc, 0xec, 0x78, 0x77, 0xe1, 0xa8, 0x1b, 0x21, 0xe2, 0xa1,
-	0x8e, 0x4b, 0x42, 0x9b, 0x71, 0x4a, 0xaf, 0x84, 0xdd, 0xbb, 0xb0, 0xe5, 0x8d, 0xc5, 0x38, 0x95,
-	0x54, 0x2f, 0x4d, 0xc6, 0xd6, 0x70, 0x6c, 0xf5, 0x2e, 0x8c, 0x92, 0x4f, 0x7d, 0xaa, 0x08, 0x76,
-	0xf2, 0x35, 0xe4, 0x1a, 0xfb, 0x88, 0x8a, 0x80, 0x0a, 0x3b, 0x10, 0x7e, 0xa2, 0x11, 0x08, 0x7f,
-	0x34, 0x38, 0xce, 0xf5, 0x18, 0xc9, 0x29, 0x4a, 0xf5, 0x76, 0x19, 0xb6, 0x1b, 0xc2, 0x6f, 0x46,
-	0xed, 0x80, 0xc8, 0xcb, 0x64, 0xa2, 0x1f, 0xc2, 0xa6, 0x50, 0x4b, 0x89, 0x79, 0x59, 0xab, 0x68,
-	0x27, 0x9b, 0xce, 0x04, 0xd0, 0x8f, 0xa1, 0x28, 0x88, 0x87, 0x95, 0x68, 0x8b, 0x78, 0xe5, 0x65,
-	0x45, 0x28, 0xa4, 0x58, 0xdd, 0xd3, 0x6d, 0xd8, 0x43, 0x1d, 0x8c, 0xae, 0x19, 0x25, 0xa1, 0x6c,
-	0x09, 0xfc, 0x25, 0xc2, 0x21, 0xc2, 0xe5, 0x95, 0x8a, 0x76, 0xb2, 0xea, 0xe8, 0x93, 0x51, 0x73,
-	0x34, 0xd1, 0x9f, 0xc3, 0x8e, 0x0a, 0xd5, 0x12, 0xb1, 0x90, 0x38, 0x48, 0x64, 0x57, 0x95, 0xec,
-	0x96, 0x82, 0x9b, 0x0a, 0xad, 0x7b, 0xfa, 0x01, 0x3c, 0x40, 0x5d, 0x97, 0x28, 0xc2, 0x9a, 0x22,
-	0x6c, 0xa8, 0x75, 0xdd, 0xd3, 0x9f, 0xc0, 0x16, 0x8b, 0xda, 0x5d, 0x82, 0x5a, 0x24, 0x64, 0x91,
-	0x14, 0xe5, 0xf5, 0x8a, 0x76, 0x52, 0x74, 0x8a, 0x43, 0xb0, 0xae, 0x30, 0xbd, 0x04, 0x6b, 0x4a,
-	0xb0, 0xbc, 0xa1, 0x86, 0xc3, 0xc5, 0xeb, 0xed, 0xaf, 0x7f, 0xbe, 0x9d, 0x4d, 0x76, 0x58, 0x7d,
-	0x03, 0x8f, 0xa6, 0x1b, 0x71, 0xb0, 0x60, 0x34, 0x14, 0x99, 0x9c, 0x1c, 0x23, 0xca, 0xbd, 0x24,
-	0x86, 0x96, 0xc9, 0xe9, 0x28, 0xb4, 0xee, 0x55, 0x7f, 0x68, 0xb0, 0xd7, 0x10, 0xbe, 0x83, 0x7d,
-	0x22, 0x24, 0xe6, 0x9f, 0x30, 0x27, 0x57, 0x04, 0xf3, 0xa4, 0x59, 0x37, 0x92, 0x1d, 0xca, 0x89,
-	0x8c, 0xc7, 0xcd, 0xa6, 0x40, 0x5e, 0x0b, 0xcb, 0x79, 0x2d, 0x54, 0xa0, 0xe0, 0x61, 0x81, 0x38,
-	0x61, 0x92, 0xd0, 0x50, 0xd5, 0xba, 0xe9, 0x64, 0x21, 0xfd, 0x14, 0x76, 0x7b, 0xca, 0x13, 0xb9,
-	0xc9, 0xba, 0x75, 0x8d, 0x63, 0x55, 0x68, 0xd1, 0xd9, 0xc9, 0xe2, 0x1f, 0x70, 0x3c, 0xda, 0x7c,
-	0x1a, 0xa2, 0x7a, 0x04, 0x8f, 0x73, 0x92, 0x8f, 0x1b, 0xa8, 0x76, 0xa1, 0xd4, 0x10, 0xfe, 0x3b,
-	0xcc, 0x38, 0x46, 0xae, 0xc4, 0xff, 0x77, 0x67, 0x33, 0x61, 0x4c, 0x38, 0xcc, 0x73, 0x4b, 0xd3,
-	0x44, 0xb0, 0xd3, 0x10, 0xfe, 0x47, 0xe6, 0xb9, 0x12, 0x5f, 0xba, 0xdc, 0x0d, 0xc4, 0x3f, 0x82,
-	0xbc, 0x82, 0x75, 0xa6, 0x78, 0xca, 0xbf, 0x50, 0x3b, 0xb4, 0xf2, 0xae, 0x99, 0x35, 0xd4, 0x72,
-	0x46, 0xdc, 0x99, 0x58, 0x07, 0xb0, 0x7f, 0xcf, 0x76, 0x9c, 0xa8, 0xf6, 0x7d, 0x05, 0x56, 0x1a,
-	0xc2, 0xd7, 0x5d, 0x28, 0x64, 0xaf, 0xd4, 0xd3, 0x7c, 0x9f, 0xe9, 0x63, 0x66, 0xbc, 0x58, 0x84,
-	0x95, 0x1e, 0x46, 0x06, 0xbb, 0x33, 0x07, 0xec, 0x74, 0xae, 0xc2, 0x7d, 0xaa, 0x71, 0xb1, 0x30,
-	0x35, 0x75, 0x14, 0xf0, 0x70, 0xf6, 0xcf, 0x9f, 0xcd, 0xd5, 0x99, 0xe1, 0x1a, 0xb5, 0xc5, 0xb9,
-	0xa9, 0xa9, 0x07, 0xc5, 0xa9, 0x1f, 0xfc, 0x6c, 0xae, 0x46, 0x96, 0x66, 0x9c, 0x2f, 0x44, 0x1b,
-	0xbb, 0xbc, 0x7d, 0xff, 0xb3, 0x6f, 0x6a, 0x77, 0x7d, 0x53, 0xfb, 0xdd, 0x37, 0xb5, 0xdb, 0x81,
-	0xb9, 0x74, 0x37, 0x30, 0x97, 0x7e, 0x0d, 0xcc, 0xa5, 0xcf, 0xe7, 0x3e, 0x91, 0x9d, 0xa8, 0x6d,
-	0x21, 0x1a, 0xd8, 0x4a, 0x92, 0xb9, 0xb1, 0x9d, 0x79, 0x57, 0x6f, 0xc6, 0x2f, 0xab, 0x8c, 0x19,
-	0x16, 0xed, 0x75, 0xf5, 0xac, 0xbe, 0xfc, 0x3b, 0x00, 0xe2, 0x42, 0x71, 0x4b, 0xdf, 0x05, 0x00,
-	0x00,
+	// 354 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x91, 0x31, 0x4b, 0xc3, 0x40,
+	0x14, 0xc7, 0x73, 0x8a, 0x85, 0x9e, 0x82, 0x18, 0x0a, 0x6d, 0x83, 0xc6, 0x5a, 0x11, 0x4a, 0xa1,
+	0x39, 0x5a, 0xa1, 0x83, 0x8b, 0xd8, 0xc5, 0xa9, 0x20, 0x15, 0x17, 0x17, 0xb9, 0x26, 0xf1, 0x1a,
+	0x30, 0xb9, 0xe3, 0xee, 0x5a, 0xda, 0x4d, 0x1c, 0x9d, 0xfc, 0x18, 0x8e, 0x1d, 0xfc, 0x04, 0x4e,
+	0x1d, 0x8b, 0x93, 0x93, 0x48, 0x3b, 0xf4, 0x6b, 0x48, 0x73, 0x57, 0xaa, 0x21, 0x83, 0x4b, 0xc8,
+	0x7b, 0xff, 0xf7, 0xfe, 0xef, 0xff, 0xe3, 0xe0, 0xc1, 0x43, 0xdf, 0x0d, 0x3c, 0xb7, 0x87, 0x83,
+	0x08, 0x31, 0x4e, 0xe9, 0xbd, 0x40, 0x83, 0x3a, 0x92, 0x43, 0x87, 0x71, 0x2a, 0xa9, 0x99, 0x5b,
+	0xcb, 0x8e, 0x92, 0x9d, 0x41, 0xdd, 0xda, 0xc3, 0x61, 0x10, 0x51, 0x14, 0x7f, 0xd5, 0xa0, 0x95,
+	0x77, 0xa9, 0x08, 0xa9, 0x40, 0xa1, 0x20, 0x4b, 0x83, 0x50, 0x10, 0x2d, 0x14, 0x95, 0x70, 0x17,
+	0x57, 0x48, 0x15, 0x5a, 0xca, 0x11, 0x4a, 0xa8, 0xea, 0x2f, 0xff, 0x74, 0xf7, 0x28, 0x35, 0x11,
+	0xc3, 0x1c, 0x87, 0x7a, 0xb1, 0xfc, 0x0e, 0xe0, 0x6e, 0x5b, 0x90, 0x1b, 0xe6, 0x61, 0xe9, 0x5f,
+	0xc5, 0x8a, 0xd9, 0x84, 0x59, 0xdc, 0x97, 0x3d, 0xca, 0x03, 0x39, 0x2a, 0x80, 0x12, 0xa8, 0x64,
+	0x5b, 0x85, 0x8f, 0xb7, 0x5a, 0x4e, 0x5f, 0xbc, 0xf0, 0x3c, 0xee, 0x0b, 0x71, 0x2d, 0x79, 0x10,
+	0x91, 0xce, 0x7a, 0xd4, 0x3c, 0x87, 0x19, 0xe5, 0x5d, 0xd8, 0x28, 0x81, 0xca, 0x76, 0x63, 0xdf,
+	0x49, 0x43, 0x76, 0xd4, 0x95, 0x56, 0x76, 0xf2, 0x75, 0x68, 0xbc, 0x2e, 0xc6, 0x55, 0xd0, 0xd1,
+	0x6b, 0x67, 0xcd, 0xa7, 0xc5, 0xb8, 0xba, 0x36, 0x7c, 0x5e, 0x8c, 0xab, 0xc7, 0xbf, 0x10, 0x86,
+	0x2b, 0x88, 0x44, 0xe0, 0x72, 0x11, 0xe6, 0x13, 0xad, 0x8e, 0x2f, 0x18, 0x8d, 0x84, 0xdf, 0xe0,
+	0x70, 0xb3, 0x2d, 0x88, 0xe9, 0xc1, 0x9d, 0x3f, 0x88, 0x27, 0xe9, 0xd1, 0x12, 0x2e, 0x56, 0xed,
+	0x5f, 0x63, 0xab, 0x63, 0xd6, 0xd6, 0xe3, 0x12, 0xa7, 0x75, 0x39, 0x99, 0xd9, 0x60, 0x3a, 0xb3,
+	0xc1, 0xf7, 0xcc, 0x06, 0x2f, 0x73, 0xdb, 0x98, 0xce, 0x6d, 0xe3, 0x73, 0x6e, 0x1b, 0xb7, 0x35,
+	0x12, 0xc8, 0x5e, 0xbf, 0xeb, 0xb8, 0x34, 0x44, 0xb1, 0x33, 0xc3, 0x23, 0x94, 0x46, 0x28, 0x47,
+	0xcc, 0x17, 0xdd, 0x4c, 0xfc, 0x46, 0xa7, 0x3f, 0x03, 0x00, 0x9d, 0xb9, 0x94, 0xcf, 0x5a, 0x02,
+	0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -513,14 +172,8 @@ const _ = grpc.SupportPackageIsVersion4
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type MsgClient interface {
-	// SubmitProof verifies a validity proof against a registered verifier and,
-	// if valid, persists a ProofRecord. Invalid proofs are rejected (tx fails);
-	// nothing is stored on failure.
-	SubmitProof(ctx context.Context, in *MsgSubmitProof, opts ...grpc.CallOption) (*MsgSubmitProofResponse, error)
-	// Governance-only: register a new proof-system verifier or update an
-	// existing one's key material/version.
-	RegisterVerifier(ctx context.Context, in *MsgRegisterVerifier, opts ...grpc.CallOption) (*MsgRegisterVerifierResponse, error)
-	DeprecateVerifier(ctx context.Context, in *MsgDeprecateVerifier, opts ...grpc.CallOption) (*MsgDeprecateVerifierResponse, error)
+	// UpdateParams defines a (governance) operation for updating the module
+	// parameters. The authority defaults to the x/gov module account.
 	UpdateParams(ctx context.Context, in *MsgUpdateParams, opts ...grpc.CallOption) (*MsgUpdateParamsResponse, error)
 }
 
@@ -530,33 +183,6 @@ type msgClient struct {
 
 func NewMsgClient(cc grpc1.ClientConn) MsgClient {
 	return &msgClient{cc}
-}
-
-func (c *msgClient) SubmitProof(ctx context.Context, in *MsgSubmitProof, opts ...grpc.CallOption) (*MsgSubmitProofResponse, error) {
-	out := new(MsgSubmitProofResponse)
-	err := c.cc.Invoke(ctx, "/lucidchain.proofs.v1.Msg/SubmitProof", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *msgClient) RegisterVerifier(ctx context.Context, in *MsgRegisterVerifier, opts ...grpc.CallOption) (*MsgRegisterVerifierResponse, error) {
-	out := new(MsgRegisterVerifierResponse)
-	err := c.cc.Invoke(ctx, "/lucidchain.proofs.v1.Msg/RegisterVerifier", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *msgClient) DeprecateVerifier(ctx context.Context, in *MsgDeprecateVerifier, opts ...grpc.CallOption) (*MsgDeprecateVerifierResponse, error) {
-	out := new(MsgDeprecateVerifierResponse)
-	err := c.cc.Invoke(ctx, "/lucidchain.proofs.v1.Msg/DeprecateVerifier", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
 }
 
 func (c *msgClient) UpdateParams(ctx context.Context, in *MsgUpdateParams, opts ...grpc.CallOption) (*MsgUpdateParamsResponse, error) {
@@ -570,14 +196,8 @@ func (c *msgClient) UpdateParams(ctx context.Context, in *MsgUpdateParams, opts 
 
 // MsgServer is the server API for Msg service.
 type MsgServer interface {
-	// SubmitProof verifies a validity proof against a registered verifier and,
-	// if valid, persists a ProofRecord. Invalid proofs are rejected (tx fails);
-	// nothing is stored on failure.
-	SubmitProof(context.Context, *MsgSubmitProof) (*MsgSubmitProofResponse, error)
-	// Governance-only: register a new proof-system verifier or update an
-	// existing one's key material/version.
-	RegisterVerifier(context.Context, *MsgRegisterVerifier) (*MsgRegisterVerifierResponse, error)
-	DeprecateVerifier(context.Context, *MsgDeprecateVerifier) (*MsgDeprecateVerifierResponse, error)
+	// UpdateParams defines a (governance) operation for updating the module
+	// parameters. The authority defaults to the x/gov module account.
 	UpdateParams(context.Context, *MsgUpdateParams) (*MsgUpdateParamsResponse, error)
 }
 
@@ -585,75 +205,12 @@ type MsgServer interface {
 type UnimplementedMsgServer struct {
 }
 
-func (*UnimplementedMsgServer) SubmitProof(ctx context.Context, req *MsgSubmitProof) (*MsgSubmitProofResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SubmitProof not implemented")
-}
-func (*UnimplementedMsgServer) RegisterVerifier(ctx context.Context, req *MsgRegisterVerifier) (*MsgRegisterVerifierResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RegisterVerifier not implemented")
-}
-func (*UnimplementedMsgServer) DeprecateVerifier(ctx context.Context, req *MsgDeprecateVerifier) (*MsgDeprecateVerifierResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DeprecateVerifier not implemented")
-}
 func (*UnimplementedMsgServer) UpdateParams(ctx context.Context, req *MsgUpdateParams) (*MsgUpdateParamsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateParams not implemented")
 }
 
 func RegisterMsgServer(s grpc1.Server, srv MsgServer) {
 	s.RegisterService(&_Msg_serviceDesc, srv)
-}
-
-func _Msg_SubmitProof_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(MsgSubmitProof)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(MsgServer).SubmitProof(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/lucidchain.proofs.v1.Msg/SubmitProof",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MsgServer).SubmitProof(ctx, req.(*MsgSubmitProof))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Msg_RegisterVerifier_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(MsgRegisterVerifier)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(MsgServer).RegisterVerifier(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/lucidchain.proofs.v1.Msg/RegisterVerifier",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MsgServer).RegisterVerifier(ctx, req.(*MsgRegisterVerifier))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Msg_DeprecateVerifier_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(MsgDeprecateVerifier)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(MsgServer).DeprecateVerifier(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/lucidchain.proofs.v1.Msg/DeprecateVerifier",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MsgServer).DeprecateVerifier(ctx, req.(*MsgDeprecateVerifier))
-	}
-	return interceptor(ctx, in, info, handler)
 }
 
 func _Msg_UpdateParams_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -680,258 +237,12 @@ var _Msg_serviceDesc = grpc.ServiceDesc{
 	HandlerType: (*MsgServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "SubmitProof",
-			Handler:    _Msg_SubmitProof_Handler,
-		},
-		{
-			MethodName: "RegisterVerifier",
-			Handler:    _Msg_RegisterVerifier_Handler,
-		},
-		{
-			MethodName: "DeprecateVerifier",
-			Handler:    _Msg_DeprecateVerifier_Handler,
-		},
-		{
 			MethodName: "UpdateParams",
 			Handler:    _Msg_UpdateParams_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
 	Metadata: "lucidchain/proofs/v1/tx.proto",
-}
-
-func (m *MsgSubmitProof) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *MsgSubmitProof) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *MsgSubmitProof) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if len(m.Proof) > 0 {
-		i -= len(m.Proof)
-		copy(dAtA[i:], m.Proof)
-		i = encodeVarintTx(dAtA, i, uint64(len(m.Proof)))
-		i--
-		dAtA[i] = 0x3a
-	}
-	if len(m.PublicInputs) > 0 {
-		i -= len(m.PublicInputs)
-		copy(dAtA[i:], m.PublicInputs)
-		i = encodeVarintTx(dAtA, i, uint64(len(m.PublicInputs)))
-		i--
-		dAtA[i] = 0x32
-	}
-	if len(m.ClaimId) > 0 {
-		i -= len(m.ClaimId)
-		copy(dAtA[i:], m.ClaimId)
-		i = encodeVarintTx(dAtA, i, uint64(len(m.ClaimId)))
-		i--
-		dAtA[i] = 0x2a
-	}
-	if len(m.ProofSystemId) > 0 {
-		i -= len(m.ProofSystemId)
-		copy(dAtA[i:], m.ProofSystemId)
-		i = encodeVarintTx(dAtA, i, uint64(len(m.ProofSystemId)))
-		i--
-		dAtA[i] = 0x22
-	}
-	if m.CheckpointSequence != 0 {
-		i = encodeVarintTx(dAtA, i, uint64(m.CheckpointSequence))
-		i--
-		dAtA[i] = 0x18
-	}
-	if len(m.SidechainId) > 0 {
-		i -= len(m.SidechainId)
-		copy(dAtA[i:], m.SidechainId)
-		i = encodeVarintTx(dAtA, i, uint64(len(m.SidechainId)))
-		i--
-		dAtA[i] = 0x12
-	}
-	if len(m.Submitter) > 0 {
-		i -= len(m.Submitter)
-		copy(dAtA[i:], m.Submitter)
-		i = encodeVarintTx(dAtA, i, uint64(len(m.Submitter)))
-		i--
-		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *MsgSubmitProofResponse) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *MsgSubmitProofResponse) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *MsgSubmitProofResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if len(m.ProofRecordId) > 0 {
-		i -= len(m.ProofRecordId)
-		copy(dAtA[i:], m.ProofRecordId)
-		i = encodeVarintTx(dAtA, i, uint64(len(m.ProofRecordId)))
-		i--
-		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *MsgRegisterVerifier) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *MsgRegisterVerifier) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *MsgRegisterVerifier) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if len(m.VerificationKey) > 0 {
-		i -= len(m.VerificationKey)
-		copy(dAtA[i:], m.VerificationKey)
-		i = encodeVarintTx(dAtA, i, uint64(len(m.VerificationKey)))
-		i--
-		dAtA[i] = 0x22
-	}
-	if len(m.Description) > 0 {
-		i -= len(m.Description)
-		copy(dAtA[i:], m.Description)
-		i = encodeVarintTx(dAtA, i, uint64(len(m.Description)))
-		i--
-		dAtA[i] = 0x1a
-	}
-	if len(m.ProofSystemId) > 0 {
-		i -= len(m.ProofSystemId)
-		copy(dAtA[i:], m.ProofSystemId)
-		i = encodeVarintTx(dAtA, i, uint64(len(m.ProofSystemId)))
-		i--
-		dAtA[i] = 0x12
-	}
-	if len(m.Authority) > 0 {
-		i -= len(m.Authority)
-		copy(dAtA[i:], m.Authority)
-		i = encodeVarintTx(dAtA, i, uint64(len(m.Authority)))
-		i--
-		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *MsgRegisterVerifierResponse) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *MsgRegisterVerifierResponse) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *MsgRegisterVerifierResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	return len(dAtA) - i, nil
-}
-
-func (m *MsgDeprecateVerifier) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *MsgDeprecateVerifier) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *MsgDeprecateVerifier) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if len(m.ProofSystemId) > 0 {
-		i -= len(m.ProofSystemId)
-		copy(dAtA[i:], m.ProofSystemId)
-		i = encodeVarintTx(dAtA, i, uint64(len(m.ProofSystemId)))
-		i--
-		dAtA[i] = 0x12
-	}
-	if len(m.Authority) > 0 {
-		i -= len(m.Authority)
-		copy(dAtA[i:], m.Authority)
-		i = encodeVarintTx(dAtA, i, uint64(len(m.Authority)))
-		i--
-		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *MsgDeprecateVerifierResponse) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *MsgDeprecateVerifierResponse) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *MsgDeprecateVerifierResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	return len(dAtA) - i, nil
 }
 
 func (m *MsgUpdateParams) Marshal() (dAtA []byte, err error) {
@@ -954,18 +265,16 @@ func (m *MsgUpdateParams) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.Params != nil {
-		{
-			size, err := m.Params.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintTx(dAtA, i, uint64(size))
+	{
+		size, err := m.Params.MarshalToSizedBuffer(dAtA[:i])
+		if err != nil {
+			return 0, err
 		}
-		i--
-		dAtA[i] = 0x12
+		i -= size
+		i = encodeVarintTx(dAtA, i, uint64(size))
 	}
+	i--
+	dAtA[i] = 0x12
 	if len(m.Authority) > 0 {
 		i -= len(m.Authority)
 		copy(dAtA[i:], m.Authority)
@@ -1010,115 +319,6 @@ func encodeVarintTx(dAtA []byte, offset int, v uint64) int {
 	dAtA[offset] = uint8(v)
 	return base
 }
-func (m *MsgSubmitProof) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	l = len(m.Submitter)
-	if l > 0 {
-		n += 1 + l + sovTx(uint64(l))
-	}
-	l = len(m.SidechainId)
-	if l > 0 {
-		n += 1 + l + sovTx(uint64(l))
-	}
-	if m.CheckpointSequence != 0 {
-		n += 1 + sovTx(uint64(m.CheckpointSequence))
-	}
-	l = len(m.ProofSystemId)
-	if l > 0 {
-		n += 1 + l + sovTx(uint64(l))
-	}
-	l = len(m.ClaimId)
-	if l > 0 {
-		n += 1 + l + sovTx(uint64(l))
-	}
-	l = len(m.PublicInputs)
-	if l > 0 {
-		n += 1 + l + sovTx(uint64(l))
-	}
-	l = len(m.Proof)
-	if l > 0 {
-		n += 1 + l + sovTx(uint64(l))
-	}
-	return n
-}
-
-func (m *MsgSubmitProofResponse) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	l = len(m.ProofRecordId)
-	if l > 0 {
-		n += 1 + l + sovTx(uint64(l))
-	}
-	return n
-}
-
-func (m *MsgRegisterVerifier) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	l = len(m.Authority)
-	if l > 0 {
-		n += 1 + l + sovTx(uint64(l))
-	}
-	l = len(m.ProofSystemId)
-	if l > 0 {
-		n += 1 + l + sovTx(uint64(l))
-	}
-	l = len(m.Description)
-	if l > 0 {
-		n += 1 + l + sovTx(uint64(l))
-	}
-	l = len(m.VerificationKey)
-	if l > 0 {
-		n += 1 + l + sovTx(uint64(l))
-	}
-	return n
-}
-
-func (m *MsgRegisterVerifierResponse) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	return n
-}
-
-func (m *MsgDeprecateVerifier) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	l = len(m.Authority)
-	if l > 0 {
-		n += 1 + l + sovTx(uint64(l))
-	}
-	l = len(m.ProofSystemId)
-	if l > 0 {
-		n += 1 + l + sovTx(uint64(l))
-	}
-	return n
-}
-
-func (m *MsgDeprecateVerifierResponse) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	return n
-}
-
 func (m *MsgUpdateParams) Size() (n int) {
 	if m == nil {
 		return 0
@@ -1129,10 +329,8 @@ func (m *MsgUpdateParams) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovTx(uint64(l))
 	}
-	if m.Params != nil {
-		l = m.Params.Size()
-		n += 1 + l + sovTx(uint64(l))
-	}
+	l = m.Params.Size()
+	n += 1 + l + sovTx(uint64(l))
 	return n
 }
 
@@ -1150,747 +348,6 @@ func sovTx(x uint64) (n int) {
 }
 func sozTx(x uint64) (n int) {
 	return sovTx(uint64((x << 1) ^ uint64((int64(x) >> 63))))
-}
-func (m *MsgSubmitProof) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowTx
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: MsgSubmitProof: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: MsgSubmitProof: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Submitter", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTx
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthTx
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthTx
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Submitter = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field SidechainId", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTx
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthTx
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthTx
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.SidechainId = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 3:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field CheckpointSequence", wireType)
-			}
-			m.CheckpointSequence = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTx
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.CheckpointSequence |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 4:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ProofSystemId", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTx
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthTx
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthTx
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.ProofSystemId = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 5:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ClaimId", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTx
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthTx
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthTx
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.ClaimId = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 6:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field PublicInputs", wireType)
-			}
-			var byteLen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTx
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				byteLen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if byteLen < 0 {
-				return ErrInvalidLengthTx
-			}
-			postIndex := iNdEx + byteLen
-			if postIndex < 0 {
-				return ErrInvalidLengthTx
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.PublicInputs = append(m.PublicInputs[:0], dAtA[iNdEx:postIndex]...)
-			if m.PublicInputs == nil {
-				m.PublicInputs = []byte{}
-			}
-			iNdEx = postIndex
-		case 7:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Proof", wireType)
-			}
-			var byteLen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTx
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				byteLen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if byteLen < 0 {
-				return ErrInvalidLengthTx
-			}
-			postIndex := iNdEx + byteLen
-			if postIndex < 0 {
-				return ErrInvalidLengthTx
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Proof = append(m.Proof[:0], dAtA[iNdEx:postIndex]...)
-			if m.Proof == nil {
-				m.Proof = []byte{}
-			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipTx(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
-				return ErrInvalidLengthTx
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *MsgSubmitProofResponse) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowTx
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: MsgSubmitProofResponse: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: MsgSubmitProofResponse: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ProofRecordId", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTx
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthTx
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthTx
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.ProofRecordId = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipTx(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
-				return ErrInvalidLengthTx
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *MsgRegisterVerifier) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowTx
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: MsgRegisterVerifier: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: MsgRegisterVerifier: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Authority", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTx
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthTx
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthTx
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Authority = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ProofSystemId", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTx
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthTx
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthTx
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.ProofSystemId = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 3:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Description", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTx
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthTx
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthTx
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Description = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 4:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field VerificationKey", wireType)
-			}
-			var byteLen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTx
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				byteLen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if byteLen < 0 {
-				return ErrInvalidLengthTx
-			}
-			postIndex := iNdEx + byteLen
-			if postIndex < 0 {
-				return ErrInvalidLengthTx
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.VerificationKey = append(m.VerificationKey[:0], dAtA[iNdEx:postIndex]...)
-			if m.VerificationKey == nil {
-				m.VerificationKey = []byte{}
-			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipTx(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
-				return ErrInvalidLengthTx
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *MsgRegisterVerifierResponse) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowTx
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: MsgRegisterVerifierResponse: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: MsgRegisterVerifierResponse: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		default:
-			iNdEx = preIndex
-			skippy, err := skipTx(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
-				return ErrInvalidLengthTx
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *MsgDeprecateVerifier) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowTx
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: MsgDeprecateVerifier: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: MsgDeprecateVerifier: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Authority", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTx
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthTx
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthTx
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Authority = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ProofSystemId", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTx
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthTx
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthTx
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.ProofSystemId = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipTx(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
-				return ErrInvalidLengthTx
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *MsgDeprecateVerifierResponse) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowTx
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: MsgDeprecateVerifierResponse: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: MsgDeprecateVerifierResponse: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		default:
-			iNdEx = preIndex
-			skippy, err := skipTx(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
-				return ErrInvalidLengthTx
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
 }
 func (m *MsgUpdateParams) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
@@ -1981,9 +438,6 @@ func (m *MsgUpdateParams) Unmarshal(dAtA []byte) error {
 			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
-			}
-			if m.Params == nil {
-				m.Params = &Params{}
 			}
 			if err := m.Params.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err

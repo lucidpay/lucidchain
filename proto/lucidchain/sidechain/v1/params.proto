@@ -1,0 +1,39 @@
+syntax = "proto3";
+package lucidchain.sidechain.v1;
+
+import "amino/amino.proto";
+import "gogoproto/gogo.proto";
+import "lucidchain/sidechain/v1/sidechain.proto";
+import "cosmos/base/v1beta1/coin.proto";
+
+option go_package = "github.com/lucidpay/lucidchain/x/sidechain/types";
+
+
+// TierBond is the minimum bond for one assurance tier.
+message TierBond {
+  option (gogoproto.equal) = true;
+  AssuranceTier tier = 1;
+  cosmos.base.v1beta1.Coin min_bond = 2 [(gogoproto.nullable) = false];
+}
+
+// Params defines module-wide parameters, settable via governance.
+message Params {
+  option (amino.name) = "lucidchain/x/sidechain/Params";
+  option (gogoproto.equal) = true;
+
+  // One entry per tier; Validate() rejects duplicates and UNSPECIFIED.
+  repeated TierBond min_bond_by_tier = 1 [(gogoproto.nullable) = false];
+
+  uint64 missed_checkpoint_grace_seconds = 2;
+  uint64 exit_cooldown_seconds = 3;
+
+  // Maximum signer keys per sidechain. ML-DSA-65 pubkeys are 1952 bytes each,
+  // so this directly bounds per-sidechain state size.
+  uint32 max_signer_keys = 4;
+
+  // Protobuf type URLs of public keys accepted as checkpoint signers, e.g.
+  // "/cosmos.crypto.mldsa65.PubKey". For a quantum-resistant deployment set this
+  // to ML-DSA-65 only; adding classical types (ed25519, secp256k1) re-opens the
+  // sidechain to quantum forgery of its checkpoint signatures.
+  repeated string allowed_pubkey_type_urls = 5;
+}

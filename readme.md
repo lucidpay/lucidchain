@@ -1,7 +1,7 @@
 # LucidChain: A Public Assurance Layer for Private Chains
 
 **Summary**
-Lucidchain is a public, proof-of-stake (PoS) blockchain that acts as a neutral assurance layer for private sidechains. Sidechains keep their data and execution private and publish compact cryptographic commitments to our public chain. In return they receive a temper-evident, independently timestamped record and, at higher tiers, signed attestations from qualified third parties.
+Lucidchain is a public, quantum-resistant, proof-of-stake (PoS) blockchain that acts as a neutral assurance layer for private sidechains. Sidechains keep their data and execution private and publish compact cryptographic commitments to our public chain. In return they receive a temper-evident, independently timestamped record and, at higher tiers, signed attestations from qualified third parties.
 The chain is deliberately minimal: no general-purpose smart contract VM, only a small set of purpose-built native modules.
 
 # Technical Specification: `x/sidechain`, `x/checkpoint`, `x/attestor`, `x/proofs` Modules
@@ -323,4 +323,53 @@ type ProofsKeeper interface {
 
 ---
 
-*Next steps: keeper pseudocode → Go implementation for all four modules, CLI command definitions, REST/gRPC gateway config, a dedicated fraud/slashing conditions spec, selection of initial attestation schemas (hospitality revenue reporting is the leading candidate), selection of the first proof system to integrate for `x/proofs`, and resolution of attestor key-custody/HSM strategy (§4.7) ahead of first real attestor onboarding.*
+
+# lucidchain
+**lucidchain** is a blockchain built using Cosmos SDK and Tendermint and created with [Ignite CLI](https://ignite.com/cli).
+
+## Get started
+
+```
+ignite cosmos chain serve
+```
+
+`serve` command installs dependencies, builds, initializes, and starts your blockchain in development.
+
+### Configure
+
+Your blockchain in development can be configured with `config.yml`. To learn more, see the [Ignite CLI docs](https://docs.ignite.com).
+
+### Web Frontend
+
+Additionally, Ignite CLI offers a frontend scaffolding feature (based on Vue) to help you quickly build a web frontend for your blockchain:
+
+Use: `ignite cosmos scaffold vue`
+This command can be run within your scaffolded blockchain project.
+
+
+For more information see the [monorepo for Ignite front-end development](https://github.com/ignite/web).
+
+## Release
+To release a new version of your blockchain, create and push a new tag with `v` prefix. A new draft release with the configured targets will be created.
+
+```
+git tag v0.1
+git push origin v0.1
+```
+
+After a draft release is created, make your final changes from the release page and publish it.
+
+### Install
+To install the latest version of your blockchain node's binary, execute the following command on your machine:
+
+```
+curl https://get.ignite.com/lucidpay/lucidchain@latest! | sudo bash
+```
+`lucidpay/lucidchain` should match the `username` and `repo_name` of the Github repository to which the source code was pushed. Learn more about [the install process](https://github.com/ignite/installer).
+
+## Learn more
+
+- [Ignite CLI](https://ignite.com/cli)
+- [Tutorials](https://docs.ignite.com/guide)
+- [Ignite CLI docs](https://docs.ignite.com)
+- [Cosmos SDK docs](https://docs.cosmos.network)

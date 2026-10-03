@@ -1,0 +1,13 @@
+syntax = "proto3";
+package lucidchain.checkpoint.v1;
+
+import "amino/amino.proto";
+import "gogoproto/gogo.proto";
+
+option go_package = "github.com/lucidpay/lucidchain/x/checkpoint/types";
+
+// Params defines the parameters for the module.
+message Params {
+  option (amino.name) = "lucidchain/x/checkpoint/Params";
+  option (gogoproto.equal) = true;
+}

@@ -1,56 +1,30 @@
 syntax = "proto3";
 package lucidchain.checkpoint.v1;
 
-option go_package = "github.com/lucidpay/lucidchain/x/checkpoint/types";
-
+import "amino/amino.proto";
+import "cosmos/base/query/v1beta1/pagination.proto";
 import "gogoproto/gogo.proto";
 import "google/api/annotations.proto";
-import "cosmos/base/query/v1beta1/pagination.proto";
-import "lucidchain/checkpoint/v1/checkpoint.proto";
+import "lucidchain/checkpoint/v1/params.proto";
 
+option go_package = "github.com/lucidpay/lucidchain/x/checkpoint/types";
+
+// Query defines the gRPC querier service.
 service Query {
-  rpc Checkpoint(QueryCheckpointRequest) returns (QueryCheckpointResponse) {
-    option (google.api.http).get = "/lucidchain/checkpoint/v1/sidechains/{sidechain_id}/checkpoints/{sequence}";
-  }
-
-  rpc LatestCheckpoint(QueryLatestCheckpointRequest) returns (QueryCheckpointResponse) {
-    option (google.api.http).get = "/lucidchain/checkpoint/v1/sidechains/{sidechain_id}/checkpoints/latest";
-  }
-
-  rpc Checkpoints(QueryCheckpointsRequest) returns (QueryCheckpointsResponse) {
-    option (google.api.http).get = "/lucidchain/checkpoint/v1/sidechains/{sidechain_id}/checkpoints";
-  }
-
+  // Parameters queries the parameters of the module.
   rpc Params(QueryParamsRequest) returns (QueryParamsResponse) {
-    option (google.api.http).get = "/lucidchain/checkpoint/v1/params";
+    option (google.api.http).get = "/lucidpay/lucidchain/checkpoint/v1/params";
   }
 }
 
-message QueryCheckpointRequest {
-  string sidechain_id = 1;
-  uint64 sequence = 2;
-}
-
-message QueryLatestCheckpointRequest {
-  string sidechain_id = 1;
-}
-
-message QueryCheckpointResponse {
-  Checkpoint checkpoint = 1 [(gogoproto.nullable) = false];
-}
-
-message QueryCheckpointsRequest {
-  string sidechain_id = 1;
-  cosmos.base.query.v1beta1.PageRequest pagination = 2;
-}
-
-message QueryCheckpointsResponse {
-  repeated Checkpoint checkpoints = 1 [(gogoproto.nullable) = false];
-  cosmos.base.query.v1beta1.PageResponse pagination = 2;
-}
-
+// QueryParamsRequest is request type for the Query/Params RPC method.
 message QueryParamsRequest {}
 
+// QueryParamsResponse is response type for the Query/Params RPC method.
 message QueryParamsResponse {
-  Params params = 1 [(gogoproto.nullable) = false];
+  // params holds all the parameters of this module.
+  Params params = 1 [
+    (gogoproto.nullable) = false,
+    (amino.dont_omitempty) = true
+  ];
 }

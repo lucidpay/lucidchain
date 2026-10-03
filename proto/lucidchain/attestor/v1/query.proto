@@ -1,78 +1,30 @@
 syntax = "proto3";
 package lucidchain.attestor.v1;
 
-option go_package = "github.com/lucidpay/lucidchain/x/attestor/types";
-
+import "amino/amino.proto";
+import "cosmos/base/query/v1beta1/pagination.proto";
 import "gogoproto/gogo.proto";
 import "google/api/annotations.proto";
-import "cosmos/base/query/v1beta1/pagination.proto";
-import "lucidchain/attestor/v1/attestor.proto";
+import "lucidchain/attestor/v1/params.proto";
 
+option go_package = "github.com/lucidpay/lucidchain/x/attestor/types";
+
+// Query defines the gRPC querier service.
 service Query {
-  rpc Attestor(QueryAttestorRequest) returns (QueryAttestorResponse) {
-    option (google.api.http).get = "/lucidchain/attestor/v1/attestors/{id}";
-  }
-  rpc Attestors(QueryAttestorsRequest) returns (QueryAttestorsResponse) {
-    option (google.api.http).get = "/lucidchain/attestor/v1/attestors";
-  }
-  rpc Schema(QuerySchemaRequest) returns (QuerySchemaResponse) {
-    option (google.api.http).get = "/lucidchain/attestor/v1/schemas/{id}";
-  }
-  rpc Schemas(QuerySchemasRequest) returns (QuerySchemasResponse) {
-    option (google.api.http).get = "/lucidchain/attestor/v1/schemas";
-  }
-  rpc Attestation(QueryAttestationRequest) returns (QueryAttestationResponse) {
-    option (google.api.http).get = "/lucidchain/attestor/v1/attestations/{id}";
-  }
-  rpc AttestationsForCheckpoint(QueryAttestationsForCheckpointRequest) returns (QueryAttestationsForCheckpointResponse) {
-    option (google.api.http).get = "/lucidchain/attestor/v1/sidechains/{sidechain_id}/checkpoints/{checkpoint_sequence}/attestations";
-  }
-  rpc Dispute(QueryDisputeRequest) returns (QueryDisputeResponse) {
-    option (google.api.http).get = "/lucidchain/attestor/v1/disputes/{id}";
-  }
+  // Parameters queries the parameters of the module.
   rpc Params(QueryParamsRequest) returns (QueryParamsResponse) {
-    option (google.api.http).get = "/lucidchain/attestor/v1/params";
+    option (google.api.http).get = "/lucidpay/lucidchain/attestor/v1/params";
   }
 }
 
-message QueryAttestorRequest { string id = 1; }
-message QueryAttestorResponse { Attestor attestor = 1 [(gogoproto.nullable) = false]; }
-
-message QueryAttestorsRequest {
-  string domain = 1; // optional filter
-  AttestorStatus status = 2; // optional filter
-  cosmos.base.query.v1beta1.PageRequest pagination = 3;
-}
-message QueryAttestorsResponse {
-  repeated Attestor attestors = 1 [(gogoproto.nullable) = false];
-  cosmos.base.query.v1beta1.PageResponse pagination = 2;
-}
-
-message QuerySchemaRequest { string id = 1; }
-message QuerySchemaResponse { AttestationSchema schema = 1 [(gogoproto.nullable) = false]; }
-
-message QuerySchemasRequest {
-  string domain = 1;
-  cosmos.base.query.v1beta1.PageRequest pagination = 2;
-}
-message QuerySchemasResponse {
-  repeated AttestationSchema schemas = 1 [(gogoproto.nullable) = false];
-  cosmos.base.query.v1beta1.PageResponse pagination = 2;
-}
-
-message QueryAttestationRequest { string id = 1; }
-message QueryAttestationResponse { Attestation attestation = 1 [(gogoproto.nullable) = false]; }
-
-message QueryAttestationsForCheckpointRequest {
-  string sidechain_id = 1;
-  uint64 checkpoint_sequence = 2;
-}
-message QueryAttestationsForCheckpointResponse {
-  repeated Attestation attestations = 1 [(gogoproto.nullable) = false];
-}
-
-message QueryDisputeRequest { string id = 1; }
-message QueryDisputeResponse { Dispute dispute = 1 [(gogoproto.nullable) = false]; }
-
+// QueryParamsRequest is request type for the Query/Params RPC method.
 message QueryParamsRequest {}
-message QueryParamsResponse { Params params = 1 [(gogoproto.nullable) = false]; }
+
+// QueryParamsResponse is response type for the Query/Params RPC method.
+message QueryParamsResponse {
+  // params holds all the parameters of this module.
+  Params params = 1 [
+    (gogoproto.nullable) = false,
+    (amino.dont_omitempty) = true
+  ];
+}

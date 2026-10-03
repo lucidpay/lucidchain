@@ -21,9 +21,9 @@ import (
 	vestingmodulev1 "cosmossdk.io/api/cosmos/vesting/module/v1"
 	"cosmossdk.io/depinject/appconfig"
 	"github.com/cosmos/cosmos-sdk/runtime"
-	_ "github.com/cosmos/cosmos-sdk/x/auth/tx/config" // import for side-effects
-	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
-	_ "github.com/cosmos/cosmos-sdk/x/auth/vesting" // import for side-effects
+	_ "github.com/cosmos/cosmos-sdk/x/auth/tx/config"
+	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types" // import for side-effects
+	_ "github.com/cosmos/cosmos-sdk/x/auth/vesting"       // import for side-effects
 	vestingtypes "github.com/cosmos/cosmos-sdk/x/auth/vesting/types"
 	"github.com/cosmos/cosmos-sdk/x/authz"
 	_ "github.com/cosmos/cosmos-sdk/x/authz/module" // import for side-effects
@@ -53,6 +53,14 @@ import (
 	icatypes "github.com/cosmos/ibc-go/v11/modules/apps/27-interchain-accounts/types"
 	ibctransfertypes "github.com/cosmos/ibc-go/v11/modules/apps/transfer/types"
 	ibcexported "github.com/cosmos/ibc-go/v11/modules/core/exported"
+	_ "github.com/lucidpay/lucidchain/x/attestor/module"
+	attestormoduletypes "github.com/lucidpay/lucidchain/x/attestor/types"
+	_ "github.com/lucidpay/lucidchain/x/checkpoint/module"
+	checkpointmoduletypes "github.com/lucidpay/lucidchain/x/checkpoint/types"
+	_ "github.com/lucidpay/lucidchain/x/proofs/module"
+	proofsmoduletypes "github.com/lucidpay/lucidchain/x/proofs/types"
+	_ "github.com/lucidpay/lucidchain/x/sidechain/module"
+	sidechainmoduletypes "github.com/lucidpay/lucidchain/x/sidechain/types"
 )
 
 var (
@@ -66,7 +74,7 @@ var (
 		{Account: govtypes.ModuleName, Permissions: []string{authtypes.Burner}},
 		{Account: ibctransfertypes.ModuleName, Permissions: []string{authtypes.Minter, authtypes.Burner}},
 		{Account: icatypes.ModuleName},
-	}
+		{Account: attestormoduletypes.ModuleName, Permissions: []string{authtypes.Minter, authtypes.Burner, authtypes.Staking}}, {Account: checkpointmoduletypes.ModuleName, Permissions: []string{authtypes.Minter, authtypes.Burner, authtypes.Staking}}, {Account: proofsmoduletypes.ModuleName, Permissions: []string{authtypes.Minter, authtypes.Burner, authtypes.Staking}}, {Account: sidechainmoduletypes.ModuleName, Permissions: []string{authtypes.Minter, authtypes.Burner, authtypes.Staking}}}
 
 	// blocked account addresses
 	blockAccAddrs = []string{
@@ -106,14 +114,14 @@ var (
 						// ibc modules
 						ibcexported.ModuleName,
 						// chain modules
-					},
+						attestormoduletypes.ModuleName, checkpointmoduletypes.ModuleName, proofsmoduletypes.ModuleName, sidechainmoduletypes.ModuleName},
 					EndBlockers: []string{
 						banktypes.ModuleName,
 						govtypes.ModuleName,
 						stakingtypes.ModuleName,
 						feegrant.ModuleName,
 						// chain modules
-					},
+						attestormoduletypes.ModuleName, checkpointmoduletypes.ModuleName, proofsmoduletypes.ModuleName, sidechainmoduletypes.ModuleName},
 					// The following is mostly only needed when ModuleName != StoreKey name.
 					OverrideStoreKeys: []*runtimev1alpha1.StoreKeyConfig{
 						{
@@ -145,7 +153,7 @@ var (
 						ibctransfertypes.ModuleName,
 						icatypes.ModuleName,
 						// chain modules
-					},
+						attestormoduletypes.ModuleName, checkpointmoduletypes.ModuleName, proofsmoduletypes.ModuleName, sidechainmoduletypes.ModuleName},
 				}),
 			},
 			{
@@ -221,6 +229,18 @@ var (
 				Name:   epochstypes.ModuleName,
 				Config: appconfig.WrapAny(&epochsmodulev1.Module{}),
 			},
-		},
+			{
+				Name:   attestormoduletypes.ModuleName,
+				Config: appconfig.WrapAny(&attestormoduletypes.Module{}),
+			}, {
+				Name:   checkpointmoduletypes.ModuleName,
+				Config: appconfig.WrapAny(&checkpointmoduletypes.Module{}),
+			}, {
+				Name:   proofsmoduletypes.ModuleName,
+				Config: appconfig.WrapAny(&proofsmoduletypes.Module{}),
+			}, {
+				Name:   sidechainmoduletypes.ModuleName,
+				Config: appconfig.WrapAny(&sidechainmoduletypes.Module{}),
+			}},
 	})
 )

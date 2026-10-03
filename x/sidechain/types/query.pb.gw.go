@@ -325,7 +325,7 @@ var (
 
 	pattern_Query_Sidechains_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"lucidchain", "sidechain", "v1", "sidechains"}, "", runtime.AssumeColonVerbOpt(false)))
 
-	pattern_Query_Params_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"lucidchain", "sidechain", "v1", "params"}, "", runtime.AssumeColonVerbOpt(false)))
+	pattern_Query_Params_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 2, 4}, []string{"lucidpay", "lucidchain", "sidechain", "v1", "params"}, "", runtime.AssumeColonVerbOpt(false)))
 )
 
 var (
