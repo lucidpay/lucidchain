@@ -3,11 +3,44 @@ package lucidchain.checkpoint.v1;
 
 import "amino/amino.proto";
 import "gogoproto/gogo.proto";
+import "cosmos/base/v1beta1/coin.proto";
+import "lucidchain/checkpoint/v1/checkpoint.proto";
 
 option go_package = "github.com/lucidpay/lucidchain/x/checkpoint/types";
+
+
+// CheckpointHash is the canonical hash of a Checkpoint used for chaining
+// and for the `previous_checkpoint_hash` field of the next checkpoint.
+// Computed off-chain and on-chain as:
+//   sha256(chain_id || sidechain_id || sequence || state_root || previous_checkpoint_hash || record_count || signer_set_version || data_pointer)
+// (Exact byte-encoding rules defined in the module spec, section 4.3.)
+
 
 // Params defines the parameters for the module.
 message Params {
   option (amino.name) = "lucidchain/x/checkpoint/Params";
   option (gogoproto.equal) = true;
+
+  // Base fee per checkpoint submission, in the native token's smallest denom.
+  cosmos.base.v1beta1.Coin base_fee = 1 [(gogoproto.nullable) = false];
+
+  // Additional fee per record in the batch (record_count), to price large batches fairly.
+  cosmos.base.v1beta1.Coin per_record_fee = 2 [(gogoproto.nullable) = false];
+
+  // Maximum record_count allowed to be declared in a single checkpoint.
+  uint64 max_records_per_checkpoint = 3;
+
+  // Maximum size in bytes of the data_pointer field.
+  uint32 max_data_pointer_bytes = 4;
+
+  // Upper bound on signatures in one message.
+  uint32 max_signatures_per_checkpoint = 5;
+
+  // Upper bound on total signature bytes in one message. With ML-DSA-65
+  // (3309 B/sig), 7 signatures is ~23 KB; size this together with the block
+  // max_bytes consensus param and charge gas per signature verified.
+  uint32 max_signature_bytes_per_checkpoint = 6;
+
+  // Gas charged per signature verified.
+  uint64 signature_verification_gas = 7;
 }

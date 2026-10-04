@@ -1,0 +1,80 @@
+syntax = "proto3";
+package lucidchain.checkpoint.v1;
+
+option go_package = "github.com/lucidpay/lucidchain/x/checkpoint/types";
+
+import "gogoproto/gogo.proto";
+import "cosmos/base/v1beta1/coin.proto";
+import "google/protobuf/timestamp.proto";
+
+
+// Checkpoint is a finalized commitment submitted by a registered sidechain.
+// It stores only cryptographic commitments -- never raw application data.
+message Checkpoint {
+  option (gogoproto.equal) = true;
+
+  // ID of the sidechain this checkpoint belongs to (see x/sidechain.Sidechain.id).
+  string sidechain_id = 1;
+
+  // Monotonically increasing sequence number for this sidechain's checkpoints.
+  // Must equal the previous checkpoint's sequence + 1 (no gaps, no reordering).
+  uint64 sequence = 2;
+
+  // Merkle root (or equivalent state commitment) of the batch of records
+  // this checkpoint covers, as computed off-chain by the sidechain.
+  bytes state_root = 3;
+
+  // Hash of the immediately preceding checkpoint for this sidechain,
+  // forming a verifiable chain. Empty for sequence == 1.
+  bytes previous_checkpoint_hash = 4;
+
+  // Number of individual records/events committed in this batch.
+  // Informational; used for fee calculation and monitoring, not consensus-critical.
+  uint64 record_count = 5;
+
+   // SHA-256 over the sign bytes of CheckpointSignDoc (see below).
+  bytes checkpoint_hash = 6;
+
+  // Sidechain.signer_set_version under which this checkpoint was verified.
+  uint64 signer_set_version = 7;
+
+  // Bit i set => the key at Sidechain.signer_keys[i] (at signer_set_version)
+  // produced a valid signature. Length = ceil(len(signer_keys) / 8).
+  bytes signer_bitmap = 8;
+
+  // SHA-256 of the concatenation of the verified signatures, ordered by
+  // signer_index. Lets an auditor holding the original signatures prove they
+  // are the ones the chain accepted, without storing ~3.3 KB per signer.
+  bytes signatures_digest = 9;
+
+  int64 finalized_height = 10;
+  google.protobuf.Timestamp finalized_at = 11
+      [(gogoproto.stdtime) = true, (gogoproto.nullable) = false];
+
+  // Optional off-chain pointer (IPFS CID, URI). Covered by the signatures, not verified on-chain.
+  string data_pointer = 12;
+
+  // Reserved for Tier 2 (attestations) and Tier 3 (validity proofs).
+  reserved 13 to 20;
+}
+
+// Signature is one signer's signature over the checkpoint sign bytes.
+message Signature {
+  // Index into Sidechain.signer_keys at MsgSubmitCheckpoint.signer_set_version.
+  uint32 signer_index = 1;
+
+  // Raw signature. ML-DSA-65 signatures are 3309 bytes.
+  bytes signature = 2;
+}
+
+// CheckpointSignDoc is the document every signer signs (with a domain prefix).
+message CheckpointSignDoc {
+  string chain_id = 1;
+  string sidechain_id = 2;
+  uint64 sequence = 3;
+  bytes state_root = 4;
+  bytes previous_checkpoint_hash = 5;
+  uint64 record_count = 6;
+  uint64 signer_set_version = 7;
+  string data_pointer = 8;
+}

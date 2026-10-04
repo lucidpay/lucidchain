@@ -31,6 +31,167 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
+type MsgSubmitCheckpoint struct {
+	Submitter              string `protobuf:"bytes,1,opt,name=submitter,proto3" json:"submitter,omitempty"`
+	SidechainId            string `protobuf:"bytes,2,opt,name=sidechain_id,json=sidechainId,proto3" json:"sidechain_id,omitempty"`
+	Sequence               uint64 `protobuf:"varint,3,opt,name=sequence,proto3" json:"sequence,omitempty"`
+	StateRoot              []byte `protobuf:"bytes,4,opt,name=state_root,json=stateRoot,proto3" json:"state_root,omitempty"`
+	PreviousCheckpointHash []byte `protobuf:"bytes,5,opt,name=previous_checkpoint_hash,json=previousCheckpointHash,proto3" json:"previous_checkpoint_hash,omitempty"`
+	RecordCount            uint64 `protobuf:"varint,6,opt,name=record_count,json=recordCount,proto3" json:"record_count,omitempty"`
+	DataPointer            string `protobuf:"bytes,7,opt,name=data_pointer,json=dataPointer,proto3" json:"data_pointer,omitempty"`
+	// Must equal the sidechain's current signer_set_version, otherwise rejected.
+	SignerSetVersion uint64      `protobuf:"varint,8,opt,name=signer_set_version,json=signerSetVersion,proto3" json:"signer_set_version,omitempty"`
+	Signatures       []Signature `protobuf:"bytes,9,rep,name=signatures,proto3" json:"signatures"`
+}
+
+func (m *MsgSubmitCheckpoint) Reset()         { *m = MsgSubmitCheckpoint{} }
+func (m *MsgSubmitCheckpoint) String() string { return proto.CompactTextString(m) }
+func (*MsgSubmitCheckpoint) ProtoMessage()    {}
+func (*MsgSubmitCheckpoint) Descriptor() ([]byte, []int) {
+	return fileDescriptor_047eb62d7140d510, []int{0}
+}
+func (m *MsgSubmitCheckpoint) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *MsgSubmitCheckpoint) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_MsgSubmitCheckpoint.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *MsgSubmitCheckpoint) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MsgSubmitCheckpoint.Merge(m, src)
+}
+func (m *MsgSubmitCheckpoint) XXX_Size() int {
+	return m.Size()
+}
+func (m *MsgSubmitCheckpoint) XXX_DiscardUnknown() {
+	xxx_messageInfo_MsgSubmitCheckpoint.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MsgSubmitCheckpoint proto.InternalMessageInfo
+
+func (m *MsgSubmitCheckpoint) GetSubmitter() string {
+	if m != nil {
+		return m.Submitter
+	}
+	return ""
+}
+
+func (m *MsgSubmitCheckpoint) GetSidechainId() string {
+	if m != nil {
+		return m.SidechainId
+	}
+	return ""
+}
+
+func (m *MsgSubmitCheckpoint) GetSequence() uint64 {
+	if m != nil {
+		return m.Sequence
+	}
+	return 0
+}
+
+func (m *MsgSubmitCheckpoint) GetStateRoot() []byte {
+	if m != nil {
+		return m.StateRoot
+	}
+	return nil
+}
+
+func (m *MsgSubmitCheckpoint) GetPreviousCheckpointHash() []byte {
+	if m != nil {
+		return m.PreviousCheckpointHash
+	}
+	return nil
+}
+
+func (m *MsgSubmitCheckpoint) GetRecordCount() uint64 {
+	if m != nil {
+		return m.RecordCount
+	}
+	return 0
+}
+
+func (m *MsgSubmitCheckpoint) GetDataPointer() string {
+	if m != nil {
+		return m.DataPointer
+	}
+	return ""
+}
+
+func (m *MsgSubmitCheckpoint) GetSignerSetVersion() uint64 {
+	if m != nil {
+		return m.SignerSetVersion
+	}
+	return 0
+}
+
+func (m *MsgSubmitCheckpoint) GetSignatures() []Signature {
+	if m != nil {
+		return m.Signatures
+	}
+	return nil
+}
+
+type MsgSubmitCheckpointResponse struct {
+	FinalizedHeight uint64 `protobuf:"varint,1,opt,name=finalized_height,json=finalizedHeight,proto3" json:"finalized_height,omitempty"`
+	CheckpointHash  []byte `protobuf:"bytes,2,opt,name=checkpoint_hash,json=checkpointHash,proto3" json:"checkpoint_hash,omitempty"`
+}
+
+func (m *MsgSubmitCheckpointResponse) Reset()         { *m = MsgSubmitCheckpointResponse{} }
+func (m *MsgSubmitCheckpointResponse) String() string { return proto.CompactTextString(m) }
+func (*MsgSubmitCheckpointResponse) ProtoMessage()    {}
+func (*MsgSubmitCheckpointResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_047eb62d7140d510, []int{1}
+}
+func (m *MsgSubmitCheckpointResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *MsgSubmitCheckpointResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_MsgSubmitCheckpointResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *MsgSubmitCheckpointResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MsgSubmitCheckpointResponse.Merge(m, src)
+}
+func (m *MsgSubmitCheckpointResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *MsgSubmitCheckpointResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_MsgSubmitCheckpointResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MsgSubmitCheckpointResponse proto.InternalMessageInfo
+
+func (m *MsgSubmitCheckpointResponse) GetFinalizedHeight() uint64 {
+	if m != nil {
+		return m.FinalizedHeight
+	}
+	return 0
+}
+
+func (m *MsgSubmitCheckpointResponse) GetCheckpointHash() []byte {
+	if m != nil {
+		return m.CheckpointHash
+	}
+	return nil
+}
+
 // MsgUpdateParams is the Msg/UpdateParams request type.
 type MsgUpdateParams struct {
 	// authority is the address that controls the module (defaults to x/gov unless overwritten).
@@ -45,7 +206,7 @@ func (m *MsgUpdateParams) Reset()         { *m = MsgUpdateParams{} }
 func (m *MsgUpdateParams) String() string { return proto.CompactTextString(m) }
 func (*MsgUpdateParams) ProtoMessage()    {}
 func (*MsgUpdateParams) Descriptor() ([]byte, []int) {
-	return fileDescriptor_047eb62d7140d510, []int{0}
+	return fileDescriptor_047eb62d7140d510, []int{2}
 }
 func (m *MsgUpdateParams) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -97,7 +258,7 @@ func (m *MsgUpdateParamsResponse) Reset()         { *m = MsgUpdateParamsResponse
 func (m *MsgUpdateParamsResponse) String() string { return proto.CompactTextString(m) }
 func (*MsgUpdateParamsResponse) ProtoMessage()    {}
 func (*MsgUpdateParamsResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_047eb62d7140d510, []int{1}
+	return fileDescriptor_047eb62d7140d510, []int{3}
 }
 func (m *MsgUpdateParamsResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -127,6 +288,8 @@ func (m *MsgUpdateParamsResponse) XXX_DiscardUnknown() {
 var xxx_messageInfo_MsgUpdateParamsResponse proto.InternalMessageInfo
 
 func init() {
+	proto.RegisterType((*MsgSubmitCheckpoint)(nil), "lucidchain.checkpoint.v1.MsgSubmitCheckpoint")
+	proto.RegisterType((*MsgSubmitCheckpointResponse)(nil), "lucidchain.checkpoint.v1.MsgSubmitCheckpointResponse")
 	proto.RegisterType((*MsgUpdateParams)(nil), "lucidchain.checkpoint.v1.MsgUpdateParams")
 	proto.RegisterType((*MsgUpdateParamsResponse)(nil), "lucidchain.checkpoint.v1.MsgUpdateParamsResponse")
 }
@@ -134,30 +297,48 @@ func init() {
 func init() { proto.RegisterFile("lucidchain/checkpoint/v1/tx.proto", fileDescriptor_047eb62d7140d510) }
 
 var fileDescriptor_047eb62d7140d510 = []byte{
-	// 356 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x91, 0x31, 0x4b, 0xc3, 0x40,
-	0x14, 0xc7, 0x73, 0x8a, 0x85, 0x9e, 0x82, 0x18, 0x0a, 0x4d, 0x33, 0xc4, 0x5a, 0x10, 0x6b, 0xc1,
-	0x1c, 0xa9, 0xe0, 0xd0, 0xcd, 0x3a, 0x4a, 0x41, 0x2a, 0x2e, 0x2e, 0x72, 0x4d, 0xc2, 0xe5, 0xb0,
-	0xc9, 0x1d, 0xb9, 0x6b, 0x69, 0x9d, 0xc4, 0xd1, 0xc9, 0x8f, 0xe1, 0xd8, 0xc1, 0x0f, 0x51, 0x9c,
-	0x8a, 0x93, 0x93, 0x48, 0x3b, 0xf4, 0x6b, 0x48, 0x93, 0x48, 0x6a, 0x20, 0xe0, 0x12, 0xf2, 0xde,
-	0xff, 0xff, 0xfe, 0xef, 0xfd, 0x38, 0x78, 0xd0, 0x1f, 0xd8, 0xd4, 0xb1, 0x3d, 0x4c, 0x03, 0x64,
-	0x7b, 0xae, 0x7d, 0xcf, 0x19, 0x0d, 0x24, 0x1a, 0x5a, 0x48, 0x8e, 0x4c, 0x1e, 0x32, 0xc9, 0x54,
-	0x2d, 0xb5, 0x98, 0xa9, 0xc5, 0x1c, 0x5a, 0xfa, 0x1e, 0xf6, 0x69, 0xc0, 0x50, 0xf4, 0x8d, 0xcd,
-	0x7a, 0xd9, 0x66, 0xc2, 0x67, 0x02, 0xf9, 0x82, 0xac, 0x42, 0x7c, 0x41, 0x12, 0xa1, 0x12, 0x0b,
-	0x77, 0x51, 0x85, 0xe2, 0x22, 0x91, 0x4a, 0x84, 0x11, 0x16, 0xf7, 0x57, 0x7f, 0x49, 0xf7, 0x30,
-	0xf7, 0x32, 0x8e, 0x43, 0xec, 0x27, 0xc3, 0xb5, 0x77, 0x00, 0x77, 0x3b, 0x82, 0xdc, 0x70, 0x07,
-	0x4b, 0xf7, 0x2a, 0x52, 0xd4, 0x33, 0x58, 0xc4, 0x03, 0xe9, 0xb1, 0x90, 0xca, 0xb1, 0x06, 0xaa,
-	0xa0, 0x5e, 0x6c, 0x6b, 0x1f, 0x6f, 0x27, 0xa5, 0x64, 0xeb, 0xb9, 0xe3, 0x84, 0xae, 0x10, 0xd7,
-	0x32, 0xa4, 0x01, 0xe9, 0xa6, 0x56, 0xf5, 0x02, 0x16, 0xe2, 0x6c, 0x6d, 0xa3, 0x0a, 0xea, 0xdb,
-	0xcd, 0xaa, 0x99, 0x87, 0x6e, 0xc6, 0x9b, 0xda, 0xc5, 0xe9, 0xd7, 0xbe, 0xf2, 0xba, 0x9c, 0x34,
-	0x40, 0x37, 0x19, 0x6d, 0xb5, 0x9e, 0x96, 0x93, 0x46, 0x1a, 0xfa, 0xbc, 0x9c, 0x34, 0x8e, 0xd6,
-	0x50, 0x46, 0xeb, 0x30, 0x99, 0xc3, 0x6b, 0x15, 0x58, 0xce, 0xb4, 0xba, 0xae, 0xe0, 0x2c, 0x10,
-	0x6e, 0xf3, 0x01, 0x6e, 0x76, 0x04, 0x51, 0xfb, 0x70, 0xe7, 0x0f, 0xea, 0x71, 0xfe, 0x89, 0x99,
-	0x24, 0xdd, 0xfa, 0xb7, 0xf5, 0x77, 0xa9, 0xbe, 0xf5, 0xb8, 0x42, 0x6b, 0x5f, 0x4e, 0xe7, 0x06,
-	0x98, 0xcd, 0x0d, 0xf0, 0x3d, 0x37, 0xc0, 0xcb, 0xc2, 0x50, 0x66, 0x0b, 0x43, 0xf9, 0x5c, 0x18,
-	0xca, 0xad, 0x45, 0xa8, 0xf4, 0x06, 0x3d, 0xd3, 0x66, 0x3e, 0x8a, 0xd2, 0x39, 0x1e, 0xa3, 0x3c,
-	0x5a, 0x39, 0xe6, 0xae, 0xe8, 0x15, 0xa2, 0x77, 0x3b, 0xfd, 0x19, 0x00, 0x6f, 0x92, 0xa3, 0xd3,
-	0x7a, 0x02, 0x00, 0x00,
+	// 651 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x54, 0x4f, 0x4f, 0x13, 0x41,
+	0x14, 0xef, 0xd2, 0x82, 0x74, 0x4a, 0xa0, 0x8e, 0x44, 0x86, 0x1a, 0x6b, 0xa9, 0x31, 0x14, 0x22,
+	0xdd, 0x14, 0xa3, 0x31, 0xdc, 0x2c, 0x17, 0xd0, 0x90, 0x90, 0x6d, 0xf4, 0xe0, 0x65, 0x33, 0xec,
+	0x8e, 0xbb, 0x13, 0xd9, 0x9d, 0x65, 0x66, 0xb6, 0x01, 0x4f, 0xc6, 0xa3, 0x27, 0x3f, 0x86, 0x47,
+	0x0e, 0x9e, 0xfc, 0x04, 0xc4, 0x13, 0xf1, 0xe4, 0xc9, 0x18, 0x38, 0xf0, 0x05, 0xfc, 0x00, 0x66,
+	0x67, 0xda, 0xdd, 0x52, 0x59, 0xff, 0x5c, 0x36, 0xfb, 0x7e, 0xef, 0xf7, 0xfe, 0xcc, 0xef, 0xbd,
+	0x19, 0xb0, 0xb4, 0x1f, 0x3b, 0xd4, 0x75, 0x7c, 0x4c, 0x43, 0xd3, 0xf1, 0x89, 0xf3, 0x3a, 0x62,
+	0x34, 0x94, 0x66, 0xbf, 0x63, 0xca, 0xc3, 0x76, 0xc4, 0x99, 0x64, 0x10, 0x65, 0x94, 0x76, 0x46,
+	0x69, 0xf7, 0x3b, 0xb5, 0xeb, 0x38, 0xa0, 0x21, 0x33, 0xd5, 0x57, 0x93, 0x6b, 0x0b, 0x0e, 0x13,
+	0x01, 0x13, 0x66, 0x20, 0xbc, 0x24, 0x49, 0x20, 0xbc, 0x81, 0x63, 0x51, 0x3b, 0x6c, 0x65, 0x99,
+	0xda, 0x18, 0xb8, 0xe6, 0x3d, 0xe6, 0x31, 0x8d, 0x27, 0x7f, 0x03, 0xf4, 0x5e, 0x6e, 0x67, 0x11,
+	0xe6, 0x38, 0x18, 0x06, 0xaf, 0xe4, 0xd2, 0x32, 0x4b, 0x53, 0x9b, 0x9f, 0x8b, 0xe0, 0xc6, 0x8e,
+	0xf0, 0x7a, 0xf1, 0x5e, 0x40, 0xe5, 0x66, 0xea, 0x85, 0x8f, 0x40, 0x59, 0x28, 0x4c, 0x12, 0x8e,
+	0x8c, 0x86, 0xd1, 0x2a, 0x77, 0xd1, 0xd7, 0x4f, 0x6b, 0xf3, 0x83, 0x26, 0x9f, 0xb8, 0x2e, 0x27,
+	0x42, 0xf4, 0x24, 0xa7, 0xa1, 0x67, 0x65, 0x54, 0xb8, 0x04, 0x66, 0x04, 0x75, 0x89, 0xaa, 0x6d,
+	0x53, 0x17, 0x4d, 0x24, 0xa1, 0x56, 0x25, 0xc5, 0xb6, 0x5d, 0x58, 0x03, 0xd3, 0x82, 0x1c, 0xc4,
+	0x24, 0x74, 0x08, 0x2a, 0x36, 0x8c, 0x56, 0xc9, 0x4a, 0x6d, 0x78, 0x1b, 0x00, 0x21, 0xb1, 0x24,
+	0x36, 0x67, 0x4c, 0xa2, 0x52, 0xc3, 0x68, 0xcd, 0x58, 0x65, 0x85, 0x58, 0x8c, 0x49, 0xf8, 0x18,
+	0xa0, 0x88, 0x93, 0x3e, 0x65, 0xb1, 0xb0, 0xb3, 0xa3, 0xd8, 0x3e, 0x16, 0x3e, 0x9a, 0x54, 0xe4,
+	0x9b, 0x43, 0x7f, 0x76, 0x96, 0x2d, 0x2c, 0xfc, 0xa4, 0x2f, 0x4e, 0x1c, 0xc6, 0x5d, 0xdb, 0x61,
+	0x71, 0x28, 0xd1, 0x94, 0x2a, 0x5c, 0xd1, 0xd8, 0x66, 0x02, 0x25, 0x14, 0x17, 0x4b, 0x6c, 0xab,
+	0x20, 0xc2, 0xd1, 0x35, 0xdd, 0x7a, 0x82, 0xed, 0x6a, 0x08, 0xde, 0x07, 0x50, 0x50, 0x2f, 0x24,
+	0xdc, 0x16, 0x44, 0xda, 0x7d, 0xc2, 0x05, 0x65, 0x21, 0x9a, 0x56, 0xb9, 0xaa, 0xda, 0xd3, 0x23,
+	0xf2, 0x85, 0xc6, 0xe1, 0x36, 0x00, 0x09, 0x86, 0x65, 0xcc, 0x89, 0x40, 0xe5, 0x46, 0xb1, 0x55,
+	0x59, 0xbf, 0xdb, 0xce, 0xdb, 0x9c, 0x76, 0x6f, 0xc8, 0xed, 0x96, 0x4e, 0xbe, 0xdf, 0x29, 0x58,
+	0x23, 0xc1, 0x1b, 0xb3, 0xef, 0x2e, 0x8e, 0x57, 0x33, 0x99, 0x9f, 0x96, 0xa6, 0x41, 0xb5, 0xda,
+	0x3c, 0x00, 0xb7, 0xae, 0x98, 0x9d, 0x45, 0x44, 0xc4, 0x42, 0x41, 0xe0, 0x0a, 0xa8, 0xbe, 0xa2,
+	0x21, 0xde, 0xa7, 0x6f, 0x88, 0x6b, 0xfb, 0x84, 0x7a, 0xbe, 0x54, 0xa3, 0x2c, 0x59, 0x73, 0x29,
+	0xbe, 0xa5, 0x60, 0xb8, 0x0c, 0xe6, 0xc6, 0xf5, 0x9c, 0x50, 0x7a, 0xce, 0x3a, 0x97, 0x74, 0x6c,
+	0x7e, 0x31, 0xc0, 0xdc, 0x8e, 0xf0, 0x9e, 0x47, 0x2e, 0x96, 0x64, 0x57, 0x2d, 0x5d, 0xb2, 0x2b,
+	0x38, 0x96, 0x3e, 0xe3, 0x54, 0x1e, 0xfd, 0x7d, 0x57, 0x52, 0x2a, 0xdc, 0x04, 0x53, 0x7a, 0x6d,
+	0x55, 0xad, 0xca, 0x7a, 0x23, 0x5f, 0x1b, 0x5d, 0xa9, 0x5b, 0x4e, 0x84, 0xf9, 0x78, 0x71, 0xbc,
+	0x6a, 0x58, 0x83, 0xd0, 0x8d, 0x0d, 0xa5, 0x4c, 0x9a, 0xf4, 0xfd, 0xc5, 0xf1, 0xea, 0xf2, 0xc8,
+	0xfa, 0x1f, 0x8e, 0x5e, 0x80, 0xb1, 0xc6, 0x9b, 0x8b, 0x60, 0x61, 0x0c, 0x1a, 0x6a, 0xb7, 0xfe,
+	0xd3, 0x00, 0xc5, 0x1d, 0xe1, 0xc1, 0x43, 0x50, 0xfd, 0xed, 0x6e, 0xac, 0xe5, 0xf7, 0x79, 0xc5,
+	0x38, 0x6a, 0x0f, 0xff, 0x8b, 0x9e, 0x4e, 0x6f, 0x1f, 0xcc, 0x5c, 0x52, 0x79, 0xe5, 0x8f, 0x69,
+	0x46, 0xa9, 0xb5, 0xce, 0x3f, 0x53, 0x87, 0xd5, 0x6a, 0x93, 0x6f, 0x13, 0x55, 0xbb, 0xcf, 0x4e,
+	0xce, 0xea, 0xc6, 0xe9, 0x59, 0xdd, 0xf8, 0x71, 0x56, 0x37, 0x3e, 0x9c, 0xd7, 0x0b, 0xa7, 0xe7,
+	0xf5, 0xc2, 0xb7, 0xf3, 0x7a, 0xe1, 0x65, 0xc7, 0xa3, 0xd2, 0x8f, 0xf7, 0xda, 0x0e, 0x0b, 0x4c,
+	0x95, 0x3d, 0xc2, 0x47, 0x66, 0x9e, 0xd0, 0xf2, 0x28, 0x22, 0x62, 0x6f, 0x4a, 0x3d, 0x31, 0x0f,
+	0x7e, 0x0d, 0x00, 0xf0, 0xec, 0x0e, 0xd7, 0x50, 0x05, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -172,6 +353,8 @@ const _ = grpc.SupportPackageIsVersion4
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type MsgClient interface {
+	// SubmitCheckpoint submits a new, signed checkpoint for a registered, active sidechain.
+	SubmitCheckpoint(ctx context.Context, in *MsgSubmitCheckpoint, opts ...grpc.CallOption) (*MsgSubmitCheckpointResponse, error)
 	// UpdateParams defines a (governance) operation for updating the module
 	// parameters. The authority defaults to the x/gov module account.
 	UpdateParams(ctx context.Context, in *MsgUpdateParams, opts ...grpc.CallOption) (*MsgUpdateParamsResponse, error)
@@ -185,6 +368,15 @@ func NewMsgClient(cc grpc1.ClientConn) MsgClient {
 	return &msgClient{cc}
 }
 
+func (c *msgClient) SubmitCheckpoint(ctx context.Context, in *MsgSubmitCheckpoint, opts ...grpc.CallOption) (*MsgSubmitCheckpointResponse, error) {
+	out := new(MsgSubmitCheckpointResponse)
+	err := c.cc.Invoke(ctx, "/lucidchain.checkpoint.v1.Msg/SubmitCheckpoint", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *msgClient) UpdateParams(ctx context.Context, in *MsgUpdateParams, opts ...grpc.CallOption) (*MsgUpdateParamsResponse, error) {
 	out := new(MsgUpdateParamsResponse)
 	err := c.cc.Invoke(ctx, "/lucidchain.checkpoint.v1.Msg/UpdateParams", in, out, opts...)
@@ -196,6 +388,8 @@ func (c *msgClient) UpdateParams(ctx context.Context, in *MsgUpdateParams, opts 
 
 // MsgServer is the server API for Msg service.
 type MsgServer interface {
+	// SubmitCheckpoint submits a new, signed checkpoint for a registered, active sidechain.
+	SubmitCheckpoint(context.Context, *MsgSubmitCheckpoint) (*MsgSubmitCheckpointResponse, error)
 	// UpdateParams defines a (governance) operation for updating the module
 	// parameters. The authority defaults to the x/gov module account.
 	UpdateParams(context.Context, *MsgUpdateParams) (*MsgUpdateParamsResponse, error)
@@ -205,12 +399,33 @@ type MsgServer interface {
 type UnimplementedMsgServer struct {
 }
 
+func (*UnimplementedMsgServer) SubmitCheckpoint(ctx context.Context, req *MsgSubmitCheckpoint) (*MsgSubmitCheckpointResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SubmitCheckpoint not implemented")
+}
 func (*UnimplementedMsgServer) UpdateParams(ctx context.Context, req *MsgUpdateParams) (*MsgUpdateParamsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateParams not implemented")
 }
 
 func RegisterMsgServer(s grpc1.Server, srv MsgServer) {
 	s.RegisterService(&_Msg_serviceDesc, srv)
+}
+
+func _Msg_SubmitCheckpoint_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgSubmitCheckpoint)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MsgServer).SubmitCheckpoint(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/lucidchain.checkpoint.v1.Msg/SubmitCheckpoint",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MsgServer).SubmitCheckpoint(ctx, req.(*MsgSubmitCheckpoint))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _Msg_UpdateParams_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -237,12 +452,138 @@ var _Msg_serviceDesc = grpc.ServiceDesc{
 	HandlerType: (*MsgServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
+			MethodName: "SubmitCheckpoint",
+			Handler:    _Msg_SubmitCheckpoint_Handler,
+		},
+		{
 			MethodName: "UpdateParams",
 			Handler:    _Msg_UpdateParams_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
 	Metadata: "lucidchain/checkpoint/v1/tx.proto",
+}
+
+func (m *MsgSubmitCheckpoint) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *MsgSubmitCheckpoint) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *MsgSubmitCheckpoint) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Signatures) > 0 {
+		for iNdEx := len(m.Signatures) - 1; iNdEx >= 0; iNdEx-- {
+			{
+				size, err := m.Signatures[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarintTx(dAtA, i, uint64(size))
+			}
+			i--
+			dAtA[i] = 0x4a
+		}
+	}
+	if m.SignerSetVersion != 0 {
+		i = encodeVarintTx(dAtA, i, uint64(m.SignerSetVersion))
+		i--
+		dAtA[i] = 0x40
+	}
+	if len(m.DataPointer) > 0 {
+		i -= len(m.DataPointer)
+		copy(dAtA[i:], m.DataPointer)
+		i = encodeVarintTx(dAtA, i, uint64(len(m.DataPointer)))
+		i--
+		dAtA[i] = 0x3a
+	}
+	if m.RecordCount != 0 {
+		i = encodeVarintTx(dAtA, i, uint64(m.RecordCount))
+		i--
+		dAtA[i] = 0x30
+	}
+	if len(m.PreviousCheckpointHash) > 0 {
+		i -= len(m.PreviousCheckpointHash)
+		copy(dAtA[i:], m.PreviousCheckpointHash)
+		i = encodeVarintTx(dAtA, i, uint64(len(m.PreviousCheckpointHash)))
+		i--
+		dAtA[i] = 0x2a
+	}
+	if len(m.StateRoot) > 0 {
+		i -= len(m.StateRoot)
+		copy(dAtA[i:], m.StateRoot)
+		i = encodeVarintTx(dAtA, i, uint64(len(m.StateRoot)))
+		i--
+		dAtA[i] = 0x22
+	}
+	if m.Sequence != 0 {
+		i = encodeVarintTx(dAtA, i, uint64(m.Sequence))
+		i--
+		dAtA[i] = 0x18
+	}
+	if len(m.SidechainId) > 0 {
+		i -= len(m.SidechainId)
+		copy(dAtA[i:], m.SidechainId)
+		i = encodeVarintTx(dAtA, i, uint64(len(m.SidechainId)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.Submitter) > 0 {
+		i -= len(m.Submitter)
+		copy(dAtA[i:], m.Submitter)
+		i = encodeVarintTx(dAtA, i, uint64(len(m.Submitter)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *MsgSubmitCheckpointResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *MsgSubmitCheckpointResponse) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *MsgSubmitCheckpointResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.CheckpointHash) > 0 {
+		i -= len(m.CheckpointHash)
+		copy(dAtA[i:], m.CheckpointHash)
+		i = encodeVarintTx(dAtA, i, uint64(len(m.CheckpointHash)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if m.FinalizedHeight != 0 {
+		i = encodeVarintTx(dAtA, i, uint64(m.FinalizedHeight))
+		i--
+		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
 }
 
 func (m *MsgUpdateParams) Marshal() (dAtA []byte, err error) {
@@ -319,6 +660,66 @@ func encodeVarintTx(dAtA []byte, offset int, v uint64) int {
 	dAtA[offset] = uint8(v)
 	return base
 }
+func (m *MsgSubmitCheckpoint) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Submitter)
+	if l > 0 {
+		n += 1 + l + sovTx(uint64(l))
+	}
+	l = len(m.SidechainId)
+	if l > 0 {
+		n += 1 + l + sovTx(uint64(l))
+	}
+	if m.Sequence != 0 {
+		n += 1 + sovTx(uint64(m.Sequence))
+	}
+	l = len(m.StateRoot)
+	if l > 0 {
+		n += 1 + l + sovTx(uint64(l))
+	}
+	l = len(m.PreviousCheckpointHash)
+	if l > 0 {
+		n += 1 + l + sovTx(uint64(l))
+	}
+	if m.RecordCount != 0 {
+		n += 1 + sovTx(uint64(m.RecordCount))
+	}
+	l = len(m.DataPointer)
+	if l > 0 {
+		n += 1 + l + sovTx(uint64(l))
+	}
+	if m.SignerSetVersion != 0 {
+		n += 1 + sovTx(uint64(m.SignerSetVersion))
+	}
+	if len(m.Signatures) > 0 {
+		for _, e := range m.Signatures {
+			l = e.Size()
+			n += 1 + l + sovTx(uint64(l))
+		}
+	}
+	return n
+}
+
+func (m *MsgSubmitCheckpointResponse) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.FinalizedHeight != 0 {
+		n += 1 + sovTx(uint64(m.FinalizedHeight))
+	}
+	l = len(m.CheckpointHash)
+	if l > 0 {
+		n += 1 + l + sovTx(uint64(l))
+	}
+	return n
+}
+
 func (m *MsgUpdateParams) Size() (n int) {
 	if m == nil {
 		return 0
@@ -348,6 +749,414 @@ func sovTx(x uint64) (n int) {
 }
 func sozTx(x uint64) (n int) {
 	return sovTx(uint64((x << 1) ^ uint64((int64(x) >> 63))))
+}
+func (m *MsgSubmitCheckpoint) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTx
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: MsgSubmitCheckpoint: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: MsgSubmitCheckpoint: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Submitter", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Submitter = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SidechainId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.SidechainId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Sequence", wireType)
+			}
+			m.Sequence = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Sequence |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field StateRoot", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				byteLen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.StateRoot = append(m.StateRoot[:0], dAtA[iNdEx:postIndex]...)
+			if m.StateRoot == nil {
+				m.StateRoot = []byte{}
+			}
+			iNdEx = postIndex
+		case 5:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field PreviousCheckpointHash", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				byteLen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.PreviousCheckpointHash = append(m.PreviousCheckpointHash[:0], dAtA[iNdEx:postIndex]...)
+			if m.PreviousCheckpointHash == nil {
+				m.PreviousCheckpointHash = []byte{}
+			}
+			iNdEx = postIndex
+		case 6:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field RecordCount", wireType)
+			}
+			m.RecordCount = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.RecordCount |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 7:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field DataPointer", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.DataPointer = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 8:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SignerSetVersion", wireType)
+			}
+			m.SignerSetVersion = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.SignerSetVersion |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 9:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Signatures", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Signatures = append(m.Signatures, Signature{})
+			if err := m.Signatures[len(m.Signatures)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTx(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthTx
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *MsgSubmitCheckpointResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTx
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: MsgSubmitCheckpointResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: MsgSubmitCheckpointResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field FinalizedHeight", wireType)
+			}
+			m.FinalizedHeight = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.FinalizedHeight |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field CheckpointHash", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				byteLen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.CheckpointHash = append(m.CheckpointHash[:0], dAtA[iNdEx:postIndex]...)
+			if m.CheckpointHash == nil {
+				m.CheckpointHash = []byte{}
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTx(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthTx
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
 }
 func (m *MsgUpdateParams) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)

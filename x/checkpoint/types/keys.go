@@ -15,5 +15,15 @@ const (
 	GovModuleName = "gov"
 )
 
-// ParamsKey is the prefix to retrieve all Params
-var ParamsKey = collections.NewPrefix("p_checkpoint")
+// Collection prefixes. They must be unique within this module and stable
+// after launch (changing one orphans existing state).
+var (
+	// ParamsKey is the prefix for module params.
+	ParamsKey = collections.NewPrefix("p_checkpoint")
+
+	// CheckpointKey is the prefix for checkpoints, keyed by (sidechain_id, sequence).
+	CheckpointKey = collections.NewPrefix("checkpoint/value/")
+
+	// LatestSequenceKey is the prefix for the latest accepted sequence per sidechain.
+	LatestSequenceKey = collections.NewPrefix("checkpoint/latest/")
+)
