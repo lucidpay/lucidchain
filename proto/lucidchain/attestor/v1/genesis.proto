@@ -4,6 +4,7 @@ package lucidchain.attestor.v1;
 import "amino/amino.proto";
 import "gogoproto/gogo.proto";
 import "lucidchain/attestor/v1/params.proto";
+import "lucidchain/attestor/v1/attestor.proto";
 
 option go_package = "github.com/lucidpay/lucidchain/x/attestor/types";
 
@@ -14,4 +15,8 @@ message GenesisState {
     (gogoproto.nullable) = false,
     (amino.dont_omitempty) = true
   ];
+  repeated Attestor attestors = 2 [(gogoproto.nullable) = false];
+  repeated AttestationSchema schemas = 3 [(gogoproto.nullable) = false];
+  repeated Attestation attestations = 4 [(gogoproto.nullable) = false];
+  repeated Dispute disputes = 5 [(gogoproto.nullable) = false];
 }

@@ -15,5 +15,19 @@ const (
 	GovModuleName = "gov"
 )
 
-// ParamsKey is the prefix to retrieve all Params
-var ParamsKey = collections.NewPrefix("p_attestor")
+// Collection prefixes. They must be unique within this module, none may be a
+// byte-prefix of another, and they must stay stable after launch.
+var (
+	ParamsKey = collections.NewPrefix("p_attestor")
+
+	AttestorKey    = collections.NewPrefix("attestor/value/")
+	SchemaKey      = collections.NewPrefix("schema/value/")
+	AttestationKey = collections.NewPrefix("attestation/value/")
+	DisputeKey     = collections.NewPrefix("dispute/value/")
+
+	// AttestationByCheckpointKey indexes attestations by (sidechain_id, sequence, attestation_id).
+	AttestationByCheckpointKey = collections.NewPrefix("attestation/by_checkpoint/")
+
+	// ExitQueueKey orders exited attestors by (bond_return_at unix seconds, attestor_id).
+	ExitQueueKey = collections.NewPrefix("attestor/exit_queue/")
+)

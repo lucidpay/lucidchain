@@ -1,0 +1,196 @@
+syntax = "proto3";
+package lucidchain.attestor.v1;
+
+option go_package = "github.com/lucidpay/lucidchain/x/attestor/types";
+
+import "gogoproto/gogo.proto";
+import "cosmos_proto/cosmos.proto";
+import "google/protobuf/any.proto";
+import "google/protobuf/timestamp.proto";
+
+// AttestorStatus defines the lifecycle state of a registered attestor.
+enum AttestorStatus {
+  ATTESTOR_STATUS_UNSPECIFIED = 0;
+  ATTESTOR_STATUS_PENDING     = 1; // registered, bond posted, awaiting activation
+  ATTESTOR_STATUS_ACTIVE      = 2; // eligible to submit attestations
+  ATTESTOR_STATUS_SUSPENDED   = 3; // temporarily barred (e.g. open dispute)
+  ATTESTOR_STATUS_SLASHED     = 4; // bond slashed for a provable fault
+  ATTESTOR_STATUS_EXITED      = 5; // voluntarily deregistered
+}
+
+// AttestationStatus tracks the dispute lifecycle of a single attestation.
+enum AttestationStatus {
+  ATTESTATION_STATUS_UNSPECIFIED = 0;
+  ATTESTATION_STATUS_ACTIVE      = 1; // published, within or past dispute window, standing
+  ATTESTATION_STATUS_DISPUTED    = 2; // a dispute has been raised, within dispute window
+  ATTESTATION_STATUS_UPHELD      = 3; // dispute resolved in the attestor's favor
+  ATTESTATION_STATUS_OVERTURNED  = 4; // dispute resolved against the attestor; may trigger slashing
+  ATTESTATION_STATUS_REVOKED     = 5; // attestor voluntarily revoked (e.g. credential expired)
+}
+
+// Attestor is the on-chain registration record for a qualified attesting entity
+// (e.g. a certification body, auditor, or regulator).
+message Attestor {
+  option (gogoproto.equal) = true;
+
+  string id = 1;                 // unique identifier, e.g. "dxb-tourism-authority"
+  string name = 2;
+  string operator = 3;           // bech32 address controlling this attestor's on-chain actions
+
+  // Domains this attestor is qualified to attest in, referencing published
+  // AttestationSchema ids (e.g. "hospitality.revenue-report.v1").
+  repeated string authorized_schema_ids = 4;
+
+  // CHANGED (was `repeated string signer_pubkeys`): SDK public keys, so the key
+  // type is explicit and post-quantum keys (ML-DSA-65) work. Order is
+  // significant: Signature.signer_index refers to a position in this list.
+  repeated google.protobuf.Any signer_keys = 5 [(cosmos_proto.accepts_interface) = "cosmos.crypto.PubKey"];
+
+  uint32 signature_threshold = 6;
+
+  AttestorStatus status = 7;
+
+  string bond_amount = 8 [
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.nullable) = false
+  ];
+
+  // Simple reputation counter: successful attestations minus overturned ones.
+  // Informational only -- not consensus-critical, not used in signature checks.
+  int64 reputation_score = 9;
+
+  google.protobuf.Timestamp registered_at = 10 [(gogoproto.stdtime) = true, (gogoproto.nullable) = false];
+
+  // URI to off-chain credentials/accreditation evidence for this attestor.
+  string credential_uri = 11;
+
+  // NEW: incremented on every change to signer_keys or signature_threshold.
+  // Attestations record the version they were signed under.
+  uint64 signer_set_version = 12;
+
+  // NEW: number of unresolved disputes against this attestor's attestations.
+  // The bond is not returned while this is non-zero.
+  uint64 open_disputes = 13;
+
+  // NEW: set by InitiateAttestorExit.
+  google.protobuf.Timestamp exit_requested_at = 14 [(gogoproto.stdtime) = true, (gogoproto.nullable) = true];
+  google.protobuf.Timestamp bond_return_at = 15 [(gogoproto.stdtime) = true, (gogoproto.nullable) = true];
+}
+
+// AttestationSchema defines the shape and scope of a claim attestors can make.
+// Published via governance so the exact wording of a claim -- and what it
+// deliberately does NOT cover -- is fixed and auditable, not ad hoc per attestation.
+message AttestationSchema {
+  option (gogoproto.equal) = true;
+
+  string id = 1;                  // e.g. "hospitality.revenue-report.v1"
+  string title = 2;
+  string domain = 3;               // e.g. "hospitality", "smart-city.vehicle-compliance"
+
+  // Precise, narrow description of what a valid attestation under this schema asserts.
+  string claim_description = 4;
+
+  // Explicit statement of what is NOT covered (e.g. "does not verify underlying
+  // transaction authenticity, only that reported figures match submitted source data").
+  string exclusions = 5;
+
+  // Data sources an attestor must consult per this schema (informational/off-chain process,
+  // documented here for auditability).
+  repeated string required_data_sources = 6;
+
+  // How long an attestation under this schema remains valid before it must be renewed.
+  uint64 validity_period_seconds = 7;
+
+  // Dispute window during which an ATTESTATION_STATUS_ACTIVE attestation can be challenged.
+  uint64 dispute_window_seconds = 8;
+
+  bool active = 9; // governance can retire a schema without deleting history
+}
+
+// Attestation is a signed claim by a registered attestor about a specific
+// sidechain checkpoint (or, more generally, a specific on-chain reference).
+message Attestation {
+  option (gogoproto.equal) = true;
+
+  string id = 1;                   // deterministic: hash of (schema_id, sidechain_id, sequence, attestor_id)
+  string schema_id = 2;
+  string attestor_id = 3;
+  string sidechain_id = 4;
+  uint64 checkpoint_sequence = 5;  // the x/checkpoint sequence this attestation is about
+
+  // Structured claim payload (schema-specific fields), encoded as JSON per the
+  // schema's documented format. Kept off the hot path of consensus-critical logic --
+  // the module treats this as an opaque, size-limited blob.
+  bytes claim_payload = 6;
+
+  repeated Signature signatures = 7;
+
+  AttestationStatus status = 8;
+
+  uint64 issued_height = 9;
+  google.protobuf.Timestamp issued_at = 10 [(gogoproto.stdtime) = true, (gogoproto.nullable) = false];
+  google.protobuf.Timestamp expires_at = 11 [(gogoproto.stdtime) = true, (gogoproto.nullable) = false];
+
+  // NEW: x/checkpoint checkpoint_hash this attestation commits to, so the
+  // signers vouch for that exact checkpoint, not just its sequence number.
+  bytes checkpoint_hash = 12;
+
+  // NEW: Attestor.signer_set_version the signatures were verified under.
+  uint64 signer_set_version = 13;
+
+  // NEW: bit i set => Attestor.signer_keys[i] produced a valid signature
+  // (byte i/8, bit i%8, least significant bit first).
+  bytes signer_bitmap = 14;
+
+  // NEW: SHA-256 of the concatenation of the verified signatures ordered by signer_index.
+  bytes signatures_digest = 15;
+
+}
+
+// Signature is one signer's signature over the AttestationSignDoc sign bytes.
+// CHANGED: signer_index replaces the `string pubkey` field.
+message Signature {
+  option (gogoproto.equal) = true;
+  // Index into Attestor.signer_keys at the attestation's signer_set_version.
+  uint32 signer_index = 1;
+  bytes signature = 2;
+}
+
+// NEW: the document every signer signs (after a domain-separation prefix).
+message AttestationSignDoc {
+  string chain_id = 1;
+  string schema_id = 2;
+  string attestor_id = 3;
+  string sidechain_id = 4;
+  uint64 checkpoint_sequence = 5;
+  bytes checkpoint_hash = 6;
+  bytes claim_payload = 7;
+  uint64 signer_set_version = 8;
+}
+
+
+
+// Dispute is raised against an Attestation within its schema's dispute window.
+message Dispute {
+  option (gogoproto.equal) = true;
+
+
+  // Deterministic: hex(sha256(domain || attestation_id)). An attestation can
+  // be disputed at most once, so the mapping is one-to-one. See types.DisputeID.
+  string id = 1;
+  string attestation_id = 2;
+  string challenger = 3 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  string evidence_uri = 4;        // off-chain evidence supporting the challenge
+  string bond_amount = 5 [
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.nullable) = false
+  ];             // returned plus a reward if upheld, burned if not
+  bool resolved = 6;
+  bool upheld = 7;                // true if the dispute succeeded (attestation overturned)
+  google.protobuf.Timestamp raised_at = 8 [(gogoproto.stdtime) = true, (gogoproto.nullable) = false];
+  google.protobuf.Timestamp resolved_at = 9 [(gogoproto.stdtime) = true, (gogoproto.nullable) = true];
+
+  // NEW: off-chain record of the resolution reasoning (from MsgResolveDispute).
+  string rationale_uri = 10;
+}
+

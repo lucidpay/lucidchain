@@ -5,7 +5,9 @@ import "amino/amino.proto";
 import "cosmos/msg/v1/msg.proto";
 import "cosmos_proto/cosmos.proto";
 import "gogoproto/gogo.proto";
+import "google/protobuf/any.proto";
 import "lucidchain/attestor/v1/params.proto";
+import "lucidchain/attestor/v1/attestor.proto";
 
 option go_package = "github.com/lucidpay/lucidchain/x/attestor/types";
 
@@ -13,10 +15,150 @@ option go_package = "github.com/lucidpay/lucidchain/x/attestor/types";
 service Msg {
   option (cosmos.msg.v1.service) = true;
 
+  rpc RegisterAttestor(MsgRegisterAttestor) returns (MsgRegisterAttestorResponse);
+  rpc UpdateAttestorSigners(MsgUpdateAttestorSigners) returns (MsgUpdateAttestorSignersResponse);
+  rpc InitiateAttestorExit(MsgInitiateAttestorExit) returns (MsgInitiateAttestorExitResponse);
+
+  // NEW: governance vetting step. Registered attestors stay PENDING until activated.
+  rpc ActivateAttestor(MsgActivateAttestor) returns (MsgActivateAttestorResponse);
+
+  // SubmitAttestation publishes a signed claim about a specific checkpoint,
+  // under a specific, governance-approved schema.
+  rpc SubmitAttestation(MsgSubmitAttestation) returns (MsgSubmitAttestationResponse);
+
+  // NEW: the attestor withdraws an attestation (ATTESTATION_STATUS_REVOKED).
+  rpc RevokeAttestation(MsgRevokeAttestation) returns (MsgRevokeAttestationResponse);
+
+
+  // RaiseDispute challenges an active attestation within its dispute window.
+  rpc RaiseDispute(MsgRaiseDispute) returns (MsgRaiseDisputeResponse);
+
+  // ResolveDispute is called by the dispute_resolver_authority (initially the
+  // gov module) to settle a raised dispute.
+  rpc ResolveDispute(MsgResolveDispute) returns (MsgResolveDisputeResponse);
+
+  // Governance-only.
+  rpc CreateAttestationSchema(MsgCreateAttestationSchema) returns (MsgCreateAttestationSchemaResponse);
+  rpc RetireAttestationSchema(MsgRetireAttestationSchema) returns (MsgRetireAttestationSchemaResponse);
+
   // UpdateParams defines a (governance) operation for updating the module
   // parameters. The authority defaults to the x/gov module account.
   rpc UpdateParams(MsgUpdateParams) returns (MsgUpdateParamsResponse);
 }
+
+message MsgRegisterAttestor {
+  option (cosmos.msg.v1.signer) = "operator";
+
+  string operator = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  string id = 2;
+  string name = 3;
+  repeated string authorized_schema_ids = 4;
+  // CHANGED (was `repeated string signer_pubkeys`).
+  repeated google.protobuf.Any signer_keys = 5
+      [(cosmos_proto.accepts_interface) = "cosmos.crypto.PubKey"];
+  uint32 signature_threshold = 6;
+  string bond_amount = 7 [
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.nullable) = false
+  ];
+  string credential_uri = 8;
+}
+
+message MsgRegisterAttestorResponse { string id = 1; }
+
+message MsgUpdateAttestorSigners {
+  option (cosmos.msg.v1.signer) = "operator";
+  string operator = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  string id = 2;
+  // CHANGED (was `repeated string signer_pubkeys`).
+  repeated google.protobuf.Any signer_keys = 3
+      [(cosmos_proto.accepts_interface) = "cosmos.crypto.PubKey"];
+  uint32 signature_threshold = 4;
+}
+message MsgUpdateAttestorSignersResponse {}
+
+message MsgInitiateAttestorExit {
+  option (cosmos.msg.v1.signer) = "operator";
+  string operator = 1;
+  string id = 2;
+}
+message MsgInitiateAttestorExitResponse {}
+
+// NEW
+message MsgActivateAttestor {
+  option (cosmos.msg.v1.signer) = "authority";
+  string authority = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  string id = 2;
+}
+message MsgActivateAttestorResponse {}
+
+message MsgSubmitAttestation {
+  // Submitter pays tx fees and must be the attestor's registered operator
+  // (use x/authz to delegate: the granter appears here). Signatures are
+  // verified against the attestor's registered signer keys in the handler.
+  option (cosmos.msg.v1.signer) = "submitter";
+
+  string submitter = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  string schema_id = 2;
+  string attestor_id = 3;
+  string sidechain_id = 4;
+  uint64 checkpoint_sequence = 5;
+  bytes claim_payload = 6;
+  // CHANGED: non-nullable, and Signature now carries signer_index.
+  repeated Signature signatures = 7 [(gogoproto.nullable) = false];
+  // NEW: must equal the attestor's current signer_set_version.
+  uint64 signer_set_version = 8;
+}
+
+message MsgSubmitAttestationResponse {
+  string attestation_id = 1;
+}
+
+// NEW
+message MsgRevokeAttestation {
+  option (cosmos.msg.v1.signer) = "operator";
+  string operator = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  string attestation_id = 2;
+}
+message MsgRevokeAttestationResponse {}
+
+
+
+message MsgRaiseDispute {
+  option (cosmos.msg.v1.signer) = "challenger";
+  string challenger = 1;
+  string attestation_id = 2;
+  string evidence_uri = 3;
+  string bond_amount = 4 [
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.nullable) = false
+  ];
+}
+message MsgRaiseDisputeResponse { string dispute_id = 1; }
+
+message MsgResolveDispute {
+  option (cosmos.msg.v1.signer) = "authority";
+  string authority = 1;
+  string dispute_id = 2;
+  bool upheld = 3;
+  string rationale_uri = 4; // off-chain record of the resolution reasoning
+}
+message MsgResolveDisputeResponse {}
+
+message MsgCreateAttestationSchema {
+  option (cosmos.msg.v1.signer) = "authority";
+  string authority = 1;
+  AttestationSchema schema = 2;
+}
+message MsgCreateAttestationSchemaResponse {}
+
+message MsgRetireAttestationSchema {
+  option (cosmos.msg.v1.signer) = "authority";
+  string authority = 1;
+  string schema_id = 2;
+}
+message MsgRetireAttestationSchemaResponse {}
+
 
 // MsgUpdateParams is the Msg/UpdateParams request type.
 message MsgUpdateParams {

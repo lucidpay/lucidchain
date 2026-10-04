@@ -4,6 +4,7 @@
 package types
 
 import (
+	cosmossdk_io_math "cosmossdk.io/math"
 	fmt "fmt"
 	_ "github.com/cosmos/cosmos-sdk/types/tx/amino"
 	_ "github.com/cosmos/gogoproto/gogoproto"
@@ -26,6 +27,36 @@ const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
 // Params defines the parameters for the module.
 type Params struct {
+	MinAttestorBond cosmossdk_io_math.Int `protobuf:"bytes,1,opt,name=min_attestor_bond,json=minAttestorBond,proto3,customtype=cosmossdk.io/math.Int" json:"min_attestor_bond"`
+	MinDisputeBond  cosmossdk_io_math.Int `protobuf:"bytes,2,opt,name=min_dispute_bond,json=minDisputeBond,proto3,customtype=cosmossdk.io/math.Int" json:"min_dispute_bond"`
+	// Governance/arbiter mechanism resolves disputes; this is the account (e.g.
+	// gov module) authorized to call ResolveDispute. A future version may replace
+	// this with a dedicated arbitration module.
+	DisputeResolverAuthority string `protobuf:"bytes,3,opt,name=dispute_resolver_authority,json=disputeResolverAuthority,proto3" json:"dispute_resolver_authority,omitempty"`
+	MaxClaimPayloadBytes     uint32 `protobuf:"varint,4,opt,name=max_claim_payload_bytes,json=maxClaimPayloadBytes,proto3" json:"max_claim_payload_bytes,omitempty"`
+	// NEW: denom of every attestor and dispute bond. Bonds are stored as bare
+	// amounts, so this cannot be changed once bonds exist (UpdateParams rejects it).
+	BondDenom string `protobuf:"bytes,5,opt,name=bond_denom,json=bondDenom,proto3" json:"bond_denom,omitempty"`
+	// NEW: minimum time between InitiateAttestorExit and the bond being returned.
+	// The effective cooldown is the larger of this and the longest
+	// dispute_window_seconds among the attestor's authorized schemas.
+	ExitCooldownSeconds uint64 `protobuf:"varint,6,opt,name=exit_cooldown_seconds,json=exitCooldownSeconds,proto3" json:"exit_cooldown_seconds,omitempty"`
+	// NEW: fraction of the attestor's bond slashed when a dispute is upheld.
+	SlashFraction cosmossdk_io_math.LegacyDec `protobuf:"bytes,7,opt,name=slash_fraction,json=slashFraction,proto3,customtype=cosmossdk.io/math.LegacyDec" json:"slash_fraction"`
+	// NEW: fraction of the slashed amount paid to the challenger on top of the
+	// returned dispute bond. The rest of the slashed amount is burned.
+	ChallengerRewardFraction cosmossdk_io_math.LegacyDec `protobuf:"bytes,8,opt,name=challenger_reward_fraction,json=challengerRewardFraction,proto3,customtype=cosmossdk.io/math.LegacyDec" json:"challenger_reward_fraction"`
+	// NEW: maximum signer keys per attestor. ML-DSA-65 pubkeys are 1952 bytes
+	// each, so this bounds per-attestor state size.
+	MaxSignerKeys uint32 `protobuf:"varint,9,opt,name=max_signer_keys,json=maxSignerKeys,proto3" json:"max_signer_keys,omitempty"`
+	// NEW: protobuf type URLs of public keys accepted as attestor signers, e.g.
+	// "/cosmos.crypto.mldsa65.PubKey". Adding classical types re-opens
+	// attestations to quantum forgery.
+	AllowedPubkeyTypeUrls []string `protobuf:"bytes,10,rep,name=allowed_pubkey_type_urls,json=allowedPubkeyTypeUrls,proto3" json:"allowed_pubkey_type_urls,omitempty"`
+	// NEW: gas charged per signature verified.
+	SignatureVerificationGas uint64 `protobuf:"varint,11,opt,name=signature_verification_gas,json=signatureVerificationGas,proto3" json:"signature_verification_gas,omitempty"`
+	// NEW: maximum length of credential_uri, evidence_uri and rationale_uri.
+	MaxUriBytes uint32 `protobuf:"varint,12,opt,name=max_uri_bytes,json=maxUriBytes,proto3" json:"max_uri_bytes,omitempty"`
 }
 
 func (m *Params) Reset()         { *m = Params{} }
@@ -61,6 +92,62 @@ func (m *Params) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_Params proto.InternalMessageInfo
 
+func (m *Params) GetDisputeResolverAuthority() string {
+	if m != nil {
+		return m.DisputeResolverAuthority
+	}
+	return ""
+}
+
+func (m *Params) GetMaxClaimPayloadBytes() uint32 {
+	if m != nil {
+		return m.MaxClaimPayloadBytes
+	}
+	return 0
+}
+
+func (m *Params) GetBondDenom() string {
+	if m != nil {
+		return m.BondDenom
+	}
+	return ""
+}
+
+func (m *Params) GetExitCooldownSeconds() uint64 {
+	if m != nil {
+		return m.ExitCooldownSeconds
+	}
+	return 0
+}
+
+func (m *Params) GetMaxSignerKeys() uint32 {
+	if m != nil {
+		return m.MaxSignerKeys
+	}
+	return 0
+}
+
+func (m *Params) GetAllowedPubkeyTypeUrls() []string {
+	if m != nil {
+		return m.AllowedPubkeyTypeUrls
+	}
+	return nil
+}
+
+func (m *Params) GetSignatureVerificationGas() uint64 {
+	if m != nil {
+		return m.SignatureVerificationGas
+	}
+	return 0
+}
+
+func (m *Params) GetMaxUriBytes() uint32 {
+	if m != nil {
+		return m.MaxUriBytes
+	}
+	return 0
+}
+
 func init() {
 	proto.RegisterType((*Params)(nil), "lucidchain.attestor.v1.Params")
 }
@@ -70,19 +157,44 @@ func init() {
 }
 
 var fileDescriptor_0fef33ed1146a753 = []byte{
-	// 177 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x52, 0xce, 0x29, 0x4d, 0xce,
-	0x4c, 0x49, 0xce, 0x48, 0xcc, 0xcc, 0xd3, 0x4f, 0x2c, 0x29, 0x49, 0x2d, 0x2e, 0xc9, 0x2f, 0xd2,
-	0x2f, 0x33, 0xd4, 0x2f, 0x48, 0x2c, 0x4a, 0xcc, 0x2d, 0xd6, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17,
-	0x12, 0x43, 0x28, 0xd2, 0x83, 0x29, 0xd2, 0x2b, 0x33, 0x94, 0x12, 0x4c, 0xcc, 0xcd, 0xcc, 0xcb,
-	0xd7, 0x07, 0x93, 0x10, 0xa5, 0x52, 0x22, 0xe9, 0xf9, 0xe9, 0xf9, 0x60, 0xa6, 0x3e, 0x88, 0x05,
-	0x11, 0x55, 0xd2, 0xe7, 0x62, 0x0b, 0x00, 0x1b, 0x68, 0xa5, 0xfa, 0x62, 0x81, 0x3c, 0x63, 0xd7,
-	0xf3, 0x0d, 0x5a, 0x32, 0x48, 0x16, 0x57, 0x20, 0xac, 0x86, 0x28, 0x73, 0xf2, 0x3c, 0xf1, 0x48,
-	0x8e, 0xf1, 0xc2, 0x23, 0x39, 0xc6, 0x07, 0x8f, 0xe4, 0x18, 0x27, 0x3c, 0x96, 0x63, 0xb8, 0xf0,
-	0x58, 0x8e, 0xe1, 0xc6, 0x63, 0x39, 0x86, 0x28, 0xfd, 0xf4, 0xcc, 0x92, 0x8c, 0xd2, 0x24, 0xbd,
-	0xe4, 0xfc, 0x5c, 0x7d, 0xb0, 0x11, 0x05, 0x89, 0x95, 0xfa, 0xd8, 0xcd, 0x2a, 0xa9, 0x2c, 0x48,
-	0x2d, 0x4e, 0x62, 0x03, 0x3b, 0xc1, 0x18, 0x30, 0x00, 0x1e, 0x36, 0x52, 0x79, 0xea, 0x00, 0x00,
-	0x00,
+	// 589 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x93, 0xcf, 0x4e, 0x14, 0x4d,
+	0x14, 0xc5, 0xa7, 0x3f, 0xfe, 0x7c, 0x4e, 0x21, 0x20, 0x2d, 0x68, 0x65, 0x94, 0x61, 0x02, 0xd1,
+	0x4c, 0x5c, 0x4c, 0x07, 0x8d, 0x31, 0x31, 0x6e, 0x18, 0x88, 0x04, 0x75, 0x41, 0x1a, 0x71, 0xe1,
+	0xa6, 0x72, 0xa7, 0xbb, 0xe8, 0xa9, 0xd0, 0x55, 0xd5, 0xa9, 0xaa, 0x1e, 0xba, 0x5f, 0xc1, 0x95,
+	0x8f, 0xe0, 0x23, 0xf8, 0x18, 0x2c, 0x59, 0x1a, 0x17, 0xc4, 0xc0, 0x42, 0x5f, 0xc2, 0xc4, 0x54,
+	0x75, 0x0f, 0x43, 0xa2, 0x0b, 0x36, 0x93, 0xca, 0x3d, 0xe7, 0xfe, 0xaa, 0xe6, 0xdc, 0xbe, 0x68,
+	0x23, 0xcd, 0x23, 0x16, 0x47, 0x43, 0x60, 0x22, 0x00, 0x63, 0xa8, 0x36, 0x52, 0x05, 0xa3, 0xcd,
+	0x20, 0x03, 0x05, 0x5c, 0xf7, 0x32, 0x25, 0x8d, 0xf4, 0xef, 0x4d, 0x4c, 0xbd, 0xb1, 0xa9, 0x37,
+	0xda, 0x6c, 0x2d, 0x01, 0x67, 0x42, 0x06, 0xee, 0xb7, 0xb2, 0xb6, 0x96, 0x13, 0x99, 0x48, 0x77,
+	0x0c, 0xec, 0xa9, 0xaa, 0xae, 0xff, 0x9e, 0x41, 0xb3, 0xfb, 0x8e, 0xe8, 0xef, 0xa1, 0x25, 0xce,
+	0x04, 0x19, 0x63, 0xc8, 0x40, 0x8a, 0x18, 0x7b, 0x1d, 0xaf, 0xdb, 0xec, 0xaf, 0x9e, 0x9e, 0xaf,
+	0x35, 0xbe, 0x9f, 0xaf, 0xad, 0x44, 0x52, 0x73, 0xa9, 0x75, 0x7c, 0xdc, 0x63, 0x32, 0xe0, 0x60,
+	0x86, 0xbd, 0x3d, 0x61, 0xc2, 0x45, 0xce, 0xc4, 0x56, 0xdd, 0xd6, 0x97, 0x22, 0xf6, 0x77, 0xd1,
+	0x1d, 0x8b, 0x8a, 0x99, 0xce, 0x72, 0x43, 0x2b, 0xd2, 0x7f, 0x37, 0x21, 0x2d, 0x70, 0x26, 0x76,
+	0xaa, 0x2e, 0x07, 0x7a, 0x85, 0x5a, 0x63, 0x88, 0xa2, 0x5a, 0xa6, 0x23, 0xaa, 0x08, 0xe4, 0x66,
+	0x28, 0x15, 0x33, 0x25, 0x9e, 0xb2, 0xc8, 0x10, 0xd7, 0x8e, 0xb0, 0x36, 0x6c, 0x8d, 0x75, 0xff,
+	0x39, 0xba, 0xcf, 0xa1, 0x20, 0x51, 0x0a, 0x8c, 0x93, 0x0c, 0xca, 0x54, 0x42, 0x4c, 0x06, 0xa5,
+	0xa1, 0x1a, 0x4f, 0x77, 0xbc, 0xee, 0x7c, 0xb8, 0xcc, 0xa1, 0xd8, 0xb6, 0xea, 0x7e, 0x25, 0xf6,
+	0xad, 0xe6, 0xaf, 0x22, 0x64, 0x5f, 0x4c, 0x62, 0x2a, 0x24, 0xc7, 0x33, 0xee, 0x92, 0xa6, 0xad,
+	0xec, 0xd8, 0x82, 0xff, 0x14, 0xad, 0xd0, 0x82, 0x19, 0x12, 0x49, 0x99, 0xc6, 0xf2, 0x44, 0x10,
+	0x4d, 0x23, 0x29, 0x62, 0x8d, 0x67, 0x3b, 0x5e, 0x77, 0x3a, 0xbc, 0x6b, 0xc5, 0xed, 0x5a, 0x3b,
+	0xa8, 0x24, 0xff, 0x0d, 0x5a, 0xd0, 0x29, 0xe8, 0x21, 0x39, 0x52, 0x10, 0x19, 0x26, 0x05, 0xfe,
+	0xdf, 0xc5, 0xb1, 0x51, 0xc7, 0xf1, 0xe0, 0xef, 0x38, 0xde, 0xd1, 0x04, 0xa2, 0x72, 0x87, 0x46,
+	0xe1, 0xbc, 0x6b, 0x7d, 0x5d, 0x77, 0xfa, 0x80, 0x5a, 0xd1, 0x10, 0xd2, 0x94, 0x8a, 0x84, 0x2a,
+	0xa2, 0xe8, 0x09, 0xa8, 0x78, 0xc2, 0xbd, 0x75, 0x73, 0x2e, 0x9e, 0x60, 0x42, 0x47, 0xb9, 0xba,
+	0xe2, 0x31, 0x5a, 0xb4, 0xc1, 0x69, 0x96, 0x08, 0xaa, 0xc8, 0x31, 0x2d, 0x35, 0x6e, 0xba, 0xc0,
+	0xe6, 0x39, 0x14, 0x07, 0xae, 0xfa, 0x96, 0x96, 0xda, 0x7f, 0x81, 0x30, 0xa4, 0xa9, 0x3c, 0xa1,
+	0x31, 0xc9, 0xf2, 0xc1, 0x31, 0x2d, 0x89, 0x29, 0x33, 0x4a, 0x72, 0x95, 0x6a, 0x8c, 0x3a, 0x53,
+	0xdd, 0x66, 0xb8, 0x52, 0xeb, 0xfb, 0x4e, 0x7e, 0x5f, 0x66, 0xf4, 0x50, 0xa5, 0xda, 0xce, 0xd5,
+	0xc2, 0xc1, 0xe4, 0x8a, 0x92, 0x11, 0x55, 0xec, 0x88, 0x45, 0x60, 0xaf, 0x26, 0x09, 0x68, 0x3c,
+	0xe7, 0x82, 0xc4, 0x57, 0x8e, 0x0f, 0xd7, 0x0c, 0xbb, 0xa0, 0xfd, 0x75, 0x64, 0xdf, 0x41, 0x72,
+	0xc5, 0xea, 0x69, 0xde, 0x76, 0x8f, 0x9b, 0xe3, 0x50, 0x1c, 0x2a, 0xe6, 0x86, 0xf8, 0xf2, 0xd1,
+	0xaf, 0x2f, 0x6b, 0xde, 0xa7, 0x9f, 0x5f, 0x9f, 0x3c, 0xbc, 0xb6, 0x47, 0xc5, 0x64, 0x93, 0xaa,
+	0x8f, 0xbe, 0xbf, 0x77, 0x7a, 0xd1, 0xf6, 0xce, 0x2e, 0xda, 0xde, 0x8f, 0x8b, 0xb6, 0xf7, 0xf9,
+	0xb2, 0xdd, 0x38, 0xbb, 0x6c, 0x37, 0xbe, 0x5d, 0xb6, 0x1b, 0x1f, 0x83, 0x84, 0x99, 0x61, 0x3e,
+	0xe8, 0x45, 0x92, 0x07, 0x0e, 0x91, 0x41, 0x19, 0xfc, 0x9b, 0x65, 0xff, 0xb4, 0x1e, 0xcc, 0xba,
+	0x8d, 0x7a, 0xf6, 0x67, 0x00, 0x24, 0xde, 0x93, 0x99, 0xb9, 0x03, 0x00, 0x00,
 }
 
 func (this *Params) Equal(that interface{}) bool {
@@ -102,6 +214,47 @@ func (this *Params) Equal(that interface{}) bool {
 	if that1 == nil {
 		return this == nil
 	} else if this == nil {
+		return false
+	}
+	if !this.MinAttestorBond.Equal(that1.MinAttestorBond) {
+		return false
+	}
+	if !this.MinDisputeBond.Equal(that1.MinDisputeBond) {
+		return false
+	}
+	if this.DisputeResolverAuthority != that1.DisputeResolverAuthority {
+		return false
+	}
+	if this.MaxClaimPayloadBytes != that1.MaxClaimPayloadBytes {
+		return false
+	}
+	if this.BondDenom != that1.BondDenom {
+		return false
+	}
+	if this.ExitCooldownSeconds != that1.ExitCooldownSeconds {
+		return false
+	}
+	if !this.SlashFraction.Equal(that1.SlashFraction) {
+		return false
+	}
+	if !this.ChallengerRewardFraction.Equal(that1.ChallengerRewardFraction) {
+		return false
+	}
+	if this.MaxSignerKeys != that1.MaxSignerKeys {
+		return false
+	}
+	if len(this.AllowedPubkeyTypeUrls) != len(that1.AllowedPubkeyTypeUrls) {
+		return false
+	}
+	for i := range this.AllowedPubkeyTypeUrls {
+		if this.AllowedPubkeyTypeUrls[i] != that1.AllowedPubkeyTypeUrls[i] {
+			return false
+		}
+	}
+	if this.SignatureVerificationGas != that1.SignatureVerificationGas {
+		return false
+	}
+	if this.MaxUriBytes != that1.MaxUriBytes {
 		return false
 	}
 	return true
@@ -126,6 +279,94 @@ func (m *Params) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if m.MaxUriBytes != 0 {
+		i = encodeVarintParams(dAtA, i, uint64(m.MaxUriBytes))
+		i--
+		dAtA[i] = 0x60
+	}
+	if m.SignatureVerificationGas != 0 {
+		i = encodeVarintParams(dAtA, i, uint64(m.SignatureVerificationGas))
+		i--
+		dAtA[i] = 0x58
+	}
+	if len(m.AllowedPubkeyTypeUrls) > 0 {
+		for iNdEx := len(m.AllowedPubkeyTypeUrls) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.AllowedPubkeyTypeUrls[iNdEx])
+			copy(dAtA[i:], m.AllowedPubkeyTypeUrls[iNdEx])
+			i = encodeVarintParams(dAtA, i, uint64(len(m.AllowedPubkeyTypeUrls[iNdEx])))
+			i--
+			dAtA[i] = 0x52
+		}
+	}
+	if m.MaxSignerKeys != 0 {
+		i = encodeVarintParams(dAtA, i, uint64(m.MaxSignerKeys))
+		i--
+		dAtA[i] = 0x48
+	}
+	{
+		size := m.ChallengerRewardFraction.Size()
+		i -= size
+		if _, err := m.ChallengerRewardFraction.MarshalTo(dAtA[i:]); err != nil {
+			return 0, err
+		}
+		i = encodeVarintParams(dAtA, i, uint64(size))
+	}
+	i--
+	dAtA[i] = 0x42
+	{
+		size := m.SlashFraction.Size()
+		i -= size
+		if _, err := m.SlashFraction.MarshalTo(dAtA[i:]); err != nil {
+			return 0, err
+		}
+		i = encodeVarintParams(dAtA, i, uint64(size))
+	}
+	i--
+	dAtA[i] = 0x3a
+	if m.ExitCooldownSeconds != 0 {
+		i = encodeVarintParams(dAtA, i, uint64(m.ExitCooldownSeconds))
+		i--
+		dAtA[i] = 0x30
+	}
+	if len(m.BondDenom) > 0 {
+		i -= len(m.BondDenom)
+		copy(dAtA[i:], m.BondDenom)
+		i = encodeVarintParams(dAtA, i, uint64(len(m.BondDenom)))
+		i--
+		dAtA[i] = 0x2a
+	}
+	if m.MaxClaimPayloadBytes != 0 {
+		i = encodeVarintParams(dAtA, i, uint64(m.MaxClaimPayloadBytes))
+		i--
+		dAtA[i] = 0x20
+	}
+	if len(m.DisputeResolverAuthority) > 0 {
+		i -= len(m.DisputeResolverAuthority)
+		copy(dAtA[i:], m.DisputeResolverAuthority)
+		i = encodeVarintParams(dAtA, i, uint64(len(m.DisputeResolverAuthority)))
+		i--
+		dAtA[i] = 0x1a
+	}
+	{
+		size := m.MinDisputeBond.Size()
+		i -= size
+		if _, err := m.MinDisputeBond.MarshalTo(dAtA[i:]); err != nil {
+			return 0, err
+		}
+		i = encodeVarintParams(dAtA, i, uint64(size))
+	}
+	i--
+	dAtA[i] = 0x12
+	{
+		size := m.MinAttestorBond.Size()
+		i -= size
+		if _, err := m.MinAttestorBond.MarshalTo(dAtA[i:]); err != nil {
+			return 0, err
+		}
+		i = encodeVarintParams(dAtA, i, uint64(size))
+	}
+	i--
+	dAtA[i] = 0xa
 	return len(dAtA) - i, nil
 }
 
@@ -146,6 +387,43 @@ func (m *Params) Size() (n int) {
 	}
 	var l int
 	_ = l
+	l = m.MinAttestorBond.Size()
+	n += 1 + l + sovParams(uint64(l))
+	l = m.MinDisputeBond.Size()
+	n += 1 + l + sovParams(uint64(l))
+	l = len(m.DisputeResolverAuthority)
+	if l > 0 {
+		n += 1 + l + sovParams(uint64(l))
+	}
+	if m.MaxClaimPayloadBytes != 0 {
+		n += 1 + sovParams(uint64(m.MaxClaimPayloadBytes))
+	}
+	l = len(m.BondDenom)
+	if l > 0 {
+		n += 1 + l + sovParams(uint64(l))
+	}
+	if m.ExitCooldownSeconds != 0 {
+		n += 1 + sovParams(uint64(m.ExitCooldownSeconds))
+	}
+	l = m.SlashFraction.Size()
+	n += 1 + l + sovParams(uint64(l))
+	l = m.ChallengerRewardFraction.Size()
+	n += 1 + l + sovParams(uint64(l))
+	if m.MaxSignerKeys != 0 {
+		n += 1 + sovParams(uint64(m.MaxSignerKeys))
+	}
+	if len(m.AllowedPubkeyTypeUrls) > 0 {
+		for _, s := range m.AllowedPubkeyTypeUrls {
+			l = len(s)
+			n += 1 + l + sovParams(uint64(l))
+		}
+	}
+	if m.SignatureVerificationGas != 0 {
+		n += 1 + sovParams(uint64(m.SignatureVerificationGas))
+	}
+	if m.MaxUriBytes != 0 {
+		n += 1 + sovParams(uint64(m.MaxUriBytes))
+	}
 	return n
 }
 
@@ -184,6 +462,333 @@ func (m *Params) Unmarshal(dAtA []byte) error {
 			return fmt.Errorf("proto: Params: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MinAttestorBond", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowParams
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthParams
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthParams
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.MinAttestorBond.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MinDisputeBond", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowParams
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthParams
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthParams
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.MinDisputeBond.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field DisputeResolverAuthority", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowParams
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthParams
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthParams
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.DisputeResolverAuthority = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 4:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MaxClaimPayloadBytes", wireType)
+			}
+			m.MaxClaimPayloadBytes = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowParams
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.MaxClaimPayloadBytes |= uint32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 5:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BondDenom", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowParams
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthParams
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthParams
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.BondDenom = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 6:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ExitCooldownSeconds", wireType)
+			}
+			m.ExitCooldownSeconds = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowParams
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.ExitCooldownSeconds |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 7:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SlashFraction", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowParams
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthParams
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthParams
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.SlashFraction.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 8:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ChallengerRewardFraction", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowParams
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthParams
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthParams
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.ChallengerRewardFraction.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 9:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MaxSignerKeys", wireType)
+			}
+			m.MaxSignerKeys = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowParams
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.MaxSignerKeys |= uint32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 10:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field AllowedPubkeyTypeUrls", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowParams
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthParams
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthParams
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.AllowedPubkeyTypeUrls = append(m.AllowedPubkeyTypeUrls, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		case 11:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SignatureVerificationGas", wireType)
+			}
+			m.SignatureVerificationGas = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowParams
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.SignatureVerificationGas |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 12:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MaxUriBytes", wireType)
+			}
+			m.MaxUriBytes = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowParams
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.MaxUriBytes |= uint32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := skipParams(dAtA[iNdEx:])

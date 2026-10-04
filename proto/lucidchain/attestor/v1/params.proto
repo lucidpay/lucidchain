@@ -4,10 +4,66 @@ package lucidchain.attestor.v1;
 import "amino/amino.proto";
 import "gogoproto/gogo.proto";
 
+
 option go_package = "github.com/lucidpay/lucidchain/x/attestor/types";
 
 // Params defines the parameters for the module.
 message Params {
   option (amino.name) = "lucidchain/x/attestor/Params";
   option (gogoproto.equal) = true;
+
+  string min_attestor_bond = 1 [
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.nullable) = false
+  ];
+  string min_dispute_bond = 2 [
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.nullable) = false
+  ];
+
+  // Governance/arbiter mechanism resolves disputes; this is the account (e.g.
+  // gov module) authorized to call ResolveDispute. A future version may replace
+  // this with a dedicated arbitration module.
+  string dispute_resolver_authority = 3;
+
+  uint32 max_claim_payload_bytes = 4;
+
+
+  // NEW: denom of every attestor and dispute bond. Bonds are stored as bare
+  // amounts, so this cannot be changed once bonds exist (UpdateParams rejects it).
+  string bond_denom = 5;
+
+  // NEW: minimum time between InitiateAttestorExit and the bond being returned.
+  // The effective cooldown is the larger of this and the longest
+  // dispute_window_seconds among the attestor's authorized schemas.
+  uint64 exit_cooldown_seconds = 6;
+
+  // NEW: fraction of the attestor's bond slashed when a dispute is upheld.
+  string slash_fraction = 7 [
+    (gogoproto.customtype) = "cosmossdk.io/math.LegacyDec",
+    (gogoproto.nullable) = false
+  ];
+
+  // NEW: fraction of the slashed amount paid to the challenger on top of the
+  // returned dispute bond. The rest of the slashed amount is burned.
+  string challenger_reward_fraction = 8 [
+    (gogoproto.customtype) = "cosmossdk.io/math.LegacyDec",
+    (gogoproto.nullable) = false
+  ];
+
+  // NEW: maximum signer keys per attestor. ML-DSA-65 pubkeys are 1952 bytes
+  // each, so this bounds per-attestor state size.
+  uint32 max_signer_keys = 9;
+
+  // NEW: protobuf type URLs of public keys accepted as attestor signers, e.g.
+  // "/cosmos.crypto.mldsa65.PubKey". Adding classical types re-opens
+  // attestations to quantum forgery.
+  repeated string allowed_pubkey_type_urls = 10;
+
+  // NEW: gas charged per signature verified.
+  uint64 signature_verification_gas = 11;
+
+  // NEW: maximum length of credential_uri, evidence_uri and rationale_uri.
+  uint32 max_uri_bytes = 12;
+
 }
