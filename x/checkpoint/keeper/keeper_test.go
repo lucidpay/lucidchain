@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"cosmossdk.io/collections"
-	//	storetypes "cosmossdk.io/store/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/cosmos/cosmos-sdk/codec"
@@ -20,6 +19,7 @@ import (
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
 	"github.com/cosmos/cosmos-sdk/runtime"
+	storetypes "github.com/cosmos/cosmos-sdk/store/v2/types"
 	"github.com/cosmos/cosmos-sdk/testutil"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
@@ -90,6 +90,12 @@ type mockBank struct {
 
 var _ types.BankKeeper = (*mockBank)(nil)
 
+// SpendableCoins satisfies the scaffolded BankKeeper interface (used by the
+// module's AppModule, not by the keeper).
+func (m *mockBank) SpendableCoins(_ context.Context, _ sdk.AccAddress) sdk.Coins {
+	return nil
+}
+
 func (m *mockBank) SendCoinsFromAccountToModule(_ context.Context, from sdk.AccAddress, module string, amt sdk.Coins) error {
 	if m.err != nil {
 		return m.err
@@ -104,7 +110,7 @@ func (m *mockBank) SendCoinsFromAccountToModule(_ context.Context, from sdk.AccA
 
 type fixture struct {
 	ctx        sdk.Context
-	keeper     keeper.Keeper
+	k          keeper.Keeper
 	msgServer  types.MsgServer
 	sidechains *mockSidechainKeeper
 	bank       *mockBank
@@ -160,7 +166,7 @@ func newFixture(t *testing.T, threshold uint32, nSigners int) *fixture {
 
 	return &fixture{
 		ctx:        ctx,
-		keeper:     k,
+		k:          k,
 		msgServer:  keeper.NewMsgServerImpl(k),
 		sidechains: sc,
 		bank:       bank,
@@ -172,10 +178,10 @@ func newFixture(t *testing.T, threshold uint32, nSigners int) *fixture {
 
 func (f *fixture) setParams(t *testing.T, mutate func(p *types.Params)) {
 	t.Helper()
-	p, err := f.keeper.GetParams(f.ctx)
+	p, err := f.k.GetParams(f.ctx)
 	require.NoError(t, err)
 	mutate(&p)
-	require.NoError(t, f.keeper.SetParams(f.ctx, p))
+	require.NoError(t, f.k.SetParams(f.ctx, p))
 }
 
 func signBytesFor(t *testing.T, msg *types.MsgSubmitCheckpoint, chainID string) []byte {
@@ -229,7 +235,7 @@ func (f *fixture) submit(msg *types.MsgSubmitCheckpoint) (*types.MsgSubmitCheckp
 
 func (f *fixture) requireNoCheckpoint(t *testing.T) {
 	t.Helper()
-	_, err := f.keeper.LatestSequence.Get(f.ctx, testSidechain)
+	_, err := f.k.LatestSequence.Get(f.ctx, testSidechain)
 	require.ErrorIs(t, err, collections.ErrNotFound)
 	require.Empty(t, f.sidechains.recorded)
 }
@@ -257,7 +263,7 @@ func TestSubmitCheckpoint_Success(t *testing.T) {
 	require.Equal(t, wantHash, resp.CheckpointHash)
 	require.Equal(t, uint64(testHeight), resp.FinalizedHeight)
 
-	cp, err := f.keeper.GetCheckpoint(f.ctx, testSidechain, 1)
+	cp, err := f.k.GetCheckpoint(f.ctx, testSidechain, 1)
 	require.NoError(t, err)
 	require.Equal(t, testSidechain, cp.SidechainId)
 	require.Equal(t, uint64(1), cp.Sequence)
@@ -279,7 +285,7 @@ func TestSubmitCheckpoint_Success(t *testing.T) {
 	h.Write(sigByIdx[2])
 	require.Equal(t, h.Sum(nil), cp.SignaturesDigest)
 
-	latest, err := f.keeper.GetLatestCheckpoint(f.ctx, testSidechain)
+	latest, err := f.k.GetLatestCheckpoint(f.ctx, testSidechain)
 	require.NoError(t, err)
 	require.Equal(t, cp, latest)
 
@@ -315,14 +321,14 @@ func TestSubmitCheckpoint_Chaining(t *testing.T) {
 	}
 
 	// Rejections wrote nothing: latest is still sequence 1.
-	seq, err := f.keeper.LatestSequence.Get(f.ctx, testSidechain)
+	seq, err := f.k.LatestSequence.Get(f.ctx, testSidechain)
 	require.NoError(t, err)
 	require.Equal(t, uint64(1), seq)
 
 	resp2, err := f.submit(f.signedMsg(t, 2, resp1.CheckpointHash, root(0x02), 5, 0, 1))
 	require.NoError(t, err)
 
-	cp2, err := f.keeper.GetCheckpoint(f.ctx, testSidechain, 2)
+	cp2, err := f.k.GetCheckpoint(f.ctx, testSidechain, 2)
 	require.NoError(t, err)
 	require.Equal(t, resp1.CheckpointHash, cp2.PreviousCheckpointHash)
 	require.Equal(t, resp2.CheckpointHash, cp2.CheckpointHash)
@@ -603,7 +609,7 @@ func TestSubmitCheckpoint_RecordCheckpointFailureReverts(t *testing.T) {
 	require.ErrorContains(t, err, "boom")
 
 	f.requireNoCheckpoint(t)
-	_, err = f.keeper.GetCheckpoint(f.ctx, testSidechain, 1)
+	_, err = f.k.GetCheckpoint(f.ctx, testSidechain, 1)
 	require.ErrorIs(t, err, collections.ErrNotFound)
 }
 
@@ -613,9 +619,9 @@ func TestSubmitCheckpoint_RecordCheckpointFailureReverts(t *testing.T) {
 
 func TestUpdateParams_Authority(t *testing.T) {
 	f := newFixture(t, 2, 3)
-	addrCodec := f.keeper.AddressCodec()
+	addrCodec := f.k.AddressCodec()
 
-	gov, err := addrCodec.BytesToString(f.keeper.GetAuthority())
+	gov, err := addrCodec.BytesToString(f.k.GetAuthority())
 	require.NoError(t, err)
 
 	newParams := types.DefaultParams()
@@ -627,7 +633,7 @@ func TestUpdateParams_Authority(t *testing.T) {
 	_, err = f.msgServer.UpdateParams(f.ctx, &types.MsgUpdateParams{Authority: gov, Params: newParams})
 	require.NoError(t, err)
 
-	got, err := f.keeper.GetParams(f.ctx)
+	got, err := f.k.GetParams(f.ctx)
 	require.NoError(t, err)
 	require.Equal(t, uint64(123), got.MaxRecordsPerCheckpoint)
 
@@ -646,15 +652,15 @@ func TestGenesisRoundTrip(t *testing.T) {
 	_, err = f.submit(f.signedMsg(t, 2, resp1.CheckpointHash, root(0x02), 6, 1, 2))
 	require.NoError(t, err)
 
-	exported, err := f.keeper.ExportGenesis(f.ctx)
+	exported, err := f.k.ExportGenesis(f.ctx)
 	require.NoError(t, err)
 	require.Len(t, exported.Checkpoints, 2)
 	require.NoError(t, exported.Validate())
 
 	g := newFixture(t, 2, 3)
-	require.NoError(t, g.keeper.InitGenesis(g.ctx, *exported))
+	require.NoError(t, g.k.InitGenesis(g.ctx, *exported))
 
-	latest, err := g.keeper.GetLatestCheckpoint(g.ctx, testSidechain)
+	latest, err := g.k.GetLatestCheckpoint(g.ctx, testSidechain)
 	require.NoError(t, err)
 	require.Equal(t, uint64(2), latest.Sequence)
 
@@ -662,43 +668,8 @@ func TestGenesisRoundTrip(t *testing.T) {
 	_, err = g.submit(g.signedMsg(t, 3, latest.CheckpointHash, root(0x03), 7, 0, 2))
 	require.NoError(t, err)
 
-	reExported, err := g.keeper.ExportGenesis(g.ctx)
+	reExported, err := g.k.ExportGenesis(g.ctx)
 	require.NoError(t, err)
 	require.Equal(t, exported.Checkpoints, reExported.Checkpoints[:2])
 	require.True(t, exported.Params.Equal(reExported.Params))
 }
-
-// ---------------------------------------------------------------------------
-// end
-/*
-func initFixture(t *testing.T) *fixture {
-	t.Helper()
-
-	encCfg := moduletestutil.MakeTestEncodingConfig(module.AppModule{})
-	addressCodec := addresscodec.NewBech32Codec(sdk.GetConfig().GetBech32AccountAddrPrefix())
-	storeKey := storetypes.NewKVStoreKey(types.StoreKey)
-
-	storeService := runtime.NewKVStoreService(storeKey)
-	ctx := testutil.DefaultContextWithDB(t, storeKey, storetypes.NewTransientStoreKey("transient_test")).Ctx
-
-	authority := authtypes.NewModuleAddress(types.GovModuleName)
-
-	k := keeper.NewKeeper(
-		storeService,
-		encCfg.Codec,
-		addressCodec,
-		authority,
-		nil,
-	)
-
-	// Initialize params
-	if err := k.Params.Set(ctx, types.DefaultParams()); err != nil {
-		t.Fatalf("failed to set params: %v", err)
-	}
-
-	return &fixture{
-		ctx:          ctx,
-		keeper:       k,
-		addressCodec: addressCodec,
-	}
-} */
