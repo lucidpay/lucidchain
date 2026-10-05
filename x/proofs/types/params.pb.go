@@ -4,6 +4,7 @@
 package types
 
 import (
+	cosmossdk_io_math "cosmossdk.io/math"
 	fmt "fmt"
 	_ "github.com/cosmos/cosmos-sdk/types/tx/amino"
 	_ "github.com/cosmos/gogoproto/gogoproto"
@@ -24,8 +25,19 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
-// Params defines the parameters for the module.
+// Params defines module-wide parameters, settable via governance.
 type Params struct {
+	// Base fee for proof verification. Actual cost varies significantly by
+	// proof system, so this is a floor; per-system fee multipliers are held
+	// alongside each VerifierRegistration in a future revision if needed.
+	BaseVerificationFee cosmossdk_io_math.Int `protobuf:"bytes,1,opt,name=base_verification_fee,json=baseVerificationFee,proto3,customtype=cosmossdk.io/math.Int" json:"base_verification_fee"`
+	MaxProofBytes       uint32                `protobuf:"varint,2,opt,name=max_proof_bytes,json=maxProofBytes,proto3" json:"max_proof_bytes,omitempty"`
+	MaxPublicInputBytes uint32                `protobuf:"varint,3,opt,name=max_public_input_bytes,json=maxPublicInputBytes,proto3" json:"max_public_input_bytes,omitempty"`
+	// NEW: denom of base_verification_fee.
+	FeeDenom string `protobuf:"bytes,4,opt,name=fee_denom,json=feeDenom,proto3" json:"fee_denom,omitempty"`
+	// NEW: upper bound on a registered verification key. Groth16 keys grow with
+	// the number of public inputs; PLONK keys with the number of commitments.
+	MaxVerificationKeyBytes uint32 `protobuf:"varint,5,opt,name=max_verification_key_bytes,json=maxVerificationKeyBytes,proto3" json:"max_verification_key_bytes,omitempty"`
 }
 
 func (m *Params) Reset()         { *m = Params{} }
@@ -61,6 +73,34 @@ func (m *Params) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_Params proto.InternalMessageInfo
 
+func (m *Params) GetMaxProofBytes() uint32 {
+	if m != nil {
+		return m.MaxProofBytes
+	}
+	return 0
+}
+
+func (m *Params) GetMaxPublicInputBytes() uint32 {
+	if m != nil {
+		return m.MaxPublicInputBytes
+	}
+	return 0
+}
+
+func (m *Params) GetFeeDenom() string {
+	if m != nil {
+		return m.FeeDenom
+	}
+	return ""
+}
+
+func (m *Params) GetMaxVerificationKeyBytes() uint32 {
+	if m != nil {
+		return m.MaxVerificationKeyBytes
+	}
+	return 0
+}
+
 func init() {
 	proto.RegisterType((*Params)(nil), "lucidchain.proofs.v1.Params")
 }
@@ -68,18 +108,30 @@ func init() {
 func init() { proto.RegisterFile("lucidchain/proofs/v1/params.proto", fileDescriptor_5b0ce1afd97e11d3) }
 
 var fileDescriptor_5b0ce1afd97e11d3 = []byte{
-	// 175 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x52, 0xcc, 0x29, 0x4d, 0xce,
-	0x4c, 0x49, 0xce, 0x48, 0xcc, 0xcc, 0xd3, 0x2f, 0x28, 0xca, 0xcf, 0x4f, 0x2b, 0xd6, 0x2f, 0x33,
-	0xd4, 0x2f, 0x48, 0x2c, 0x4a, 0xcc, 0x2d, 0xd6, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x12, 0x41,
-	0x28, 0xd1, 0x83, 0x28, 0xd1, 0x2b, 0x33, 0x94, 0x12, 0x4c, 0xcc, 0xcd, 0xcc, 0xcb, 0xd7, 0x07,
-	0x93, 0x10, 0x85, 0x52, 0x22, 0xe9, 0xf9, 0xe9, 0xf9, 0x60, 0xa6, 0x3e, 0x88, 0x05, 0x11, 0x55,
-	0xd2, 0xe5, 0x62, 0x0b, 0x00, 0x1b, 0x67, 0xa5, 0xfc, 0x62, 0x81, 0x3c, 0x63, 0xd7, 0xf3, 0x0d,
-	0x5a, 0x52, 0x48, 0x96, 0x56, 0xc0, 0xac, 0x85, 0x28, 0x72, 0x72, 0x3f, 0xf1, 0x48, 0x8e, 0xf1,
-	0xc2, 0x23, 0x39, 0xc6, 0x07, 0x8f, 0xe4, 0x18, 0x27, 0x3c, 0x96, 0x63, 0xb8, 0xf0, 0x58, 0x8e,
-	0xe1, 0xc6, 0x63, 0x39, 0x86, 0x28, 0xdd, 0xf4, 0xcc, 0x92, 0x8c, 0xd2, 0x24, 0xbd, 0xe4, 0xfc,
-	0x5c, 0x7d, 0xb0, 0x01, 0x05, 0x89, 0x95, 0xfa, 0xd8, 0x4c, 0x2a, 0xa9, 0x2c, 0x48, 0x2d, 0x4e,
-	0x62, 0x03, 0x5b, 0x6f, 0x0c, 0x18, 0x00, 0xfa, 0x96, 0xba, 0x06, 0xe2, 0x00, 0x00, 0x00,
+	// 367 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x6c, 0x91, 0x41, 0x4b, 0xe3, 0x40,
+	0x14, 0x80, 0x93, 0xee, 0x6e, 0xd9, 0x06, 0xca, 0xb2, 0x69, 0xbb, 0x5b, 0x22, 0xa6, 0x55, 0x41,
+	0x8a, 0x60, 0x86, 0xd2, 0x9b, 0xde, 0x8a, 0x28, 0xc5, 0x4b, 0xed, 0xc1, 0x83, 0x97, 0x30, 0x49,
+	0x5f, 0xda, 0xa1, 0x9d, 0x4c, 0xc8, 0x4c, 0x4a, 0xf2, 0x17, 0x3c, 0xf9, 0x13, 0xfc, 0x09, 0xde,
+	0xfc, 0x0b, 0x3d, 0xf6, 0x28, 0x1e, 0x8a, 0xb4, 0x07, 0xfd, 0x19, 0x32, 0x93, 0x8a, 0x15, 0xbc,
+	0x84, 0x97, 0xf7, 0xbe, 0xf7, 0xf1, 0xe6, 0x3d, 0x63, 0x6f, 0x9a, 0xf8, 0x64, 0xe8, 0x8f, 0x31,
+	0x09, 0x51, 0x14, 0x33, 0x16, 0x70, 0x34, 0x6b, 0xa3, 0x08, 0xc7, 0x98, 0x72, 0x27, 0x8a, 0x99,
+	0x60, 0x66, 0xf5, 0x13, 0x71, 0x72, 0xc4, 0x99, 0xb5, 0xad, 0xbf, 0x98, 0x92, 0x90, 0x21, 0xf5,
+	0xcd, 0x41, 0xab, 0x3a, 0x62, 0x23, 0xa6, 0x42, 0x24, 0xa3, 0x3c, 0xbb, 0xff, 0x58, 0x30, 0x8a,
+	0x7d, 0xe5, 0x33, 0xaf, 0x8c, 0x9a, 0x87, 0x39, 0xb8, 0x33, 0x88, 0x49, 0x40, 0x7c, 0x2c, 0x08,
+	0x0b, 0xdd, 0x00, 0xa0, 0xae, 0x37, 0xf5, 0x56, 0xa9, 0xbb, 0x3b, 0x5f, 0x36, 0xb4, 0xe7, 0x65,
+	0xa3, 0xe6, 0x33, 0x4e, 0x19, 0xe7, 0xc3, 0x89, 0x43, 0x18, 0xa2, 0x58, 0x8c, 0x9d, 0x5e, 0x28,
+	0x06, 0x15, 0xd9, 0x7b, 0xbd, 0xd5, 0x7a, 0x0e, 0x60, 0x1e, 0x1a, 0x7f, 0x28, 0x4e, 0x5d, 0x35,
+	0x97, 0xeb, 0x65, 0x02, 0x78, 0xbd, 0xd0, 0xd4, 0x5b, 0xe5, 0x41, 0x99, 0xe2, 0xb4, 0x2f, 0xb3,
+	0x5d, 0x99, 0x34, 0x3b, 0xc6, 0x3f, 0xc5, 0x25, 0xde, 0x94, 0xf8, 0x2e, 0x09, 0xa3, 0x44, 0x6c,
+	0xf0, 0x1f, 0x0a, 0xaf, 0x48, 0x5c, 0x15, 0x7b, 0xb2, 0x96, 0x37, 0xed, 0x18, 0xa5, 0x00, 0xc0,
+	0x1d, 0x42, 0xc8, 0x68, 0xfd, 0xa7, 0x9c, 0x71, 0xf0, 0x3b, 0x00, 0x38, 0x93, 0xff, 0xe6, 0xa9,
+	0x61, 0x49, 0xe3, 0x97, 0xb7, 0x4c, 0x20, 0xdb, 0x58, 0x7f, 0x29, 0xeb, 0x7f, 0x8a, 0xd3, 0xed,
+	0x89, 0x2f, 0x21, 0x53, 0xe6, 0x93, 0x83, 0xb7, 0xfb, 0x86, 0x7e, 0xfb, 0xfa, 0x70, 0x64, 0x6d,
+	0xed, 0x3f, 0xfd, 0xb8, 0x40, 0xbe, 0xae, 0xee, 0xc5, 0x7c, 0x65, 0xeb, 0x8b, 0x95, 0xad, 0xbf,
+	0xac, 0x6c, 0xfd, 0x6e, 0x6d, 0x6b, 0x8b, 0xb5, 0xad, 0x3d, 0xad, 0x6d, 0xed, 0xe6, 0x78, 0x44,
+	0xc4, 0x38, 0xf1, 0x1c, 0x9f, 0x51, 0xa4, 0x04, 0x11, 0xce, 0xd0, 0x77, 0x26, 0x91, 0x45, 0xc0,
+	0xbd, 0xa2, 0xba, 0x44, 0xe7, 0x7d, 0x00, 0x97, 0x52, 0xb7, 0x71, 0xed, 0x01, 0x00, 0x00,
 }
 
 func (this *Params) Equal(that interface{}) bool {
@@ -99,6 +151,21 @@ func (this *Params) Equal(that interface{}) bool {
 	if that1 == nil {
 		return this == nil
 	} else if this == nil {
+		return false
+	}
+	if !this.BaseVerificationFee.Equal(that1.BaseVerificationFee) {
+		return false
+	}
+	if this.MaxProofBytes != that1.MaxProofBytes {
+		return false
+	}
+	if this.MaxPublicInputBytes != that1.MaxPublicInputBytes {
+		return false
+	}
+	if this.FeeDenom != that1.FeeDenom {
+		return false
+	}
+	if this.MaxVerificationKeyBytes != that1.MaxVerificationKeyBytes {
 		return false
 	}
 	return true
@@ -123,6 +190,38 @@ func (m *Params) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if m.MaxVerificationKeyBytes != 0 {
+		i = encodeVarintParams(dAtA, i, uint64(m.MaxVerificationKeyBytes))
+		i--
+		dAtA[i] = 0x28
+	}
+	if len(m.FeeDenom) > 0 {
+		i -= len(m.FeeDenom)
+		copy(dAtA[i:], m.FeeDenom)
+		i = encodeVarintParams(dAtA, i, uint64(len(m.FeeDenom)))
+		i--
+		dAtA[i] = 0x22
+	}
+	if m.MaxPublicInputBytes != 0 {
+		i = encodeVarintParams(dAtA, i, uint64(m.MaxPublicInputBytes))
+		i--
+		dAtA[i] = 0x18
+	}
+	if m.MaxProofBytes != 0 {
+		i = encodeVarintParams(dAtA, i, uint64(m.MaxProofBytes))
+		i--
+		dAtA[i] = 0x10
+	}
+	{
+		size := m.BaseVerificationFee.Size()
+		i -= size
+		if _, err := m.BaseVerificationFee.MarshalTo(dAtA[i:]); err != nil {
+			return 0, err
+		}
+		i = encodeVarintParams(dAtA, i, uint64(size))
+	}
+	i--
+	dAtA[i] = 0xa
 	return len(dAtA) - i, nil
 }
 
@@ -143,6 +242,21 @@ func (m *Params) Size() (n int) {
 	}
 	var l int
 	_ = l
+	l = m.BaseVerificationFee.Size()
+	n += 1 + l + sovParams(uint64(l))
+	if m.MaxProofBytes != 0 {
+		n += 1 + sovParams(uint64(m.MaxProofBytes))
+	}
+	if m.MaxPublicInputBytes != 0 {
+		n += 1 + sovParams(uint64(m.MaxPublicInputBytes))
+	}
+	l = len(m.FeeDenom)
+	if l > 0 {
+		n += 1 + l + sovParams(uint64(l))
+	}
+	if m.MaxVerificationKeyBytes != 0 {
+		n += 1 + sovParams(uint64(m.MaxVerificationKeyBytes))
+	}
 	return n
 }
 
@@ -181,6 +295,129 @@ func (m *Params) Unmarshal(dAtA []byte) error {
 			return fmt.Errorf("proto: Params: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BaseVerificationFee", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowParams
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthParams
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthParams
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.BaseVerificationFee.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MaxProofBytes", wireType)
+			}
+			m.MaxProofBytes = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowParams
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.MaxProofBytes |= uint32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MaxPublicInputBytes", wireType)
+			}
+			m.MaxPublicInputBytes = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowParams
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.MaxPublicInputBytes |= uint32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field FeeDenom", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowParams
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthParams
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthParams
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.FeeDenom = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 5:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MaxVerificationKeyBytes", wireType)
+			}
+			m.MaxVerificationKeyBytes = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowParams
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.MaxVerificationKeyBytes |= uint32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := skipParams(dAtA[iNdEx:])

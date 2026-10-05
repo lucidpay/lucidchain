@@ -15,5 +15,14 @@ const (
 	GovModuleName = "gov"
 )
 
-// ParamsKey is the prefix to retrieve all Params
-var ParamsKey = collections.NewPrefix("p_proofs")
+// Collection prefixes. They must be unique within this module, none may be a
+// byte-prefix of another, and they must stay stable after launch.
+var (
+	ParamsKey = collections.NewPrefix("p_proofs")
+
+	VerifierKey = collections.NewPrefix("verifier/value/")
+	ProofKey    = collections.NewPrefix("proof/value/")
+
+	// ProofByCheckpointKey indexes proofs by ((sidechain_id, sequence), proof_id).
+	ProofByCheckpointKey = collections.NewPrefix("proof/by_checkpoint/")
+)

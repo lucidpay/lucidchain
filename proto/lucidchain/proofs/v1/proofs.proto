@@ -1,0 +1,104 @@
+syntax = "proto3";
+package lucidchain.proofs.v1;
+
+option go_package = "github.com/lucidpay/lucidchain/x/proofs/types";
+
+import "gogoproto/gogo.proto";
+import "cosmos_proto/cosmos.proto";
+import "google/protobuf/timestamp.proto";
+
+// VerifierStatus tracks whether a registered proof-system verifier is usable.
+enum VerifierStatus {
+  VERIFIER_STATUS_UNSPECIFIED = 0;
+  VERIFIER_STATUS_ACTIVE      = 1;
+  VERIFIER_STATUS_DEPRECATED  = 2; // no longer accepting new proofs, existing ones still queryable
+}
+
+// VerifierRegistration describes a pluggable proof-system verifier available
+// to sidechains at Tier 3. Concrete verification logic lives in Go code
+// (see keeper interface, section below) -- this record is the on-chain,
+// governance-controlled pointer to it, plus its verification key material.
+message VerifierRegistration {
+  option (gogoproto.equal) = true;
+
+  // e.g. "groth16-bn254", "plonk-bls12-381", "risc0-v1". Must match a
+  // verifier implementation compiled into the chain binary (see ADR in
+  // section 4 of the accompanying spec).
+  string proof_system_id = 1;
+
+  string description = 2;
+
+  // Verification key / circuit-specific parameters, opaque to this module,
+  // interpreted only by the corresponding Go verifier implementation.
+  bytes verification_key = 3;
+
+  VerifierStatus status = 4;
+
+  // Governance-controlled version, incremented if verification_key rotates
+  // (e.g. circuit upgrade). Proofs record which version they were checked against.
+  uint32 version = 5;
+
+  google.protobuf.Timestamp registered_at = 6 [(gogoproto.stdtime) = true, (gogoproto.nullable) = false];
+
+  // NEW: gas charged for every verification under this system. Verification
+  // cost varies a lot between proof systems and circuits, so it is set per
+  // registration. Benchmark on validator hardware before setting it.
+  uint64 verification_gas = 7;
+
+  // NEW: set when the key, description or gas is updated.
+  google.protobuf.Timestamp updated_at = 8 [(gogoproto.stdtime) = true, (gogoproto.nullable) = true];
+}
+
+// ProofRecord is a finalized, on-chain-verified validity proof about a
+// specific checkpoint (or a specific claim scoped to that checkpoint).
+message ProofRecord {
+  option (gogoproto.equal) = true;
+
+
+  // Deterministic: hex(sha256(domain || lp(sidechain_id) || be64(checkpoint_sequence)
+  // || lp(proof_system_id) || lp(claim_id))). See types.ProofID. A given
+  // (checkpoint, system, claim) can be proven once.
+
+  string id = 1;
+  string sidechain_id = 2;
+  uint64 checkpoint_sequence = 3;
+  string proof_system_id = 4;
+  uint32 verifier_version = 5;
+
+  // Identifies which specific, narrow claim this proof establishes (e.g.
+  // "geofence-compliance", "aml-threshold-not-exceeded"), analogous to a
+  // schema_id in x/attestor. Claim semantics are defined off-chain in the
+  // circuit's public documentation, referenced here by id for traceability.
+  string claim_id = 6;
+
+
+  // Public inputs the proof was checked against, in the verifier's encoding
+  // (gnark verifiers: a gnark public witness, MarshalBinary).
+  //
+  // BINDING (enforced by the module before verification): the first two public
+  // inputs must be the 128-bit big-endian halves (hi, lo) of the 32-byte
+  // binding returned by types.ComputeBinding -- a hash over chain id, sidechain
+  // id, checkpoint sequence, state root, checkpoint hash and claim id. This ties
+  // the proof to exactly one checkpoint and claim on this chain. Circuits must
+  // declare these two public variables first.
+  bytes public_inputs = 7;
+
+  // The proof itself, in the encoding expected by the registered verifier.
+  bytes proof = 8;
+
+  bool verified = 9;   // always true for persisted records; verification happens
+                        // synchronously in the message handler and failed proofs
+                        // are rejected, not stored
+  uint64 verified_height = 10;
+  google.protobuf.Timestamp verified_at = 11 [(gogoproto.stdtime) = true, (gogoproto.nullable) = false];
+
+  // NEW: hash of the x/checkpoint checkpoint the proof was bound to.
+  bytes checkpoint_hash = 12;
+
+  // NEW: the 32-byte binding that was checked against public_inputs.
+  bytes binding = 13;
+
+  // NEW
+  string submitter = 14 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+}
+

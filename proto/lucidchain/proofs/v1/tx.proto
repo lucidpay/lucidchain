@@ -6,6 +6,8 @@ import "cosmos/msg/v1/msg.proto";
 import "cosmos_proto/cosmos.proto";
 import "gogoproto/gogo.proto";
 import "lucidchain/proofs/v1/params.proto";
+import "lucidchain/proofs/v1/proofs.proto";
+
 
 option go_package = "github.com/lucidpay/lucidchain/x/proofs/types";
 
@@ -13,10 +15,58 @@ option go_package = "github.com/lucidpay/lucidchain/x/proofs/types";
 service Msg {
   option (cosmos.msg.v1.service) = true;
 
+  // SubmitProof verifies a validity proof against a registered verifier and,
+  // if valid, persists a ProofRecord. Invalid proofs are rejected (tx fails);
+  // nothing is stored on failure.
+  rpc SubmitProof(MsgSubmitProof) returns (MsgSubmitProofResponse);
+
+  // Governance-only: register a new proof-system verifier or update an
+  // existing one's key material/version.
+  rpc RegisterVerifier(MsgRegisterVerifier) returns (MsgRegisterVerifierResponse);
+  rpc DeprecateVerifier(MsgDeprecateVerifier) returns (MsgDeprecateVerifierResponse);
+
   // UpdateParams defines a (governance) operation for updating the module
   // parameters. The authority defaults to the x/gov module account.
   rpc UpdateParams(MsgUpdateParams) returns (MsgUpdateParamsResponse);
 }
+
+message MsgSubmitProof {
+  option (cosmos.msg.v1.signer) = "submitter";
+
+  string submitter = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  string sidechain_id = 2;
+  uint64 checkpoint_sequence = 3;
+  string proof_system_id = 4;
+  string claim_id = 5;
+  // The first two public inputs must be the binding limbs; see ProofRecord.public_inputs.
+  bytes public_inputs = 6;
+  bytes proof = 7;
+}
+message MsgSubmitProofResponse {
+  string proof_record_id = 1;
+}
+
+message MsgRegisterVerifier {
+  option (cosmos.msg.v1.signer) = "authority";
+  string authority = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  string proof_system_id = 2;
+  string description = 3;
+  bytes verification_key = 4;
+  // NEW: gas charged per verification; see VerifierRegistration.verification_gas.
+  uint64 verification_gas = 5;
+}
+message MsgRegisterVerifierResponse {
+  // NEW: the registration's version after this call (1 for a new verifier).
+  uint32 version = 1;
+}
+
+message MsgDeprecateVerifier {
+  option (cosmos.msg.v1.signer) = "authority";
+  string authority = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  string proof_system_id = 2;
+}
+message MsgDeprecateVerifierResponse {}
+
 
 // MsgUpdateParams is the Msg/UpdateParams request type.
 message MsgUpdateParams {

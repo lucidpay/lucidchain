@@ -4,10 +4,31 @@ package lucidchain.proofs.v1;
 import "amino/amino.proto";
 import "gogoproto/gogo.proto";
 
+
 option go_package = "github.com/lucidpay/lucidchain/x/proofs/types";
 
-// Params defines the parameters for the module.
+
+// Params defines module-wide parameters, settable via governance.
 message Params {
   option (amino.name) = "lucidchain/x/proofs/Params";
   option (gogoproto.equal) = true;
+
+  // Base fee for proof verification. Actual cost varies significantly by
+  // proof system, so this is a floor; per-system fee multipliers are held
+  // alongside each VerifierRegistration in a future revision if needed.
+  string base_verification_fee = 1 [
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.nullable) = false
+  ];
+
+  uint32 max_proof_bytes = 2;
+  uint32 max_public_input_bytes = 3;
+
+  // NEW: denom of base_verification_fee.
+  string fee_denom = 4;
+
+  // NEW: upper bound on a registered verification key. Groth16 keys grow with
+  // the number of public inputs; PLONK keys with the number of commitments.
+  uint32 max_verification_key_bytes = 5;
+
 }

@@ -6,16 +6,75 @@ import "cosmos/base/query/v1beta1/pagination.proto";
 import "gogoproto/gogo.proto";
 import "google/api/annotations.proto";
 import "lucidchain/proofs/v1/params.proto";
+import "lucidchain/proofs/v1/proofs.proto";
+
 
 option go_package = "github.com/lucidpay/lucidchain/x/proofs/types";
 
 // Query defines the gRPC querier service.
 service Query {
-  // Parameters queries the parameters of the module.
+  rpc Verifier(QueryVerifierRequest) returns (QueryVerifierResponse) {
+    option (google.api.http).get = "/lucidchain/proofs/v1/verifiers/{proof_system_id}";
+  }
+  rpc Verifiers(QueryVerifiersRequest) returns (QueryVerifiersResponse) {
+    option (google.api.http).get = "/lucidchain/proofs/v1/verifiers";
+  }
+  rpc ProofRecord(QueryProofRecordRequest) returns (QueryProofRecordResponse) {
+    option (google.api.http).get = "/lucidchain/proofs/v1/proofs/{id}";
+  }
+  rpc ProofsForCheckpoint(QueryProofsForCheckpointRequest) returns (QueryProofsForCheckpointResponse) {
+    option (google.api.http).get = "/lucidchain/proofs/v1/sidechains/{sidechain_id}/checkpoints/{checkpoint_sequence}/proofs";
+  }
+  // NEW: the exact value a prover must put in the first two public inputs.
+  rpc Binding(QueryBindingRequest) returns (QueryBindingResponse) {
+    option (google.api.http).get = "/lucidchain/proofs/v1/sidechains/{sidechain_id}/checkpoints/{checkpoint_sequence}/claims/{claim_id}/binding";
+  }
   rpc Params(QueryParamsRequest) returns (QueryParamsResponse) {
-    option (google.api.http).get = "/lucidpay/lucidchain/proofs/v1/params";
+    option (google.api.http).get = "/lucidchain/proofs/v1/params";
   }
 }
+
+message QueryVerifierRequest { string proof_system_id = 1; }
+message QueryVerifierResponse { VerifierRegistration verifier = 1 [(gogoproto.nullable) = false]; }
+
+message QueryVerifiersRequest {
+  cosmos.base.query.v1beta1.PageRequest pagination = 1;
+}
+message QueryVerifiersResponse {
+  repeated VerifierRegistration verifiers = 1 [(gogoproto.nullable) = false];
+  cosmos.base.query.v1beta1.PageResponse pagination = 2;
+}
+
+message QueryProofRecordRequest { string id = 1; }
+message QueryProofRecordResponse { ProofRecord proof = 1 [(gogoproto.nullable) = false]; }
+
+message QueryProofsForCheckpointRequest {
+  string sidechain_id = 1;
+  uint64 checkpoint_sequence = 2;
+  // NEW
+  cosmos.base.query.v1beta1.PageRequest pagination = 3;
+}
+message QueryProofsForCheckpointResponse {
+  repeated ProofRecord proofs = 1 [(gogoproto.nullable) = false];
+  // NEW
+  cosmos.base.query.v1beta1.PageResponse pagination = 2;
+}
+
+// NEW
+message QueryBindingRequest {
+  string sidechain_id = 1;
+  uint64 checkpoint_sequence = 2;
+  string claim_id = 3;
+}
+message QueryBindingResponse {
+  bytes binding = 1;          // 32 bytes
+  bytes hi = 2;               // first 16 bytes: public input 0 (big-endian integer)
+  bytes lo = 3;               // last 16 bytes: public input 1 (big-endian integer)
+  string chain_id = 4;
+  bytes state_root = 5;       // checkpoint state root the binding commits to
+  bytes checkpoint_hash = 6;  // checkpoint hash the binding commits to
+}
+
 
 // QueryParamsRequest is request type for the Query/Params RPC method.
 message QueryParamsRequest {}
