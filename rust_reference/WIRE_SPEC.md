@@ -9,7 +9,6 @@ carries requests one at a time, in order. All integers are little-endian.
 
 ## Request
 
-|--------------|--------------|-----------------|------------------------------------------|
 | Offset       | Size         | Field           | Rule                                     |
 |--------------|--------------|-----------------|------------------------------------------|
 | 0            | 1            | `version`       | must be `1`                              |
@@ -18,7 +17,6 @@ carries requests one at a time, in order. All integers are little-endian.
 | 37           | 4            | `proof_len`     | `<= 524288` (512 KiB)                    |
 | 41           | `pub_len`    | `public_inputs` | canonical encoding, below                |
 | 41+`pub_len` | `proof_len`  | `proof`         | opaque to the framing layer              |
-|--------------|--------------|-----------------|------------------------------------------|
 
 Lengths are checked against their caps before any buffer is allocated.
 
@@ -32,21 +30,17 @@ significant first.
 
 ## Response
 
-|--------|------|--------------|
 | Offset | Size | Field        |
 |--------|------|--------------|
 | 0      | 1    | `status`     |
 | 1      | 32   | `image_hash` |
-|--------|------|--------------|
 
-|---------------|-------------|-------------------------|
 | `status`      | Meaning     | Host treatment          |
 |---------------|-------------|-------------------------|
 | `0`           | VALID       | proof accepted          |
 | `1`           | INVALID     | deterministic rejection |
 | `2`           | MALFORMED   | deterministic rejection |
 | anything else | not defined | **verifier fault**      |
-|---------------|-------------|-------------------------|
 
 `image_hash` must equal the hash pinned in the Go binary, otherwise the host
 raises a verifier fault.
@@ -63,7 +57,6 @@ keeper must halt the node rather than record a verdict.
 
 ## Constants that must match on both sides
 
-|-------------------|----------------|-----------------------------|---------------------|
 | Constant          | Value          | Go                          | Rust                |
 |-------------------|----------------|-----------------------------|---------------------|
 | Field modulus     | 2013265921     | `babyBearModulus`           | `BABYBEAR_MODULUS`  |
@@ -73,7 +66,6 @@ keeper must halt the node rather than record a verdict.
 | `vk_id` length    | 32             | `VKIDLen`                   | `VKID_LEN`          |
 | Status codes      | 0 / 1 / 2      | `StatusValid`...            | `STATUS_VALID`...   |
 | `vk_id` allowlist | identical sets | `NewPQ(..., vkIDs, ...)`    | `KNOWN_VK_IDS`      |
-|-------------------|----------------|-----------------------------|---------------------|
 
 The two `vk_id` allowlists must be identical. A `vk_id` the Go side accepts but
 the guest does not is a fault (deployment error), not a rejected proof.
