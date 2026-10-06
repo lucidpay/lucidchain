@@ -1,0 +1,37 @@
+[package]
+name = "pq-verifier-guest"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+
+[lib]
+name = "pq_verifier_guest"
+path = "src/lib.rs"
+
+[[bin]]
+name = "pq-verifier-guest"
+path = "src/main.rs"
+
+# Keep the dependency surface minimal: this service verifies public data and
+# holds no secrets, so every extra crate is only extra audit burden.
+[dependencies]
+tokio = { version = "1", default-features = false, features = ["rt-multi-thread", "net", "io-util", "time", "sync"] }
+tokio-vsock = "0.5"
+
+[dev-dependencies]
+tokio = { version = "1", default-features = false, features = ["rt-multi-thread", "macros", "net", "io-util", "time", "sync"] }
+
+[features]
+default = []
+# TEST ONLY: accepts every proof. Cannot be combined with a release build
+# (see the compile_error! in src/verify.rs).
+insecure-accept-all = []
+
+[profile.release]
+# A panic means a bug. Abort so the host sees a dropped connection (a verifier
+# fault that halts the node) and the supervisor restarts the guest, instead of
+# turning the bug into a verdict.
+panic = "abort"
+lto = true
+codegen-units = 1
+overflow-checks = true
