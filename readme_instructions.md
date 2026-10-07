@@ -1,11 +1,11 @@
-#Jump start your node
+# Jump start your node
 
 lucidchaind init dev-test-node --chain-id my-testnet-1
 nano $HOME/.lucidchain/config/app.toml
 
-#modify using nano
+**modify using nano**
 minimum-gas-prices = "0ucheck" 
-#Ctrl+x and y to save
+**Ctrl+x and y to save**
 
 lucidchaind keys add validator
 lucidchaind genesis add-genesis-account validator 100000000stake,1000000001000ucheck
@@ -13,7 +13,7 @@ lucidchaind genesis gentx validator 1000000stake --chain-id my-testnet-1
 lucidchaind genesis collect-gentxs
 lucidchaind start
 
-#Open New Terminal and run these commands one by one
+**Open New Terminal and run these commands one by one**
 lucidchaind version
 lucidchaind q upgrade module-versions
 lucidchaind query consensus comet block-latest
