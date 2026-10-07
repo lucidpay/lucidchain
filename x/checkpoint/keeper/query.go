@@ -25,17 +25,17 @@ type queryServer struct {
 	k Keeper
 }
 
-// Checkpoint returns the checkpoint at (sidechain_id, sequence).
+// Checkpoint returns the checkpoint at (sidechain_id, lc_sequence).
 func (q queryServer) Checkpoint(ctx context.Context, req *types.QueryCheckpointRequest) (*types.QueryCheckpointResponse, error) {
-	if req == nil || req.SidechainId == "" || req.Sequence == 0 {
-		return nil, status.Error(codes.InvalidArgument, "sidechain_id and a sequence >= 1 are required")
+	if req == nil || req.SidechainId == "" || req.LcSequence == 0 {
+		return nil, status.Error(codes.InvalidArgument, "sidechain_id and a lc_sequence >= 1 are required")
 	}
 
-	cp, err := q.k.GetCheckpoint(ctx, req.SidechainId, req.Sequence)
+	cp, err := q.k.GetCheckpoint(ctx, req.SidechainId, req.LcSequence)
 	if err != nil {
 		if errors.Is(err, collections.ErrNotFound) {
 			return nil, status.Errorf(codes.NotFound,
-				"checkpoint %d of sidechain %q not found", req.Sequence, req.SidechainId)
+				"checkpoint %d of sidechain %q not found", req.LcSequence, req.SidechainId)
 		}
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -61,7 +61,7 @@ func (q queryServer) LatestCheckpoint(ctx context.Context, req *types.QueryLates
 	return &types.QueryCheckpointResponse{Checkpoint: cp}, nil
 }
 
-// Checkpoints lists the checkpoints of one sidechain, ordered by sequence.
+// Checkpoints lists the checkpoints of one sidechain, ordered by lc_sequence.
 // Set pagination.reverse to list newest first.
 func (q queryServer) Checkpoints(ctx context.Context, req *types.QueryCheckpointsRequest) (*types.QueryCheckpointsResponse, error) {
 	if req == nil || req.SidechainId == "" {

@@ -16,16 +16,16 @@ message Checkpoint {
   // ID of the sidechain this checkpoint belongs to (see x/sidechain.Sidechain.id).
   string sidechain_id = 1;
 
-  // Monotonically increasing sequence number for this sidechain's checkpoints.
-  // Must equal the previous checkpoint's sequence + 1 (no gaps, no reordering).
-  uint64 sequence = 2;
+  // Monotonically increasing lc_sequence number for this sidechain's checkpoints.
+  // Must equal the previous checkpoint's lc_sequence + 1 (no gaps, no reordering).
+  uint64 lc_sequence = 2;
 
   // Merkle root (or equivalent state commitment) of the batch of records
   // this checkpoint covers, as computed off-chain by the sidechain.
   bytes state_root = 3;
 
   // Hash of the immediately preceding checkpoint for this sidechain,
-  // forming a verifiable chain. Empty for sequence == 1.
+  // forming a verifiable chain. Empty for lc_sequence == 1.
   bytes previous_checkpoint_hash = 4;
 
   // Number of individual records/events committed in this batch.
@@ -71,7 +71,7 @@ message Signature {
 message CheckpointSignDoc {
   string chain_id = 1;
   string sidechain_id = 2;
-  uint64 sequence = 3;
+  uint64 lc_sequence = 3;
   bytes state_root = 4;
   bytes previous_checkpoint_hash = 5;
   uint64 record_count = 6;

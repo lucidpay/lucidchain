@@ -25,7 +25,7 @@ var (
 	AttestationKey = collections.NewPrefix("attestation/value/")
 	DisputeKey     = collections.NewPrefix("dispute/value/")
 
-	// AttestationByCheckpointKey indexes attestations by (sidechain_id, sequence, attestation_id).
+	// AttestationByCheckpointKey indexes attestations by (sidechain_id, lc_sequence, attestation_id).
 	AttestationByCheckpointKey = collections.NewPrefix("attestation/by_checkpoint/")
 
 	// ExitQueueKey orders exited attestors by (bond_return_at unix seconds, attestor_id).

@@ -19,18 +19,18 @@ func (k Keeper) InitGenesis(ctx context.Context, genState types.GenesisState) er
 	}
 
 	for _, cp := range genState.Checkpoints {
-		if err := k.Checkpoints.Set(ctx, collections.Join(cp.SidechainId, cp.Sequence), cp); err != nil {
+		if err := k.Checkpoints.Set(ctx, collections.Join(cp.SidechainId, cp.LcSequence), cp); err != nil {
 			return err
 		}
 
-		// Keep the highest sequence per sidechain. Reading before writing keeps
+		// Keep the highest lc_sequence per sidechain. Reading before writing keeps
 		// this independent of the order of genesis entries and of map iteration.
 		latest, err := k.LatestSequence.Get(ctx, cp.SidechainId)
 		if err != nil && !errors.Is(err, collections.ErrNotFound) {
 			return err
 		}
-		if errors.Is(err, collections.ErrNotFound) || cp.Sequence > latest {
-			if err := k.LatestSequence.Set(ctx, cp.SidechainId, cp.Sequence); err != nil {
+		if errors.Is(err, collections.ErrNotFound) || cp.LcSequence > latest {
+			if err := k.LatestSequence.Set(ctx, cp.SidechainId, cp.LcSequence); err != nil {
 				return err
 			}
 		}

@@ -189,7 +189,7 @@ func signBytesFor(t *testing.T, msg *types.MsgSubmitCheckpoint, chainID string) 
 	bz, err := types.CheckpointSignBytes(&types.CheckpointSignDoc{
 		ChainId:                chainID,
 		SidechainId:            msg.SidechainId,
-		Sequence:               msg.Sequence,
+		LcSequence:             msg.LcSequence,
 		StateRoot:              msg.StateRoot,
 		PreviousCheckpointHash: msg.PreviousCheckpointHash,
 		RecordCount:            msg.RecordCount,
@@ -218,7 +218,7 @@ func (f *fixture) signedMsg(t *testing.T, seq uint64, prev, root []byte, records
 	msg := &types.MsgSubmitCheckpoint{
 		Submitter:              f.submitterS,
 		SidechainId:            testSidechain,
-		Sequence:               seq,
+		LcSequence:             seq,
 		StateRoot:              root,
 		PreviousCheckpointHash: prev,
 		RecordCount:            records,
@@ -266,7 +266,7 @@ func TestSubmitCheckpoint_Success(t *testing.T) {
 	cp, err := f.k.GetCheckpoint(f.ctx, testSidechain, 1)
 	require.NoError(t, err)
 	require.Equal(t, testSidechain, cp.SidechainId)
-	require.Equal(t, uint64(1), cp.Sequence)
+	require.Equal(t, uint64(1), cp.LcSequence)
 	require.Equal(t, root(0xAA), cp.StateRoot)
 	require.Empty(t, cp.PreviousCheckpointHash)
 	require.Equal(t, uint64(10), cp.RecordCount)
@@ -308,10 +308,10 @@ func TestSubmitCheckpoint_Chaining(t *testing.T) {
 		prev []byte
 		want error
 	}{
-		{"replay of sequence 1", 1, nil, types.ErrInvalidSequence},
-		{"skipped sequence", 3, resp1.CheckpointHash, types.ErrInvalidSequence},
+		{"replay of lc_sequence 1", 1, nil, types.ErrInvalidSequence},
+		{"skipped lc_sequence", 3, resp1.CheckpointHash, types.ErrInvalidSequence},
 		{"wrong previous hash", 2, root(0xEE), types.ErrInvalidPreviousHash},
-		{"empty previous hash after sequence 1", 2, nil, types.ErrInvalidPreviousHash},
+		{"empty previous hash after lc_sequence 1", 2, nil, types.ErrInvalidPreviousHash},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -320,7 +320,7 @@ func TestSubmitCheckpoint_Chaining(t *testing.T) {
 		})
 	}
 
-	// Rejections wrote nothing: latest is still sequence 1.
+	// Rejections wrote nothing: latest is still lc_sequence 1.
 	seq, err := f.k.LatestSequence.Get(f.ctx, testSidechain)
 	require.NoError(t, err)
 	require.Equal(t, uint64(1), seq)
@@ -520,9 +520,9 @@ func TestSubmitCheckpoint_Limits(t *testing.T) {
 			want:   types.ErrInvalidCheckpoint,
 		},
 		{
-			name:   "sequence zero",
+			name:   "lc_sequence zero",
 			params: func(p *types.Params) {},
-			msg:    func(m *types.MsgSubmitCheckpoint) { m.Sequence = 0 },
+			msg:    func(m *types.MsgSubmitCheckpoint) { m.LcSequence = 0 },
 			want:   types.ErrInvalidSequence,
 		},
 		{
@@ -662,7 +662,7 @@ func TestGenesisRoundTrip(t *testing.T) {
 
 	latest, err := g.k.GetLatestCheckpoint(g.ctx, testSidechain)
 	require.NoError(t, err)
-	require.Equal(t, uint64(2), latest.Sequence)
+	require.Equal(t, uint64(2), latest.LcSequence)
 
 	// Chaining continues from the imported state.
 	_, err = g.submit(g.signedMsg(t, 3, latest.CheckpointHash, root(0x03), 7, 0, 2))

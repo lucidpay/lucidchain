@@ -13,7 +13,7 @@ option go_package = "github.com/lucidpay/lucidchain/x/checkpoint/types";
 // Query defines the gRPC querier service.
 service Query {
     rpc Checkpoint(QueryCheckpointRequest) returns (QueryCheckpointResponse) {
-    option (google.api.http).get = "/lucidchain/checkpoint/v1/sidechains/{sidechain_id}/checkpoints/{sequence}";
+    option (google.api.http).get = "/lucidchain/checkpoint/v1/sidechains/{sidechain_id}/checkpoints/{lc_sequence}";
   }
 
   rpc LatestCheckpoint(QueryLatestCheckpointRequest) returns (QueryCheckpointResponse) {
@@ -32,7 +32,7 @@ service Query {
 
 message QueryCheckpointRequest {
   string sidechain_id = 1;
-  uint64 sequence = 2;
+  uint64 lc_sequence = 2;
 }
 
 message QueryLatestCheckpointRequest {

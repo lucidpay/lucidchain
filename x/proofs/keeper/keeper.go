@@ -52,7 +52,7 @@ type Keeper struct {
 	// Proofs maps proof id -> verified proof record.
 	Proofs collections.Map[string, types.ProofRecord]
 
-	// ProofsByCheckpoint maps ((sidechain_id, sequence), proof_id) -> proof_id.
+	// ProofsByCheckpoint maps ((sidechain_id, lc_sequence), proof_id) -> proof_id.
 	// It exists so a checkpoint's proofs can be listed and paginated.
 	ProofsByCheckpoint collections.Map[collections.Pair[collections.Pair[string, uint64], string], string]
 }
@@ -185,18 +185,18 @@ func (k Keeper) setProof(ctx context.Context, p types.ProofRecord) error {
 func (k Keeper) checkpointBinding(
 	ctx context.Context,
 	sidechainID string,
-	sequence uint64,
+	lc_sequence uint64,
 	claimID string,
 ) (types.Binding, checkpointtypes.Checkpoint, error) {
-	cp, err := k.checkpointKeeper.GetCheckpoint(ctx, sidechainID, sequence)
+	cp, err := k.checkpointKeeper.GetCheckpoint(ctx, sidechainID, lc_sequence)
 	if err != nil {
 		if errors.Is(err, collections.ErrNotFound) {
 			return types.Binding{}, checkpointtypes.Checkpoint{}, errorsmod.Wrapf(types.ErrCheckpointNotFound,
-				"sidechain %q sequence %d", sidechainID, sequence)
+				"sidechain %q lc_sequence %d", sidechainID, lc_sequence)
 		}
 		return types.Binding{}, checkpointtypes.Checkpoint{}, err
 	}
-	return types.ComputeBinding(sdkChainID(ctx), sidechainID, sequence, cp.StateRoot, cp.CheckpointHash, claimID), cp, nil
+	return types.ComputeBinding(sdkChainID(ctx), sidechainID, lc_sequence, cp.StateRoot, cp.CheckpointHash, claimID), cp, nil
 }
 
 // sdkChainID returns the chain id of the context's header.

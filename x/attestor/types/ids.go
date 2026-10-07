@@ -39,7 +39,7 @@ func ValidateID(field, id string) error {
 
 // AttestationID derives the deterministic attestation id:
 //
-//	hex(sha256(domain || lp(schema_id) || lp(sidechain_id) || be64(sequence) || lp(attestor_id)))
+//	hex(sha256(domain || lp(schema_id) || lp(sidechain_id) || be64(lc_sequence) || lp(attestor_id)))
 //
 // where lp is a uvarint length prefix, so field boundaries are unambiguous.
 func AttestationID(schemaID, sidechainID string, checkpointSequence uint64, attestorID string) string {

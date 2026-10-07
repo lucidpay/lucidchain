@@ -1,37 +1,33 @@
 [package]
-name = "pq-verifier-guest"
+name = "av-zone"
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.75"
+rust-version = "1.85"
+description = "geofence.av_zone: STARK statement that an autonomous-vehicle trip chunk stayed inside a convex zone (core, v0)"
 
-[lib]
-name = "pq_verifier_guest"
-path = "src/lib.rs"
-
-[[bin]]
-name = "pq-verifier-guest"
-path = "src/main.rs"
-
-# Keep the dependency surface minimal: this service verifies public data and
-# holds no secrets, so every extra crate is only extra audit burden.
+# Exact pins: the AIR, FRI parameters and verifier behaviour are all part of the
+# vk_id. Never use caret ranges here; upgrade deliberately and re-derive vk_id.
 [dependencies]
-tokio = { version = "1", default-features = false, features = ["rt-multi-thread", "net", "io-util", "time", "sync"] }
-tokio-vsock = "0.5"
-
-[dev-dependencies]
-tokio = { version = "1", default-features = false, features = ["rt-multi-thread", "macros", "net", "io-util", "time", "sync"] }
-
-[features]
-default = []
-# TEST ONLY: accepts every proof. Cannot be combined with a release build
-# (see the compile_error! in src/verify.rs).
-insecure-accept-all = []
+p3-air = "=0.8.0"
+p3-baby-bear = "=0.8.0"
+p3-challenger = "=0.8.0"
+p3-commit = "=0.8.0"
+p3-dft = "=0.8.0"
+p3-field = "=0.8.0"
+p3-fri = "=0.8.0"
+p3-keccak = "=0.8.0"
+p3-matrix = "=0.8.0"
+p3-merkle-tree = "=0.8.0"
+p3-symmetric = "=0.8.0"
+p3-uni-stark = "=0.8.0"
+rand = { version = "0.10.1", default-features = false, features = ["std_rng"] }
+serde = { version = "1", default-features = false, features = ["derive", "alloc"] }
+postcard = { version = "1.1.3", default-features = false, features = ["alloc"] }
 
 [profile.release]
-# A panic means a bug. Abort so the host sees a dropped connection (a verifier
-# fault that halts the node) and the supervisor restarts the guest, instead of
-# turning the bug into a verdict.
-panic = "abort"
-lto = true
-codegen-units = 1
 overflow-checks = true
+
+# Keep debug assertions (Plonky3 checks AIR constraints under them) but make
+# proving fast enough to test realistic trace sizes.
+[profile.test]
+opt-level = 2

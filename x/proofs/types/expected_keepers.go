@@ -19,7 +19,7 @@ type AuthKeeper interface {
 // CheckpointKeeper is the subset of x/checkpoint this module depends on.
 // A checkpoint must exist before it can be proven.
 type CheckpointKeeper interface {
-	GetCheckpoint(ctx context.Context, sidechainID string, sequence uint64) (checkpointtypes.Checkpoint, error)
+	GetCheckpoint(ctx context.Context, sidechainID string, lc_sequence uint64) (checkpointtypes.Checkpoint, error)
 }
 
 // BankKeeper defines the expected interface for the Bank module.

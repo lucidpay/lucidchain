@@ -48,7 +48,7 @@ type Keeper struct {
 	// Attestations maps attestation id -> attestation.
 	Attestations collections.Map[string, types.Attestation]
 
-	// AttestationsByCheckpoint maps ((sidechain_id, sequence), attestation_id) -> attestation_id.
+	// AttestationsByCheckpoint maps ((sidechain_id, lc_sequence), attestation_id) -> attestation_id.
 	// It exists so a checkpoint's attestations can be listed and paginated.
 	AttestationsByCheckpoint collections.Map[collections.Pair[collections.Pair[string, uint64], string], string]
 

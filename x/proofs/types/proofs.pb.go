@@ -192,7 +192,7 @@ type ProofRecord struct {
 	// BINDING (enforced by the module before verification): the first two public
 	// inputs must be the 128-bit big-endian halves (hi, lo) of the 32-byte
 	// binding returned by types.ComputeBinding -- a hash over chain id, sidechain
-	// id, checkpoint sequence, state root, checkpoint hash and claim id. This ties
+	// id, checkpoint lc_sequence, state root, checkpoint hash and claim id. This ties
 	// the proof to exactly one checkpoint and claim on this chain. Circuits must
 	// declare these two public variables first.
 	PublicInputs []byte `protobuf:"bytes,7,opt,name=public_inputs,json=publicInputs,proto3" json:"public_inputs,omitempty"`

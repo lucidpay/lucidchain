@@ -23,6 +23,6 @@ var (
 	VerifierKey = collections.NewPrefix("verifier/value/")
 	ProofKey    = collections.NewPrefix("proof/value/")
 
-	// ProofByCheckpointKey indexes proofs by ((sidechain_id, sequence), proof_id).
+	// ProofByCheckpointKey indexes proofs by ((sidechain_id, lc_sequence), proof_id).
 	ProofByCheckpointKey = collections.NewPrefix("proof/by_checkpoint/")
 )

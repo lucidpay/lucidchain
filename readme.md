@@ -58,7 +58,7 @@ type SidechainKeeper interface {
     IsActive(ctx sdk.Context, id string) bool
     IsAuthorizedSigner(ctx sdk.Context, id string, pubkey string) bool
     SignatureThreshold(ctx sdk.Context, id string) uint32
-    RecordCheckpointAccepted(ctx sdk.Context, id string, sequence uint64, checkpointHash []byte) error
+    RecordCheckpointAccepted(ctx sdk.Context, id string, lc_sequence uint64, checkpointHash []byte) error
     SlashBond(ctx sdk.Context, id string, reason string, amount math.Int) error
 }
 ```
@@ -81,14 +81,14 @@ type SidechainKeeper interface {
 
 ### 3.1 Purpose
 
-Accepts one message type — a signed checkpoint — validates it against the sidechain's registration, and finalizes it into an append-only, per-sidechain sequence. This is the module that actually implements "anchoring."
+Accepts one message type — a signed checkpoint — validates it against the sidechain's registration, and finalizes it into an append-only, per-sidechain lc_sequence. This is the module that actually implements "anchoring."
 
 ### 3.2 State layout
 
 | Key | Value | Description |
 |---|---|---|
-| `Checkpoint/value/{sidechain_id}/{sequence}` | `Checkpoint` | Primary record |
-| `Checkpoint/latest/{sidechain_id}` | `uint64` (sequence) | Pointer to the latest accepted sequence, for O(1) latest-checkpoint lookups |
+| `Checkpoint/value/{sidechain_id}/{lc_sequence}` | `Checkpoint` | Primary record |
+| `Checkpoint/latest/{sidechain_id}` | `uint64` (lc_sequence) | Pointer to the latest accepted lc_sequence, for O(1) latest-checkpoint lookups |
 | `Params/value` | `Params` | Module parameters |
 
 ### 3.3 Message handling: `MsgSubmitCheckpoint`
@@ -97,20 +97,20 @@ Handler logic, in order (any failure aborts the whole message — no partial sta
 
 1. **Resolve sidechain.** Call `sidechainKeeper.GetSidechain(sidechain_id)`. Fail if not found.
 2. **Check status.** Fail unless sidechain status is `ACTIVE`.
-3. **Check sequencing.** `sequence` must equal `Checkpoint/latest/{sidechain_id]} + 1` (or `1` if no prior checkpoint). Reject gaps and replays.
-4. **Check chaining.** `previous_checkpoint_hash` must equal the hash of the checkpoint at `sequence - 1` (or be empty for `sequence == 1`).
+3. **Check sequencing.** `lc_sequence` must equal `Checkpoint/latest/{sidechain_id]} + 1` (or `1` if no prior checkpoint). Reject gaps and replays.
+4. **Check chaining.** `previous_checkpoint_hash` must equal the hash of the checkpoint at `lc_sequence - 1` (or be empty for `lc_sequence == 1`).
 5. **Verify signatures.** For each entry in `signatures`, confirm `pubkey` is in the sidechain's `checkpoint_signer_pubkeys` and the signature is valid over the canonical signing payload (§4.3). Count valid, non-duplicate signatures and confirm the count meets `signature_threshold`.
 6. **Check batch limits.** `record_count ≤ Params.max_records_per_checkpoint`; `len(data_pointer) ≤ Params.max_data_pointer_bytes`.
 7. **Compute fee.** `fee = base_fee + per_record_fee * record_count`. Deduct from `submitter`'s account (standard SDK fee/bank flow — may be covered via `x/feegrant` if the submitter is a delegated gateway).
-8. **Persist.** Write the `Checkpoint` at `{sidechain_id, sequence}`, update the latest-sequence pointer, and call `sidechainKeeper.RecordCheckpointAccepted(...)` to update the sidechain's `last_checkpoint_height`, `last_checkpoint_hash`, and `last_checkpoint_at`.
-9. **Emit event.** `EventCheckpointAccepted{sidechain_id, sequence, state_root, checkpoint_hash, finalized_height}` — this is what off-chain indexers, explorers, and IBC light clients (later) will consume.
+8. **Persist.** Write the `Checkpoint` at `{sidechain_id, lc_sequence}`, update the latest-sequence pointer, and call `sidechainKeeper.RecordCheckpointAccepted(...)` to update the sidechain's `last_checkpoint_height`, `last_checkpoint_hash`, and `last_checkpoint_at`.
+9. **Emit event.** `EventCheckpointAccepted{sidechain_id, lc_sequence, state_root, checkpoint_hash, finalized_height}` — this is what off-chain indexers, explorers, and IBC light clients (later) will consume.
 
 ### 3.4 Canonical checkpoint hash
 
 ```
 checkpoint_hash = SHA-256(
     sidechain_id            || 0x00 ||
-    uint64_be(sequence)      || 0x00 ||
+    uint64_be(lc_sequence)      || 0x00 ||
     state_root                       ||
     previous_checkpoint_hash
 )
@@ -124,13 +124,13 @@ The on-chain `state_root` is a Merkle root over a batch of off-chain records, co
 
 1. Obtains the original record and its Merkle path from the sidechain operator (or its data store per `data_pointer`).
 2. Recomputes the root by hashing up the path.
-3. Compares against the on-chain `state_root` for the relevant `{sidechain_id, sequence}` via a standard `Checkpoint` query.
+3. Compares against the on-chain `state_root` for the relevant `{sidechain_id, lc_sequence}` via a standard `Checkpoint` query.
 
 This proof mechanism is entirely off-chain and language/library-agnostic — the module only needs to guarantee that `state_root` is correct and immutable once finalized.
 
 ### 3.6 Invariants
 
-- `sequence` values for a given `sidechain_id` are strictly increasing with no gaps, starting at 1.
+- `lc_sequence` values for a given `sidechain_id` are strictly increasing with no gaps, starting at 1.
 - Each stored `Checkpoint.previous_checkpoint_hash` matches the actual hash of the prior checkpoint (self-consistency of the chain can be verified by replaying all checkpoints for a sidechain).
 - A `Checkpoint` is immutable once written — no message in this module updates or deletes an existing checkpoint.
 
@@ -152,7 +152,7 @@ Implements Tier 2. Separate, staked attestors — certification bodies, auditors
 | `Attestor/byDomain/{domain}/{id}` | `[]byte{}` | Secondary index |
 | `Schema/value/{schema_id}` | `AttestationSchema` | Governance-published schema |
 | `Attestation/value/{id}` | `Attestation` | Primary attestation record |
-| `Attestation/byCheckpoint/{sidechain_id}/{sequence}/{attestation_id}` | `[]byte{}` | Secondary index for "all attestations about this checkpoint" |
+| `Attestation/byCheckpoint/{sidechain_id}/{lc_sequence}/{attestation_id}` | `[]byte{}` | Secondary index for "all attestations about this checkpoint" |
 | `Dispute/value/{id}` | `Dispute` | Primary dispute record |
 | `Params/value` | `Params` | Module parameters |
 
@@ -177,7 +177,7 @@ Implements Tier 2. Separate, staked attestors — certification bodies, auditors
 4. **Verify signatures** against the attestor's registered keys and threshold, same pattern as `x/checkpoint` §3.3 step 5.
 5. **Check payload size** against `max_claim_payload_bytes`.
 6. **Compute expiry** as `issued_at + schema.validity_period_seconds`.
-7. **Persist** the `Attestation` with a deterministic ID (`hash(schema_id, sidechain_id, sequence, attestor_id)`), preventing the same attestor from double-publishing under the same schema for the same checkpoint.
+7. **Persist** the `Attestation` with a deterministic ID (`hash(schema_id, sidechain_id, lc_sequence, attestor_id)`), preventing the same attestor from double-publishing under the same schema for the same checkpoint.
 8. **Emit event.** `EventAttestationPublished{...}`.
 
 ### 4.5 Keeper interface (consumed by higher-level queries / future modules)
@@ -186,7 +186,7 @@ Implements Tier 2. Separate, staked attestors — certification bodies, auditors
 type AttestorKeeper interface {
     GetAttestor(ctx sdk.Context, id string) (types.Attestor, bool)
     IsActive(ctx sdk.Context, id string) bool
-    GetActiveAttestationsForCheckpoint(ctx sdk.Context, sidechainID string, sequence uint64) []types.Attestation
+    GetActiveAttestationsForCheckpoint(ctx sdk.Context, sidechainID string, lc_sequence uint64) []types.Attestation
     SlashBond(ctx sdk.Context, attestorID string, reason string, amount math.Int) error
 }
 ```
@@ -224,7 +224,7 @@ Implements Tier 3. Unlike `x/attestor`, this module doesn't rely on anyone's hon
 |---|---|---|
 | `Verifier/value/{proof_system_id}` | `VerifierRegistration` | Registered proof-system verifier |
 | `Proof/value/{id}` | `ProofRecord` | Persisted, verified proof |
-| `Proof/byCheckpoint/{sidechain_id}/{sequence}/{proof_id}` | `[]byte{}` | Secondary index |
+| `Proof/byCheckpoint/{sidechain_id}/{lc_sequence}/{proof_id}` | `[]byte{}` | Secondary index |
 | `Params/value` | `Params` | Module parameters |
 
 ### 5.3 Verifier implementations are Go code, not on-chain data
@@ -258,8 +258,8 @@ Governance can only register/deprecate the on-chain `VerifierRegistration` **met
 ```go
 type ProofsKeeper interface {
     GetVerifier(ctx sdk.Context, proofSystemID string) (types.VerifierRegistration, bool)
-    GetProofsForCheckpoint(ctx sdk.Context, sidechainID string, sequence uint64) []types.ProofRecord
-    HasVerifiedClaim(ctx sdk.Context, sidechainID string, sequence uint64, claimID string) bool
+    GetProofsForCheckpoint(ctx sdk.Context, sidechainID string, lc_sequence uint64) []types.ProofRecord
+    HasVerifiedClaim(ctx sdk.Context, sidechainID string, lc_sequence uint64, claimID string) bool
 }
 ```
 

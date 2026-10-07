@@ -407,7 +407,7 @@ type Attestation struct {
 	IssuedAt     time.Time         `protobuf:"bytes,10,opt,name=issued_at,json=issuedAt,proto3,stdtime" json:"issued_at"`
 	ExpiresAt    time.Time         `protobuf:"bytes,11,opt,name=expires_at,json=expiresAt,proto3,stdtime" json:"expires_at"`
 	// NEW: x/checkpoint checkpoint_hash this attestation commits to, so the
-	// signers vouch for that exact checkpoint, not just its sequence number.
+	// signers vouch for that exact checkpoint, not just its lc_sequence number.
 	CheckpointHash []byte `protobuf:"bytes,12,opt,name=checkpoint_hash,json=checkpointHash,proto3" json:"checkpoint_hash,omitempty"`
 	// NEW: Attestor.signer_set_version the signatures were verified under.
 	SignerSetVersion uint64 `protobuf:"varint,13,opt,name=signer_set_version,json=signerSetVersion,proto3" json:"signer_set_version,omitempty"`

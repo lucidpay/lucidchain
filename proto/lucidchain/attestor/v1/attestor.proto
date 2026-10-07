@@ -112,11 +112,11 @@ message AttestationSchema {
 message Attestation {
   option (gogoproto.equal) = true;
 
-  string id = 1;                   // deterministic: hash of (schema_id, sidechain_id, sequence, attestor_id)
+  string id = 1;                   // deterministic: hash of (schema_id, sidechain_id, lc_sequence, attestor_id)
   string schema_id = 2;
   string attestor_id = 3;
   string sidechain_id = 4;
-  uint64 checkpoint_sequence = 5;  // the x/checkpoint sequence this attestation is about
+  uint64 checkpoint_sequence = 5;  // the x/checkpoint lc_sequence this attestation is about
 
   // Structured claim payload (schema-specific fields), encoded as JSON per the
   // schema's documented format. Kept off the hot path of consensus-critical logic --
@@ -132,7 +132,7 @@ message Attestation {
   google.protobuf.Timestamp expires_at = 11 [(gogoproto.stdtime) = true, (gogoproto.nullable) = false];
 
   // NEW: x/checkpoint checkpoint_hash this attestation commits to, so the
-  // signers vouch for that exact checkpoint, not just its sequence number.
+  // signers vouch for that exact checkpoint, not just its lc_sequence number.
   bytes checkpoint_hash = 12;
 
   // NEW: Attestor.signer_set_version the signatures were verified under.

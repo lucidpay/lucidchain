@@ -21,9 +21,9 @@ var (
 	// ParamsKey is the prefix for module params.
 	ParamsKey = collections.NewPrefix("p_checkpoint")
 
-	// CheckpointKey is the prefix for checkpoints, keyed by (sidechain_id, sequence).
+	// CheckpointKey is the prefix for checkpoints, keyed by (sidechain_id, lc_sequence).
 	CheckpointKey = collections.NewPrefix("checkpoint/value/")
 
-	// LatestSequenceKey is the prefix for the latest accepted sequence per sidechain.
+	// LatestSequenceKey is the prefix for the latest accepted lc_sequence per sidechain.
 	LatestSequenceKey = collections.NewPrefix("checkpoint/latest/")
 )

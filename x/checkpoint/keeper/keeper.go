@@ -32,7 +32,7 @@ import (
 const (
 	eventTypeCheckpointSubmitted = "checkpoint_submitted"
 	attributeSidechainID         = "sidechain_id"
-	attributeSequence            = "sequence"
+	attributeSequence            = "lc_sequence"
 	attributeStateRoot           = "state_root"
 	attributeCheckpointHash      = "checkpoint_hash"
 )
@@ -52,10 +52,10 @@ type Keeper struct {
 	sidechainKeeper types.SidechainKeeper
 	bankKeeper      types.BankKeeper
 
-	// Checkpoints maps (sidechain_id, sequence) -> checkpoint. Append-only.
+	// Checkpoints maps (sidechain_id, lc_sequence) -> checkpoint. Append-only.
 	Checkpoints collections.Map[collections.Pair[string, uint64], types.Checkpoint]
 
-	// LatestSequence maps sidechain_id -> sequence of its newest checkpoint.
+	// LatestSequence maps sidechain_id -> lc_sequence of its newest checkpoint.
 	LatestSequence collections.Map[string, uint64]
 }
 
@@ -129,9 +129,9 @@ func (k Keeper) SetParams(ctx context.Context, params types.Params) error {
 	return k.Params.Set(ctx, params)
 }
 
-// GetCheckpoint returns the checkpoint at (sidechainID, sequence).
-func (k Keeper) GetCheckpoint(ctx context.Context, sidechainID string, sequence uint64) (types.Checkpoint, error) {
-	return k.Checkpoints.Get(ctx, collections.Join(sidechainID, sequence))
+// GetCheckpoint returns the checkpoint at (sidechainID, lc_sequence).
+func (k Keeper) GetCheckpoint(ctx context.Context, sidechainID string, lc_sequence uint64) (types.Checkpoint, error) {
+	return k.Checkpoints.Get(ctx, collections.Join(sidechainID, lc_sequence))
 }
 
 // GetLatestCheckpoint returns the newest checkpoint of a sidechain.
@@ -143,12 +143,12 @@ func (k Keeper) GetLatestCheckpoint(ctx context.Context, sidechainID string) (ty
 	return k.GetCheckpoint(ctx, sidechainID, seq)
 }
 
-// storeCheckpoint writes the checkpoint and advances the latest-sequence index.
+// storeCheckpoint writes the checkpoint and advances the latest-lc_sequence index.
 func (k Keeper) storeCheckpoint(ctx context.Context, cp types.Checkpoint) error {
-	if err := k.Checkpoints.Set(ctx, collections.Join(cp.SidechainId, cp.Sequence), cp); err != nil {
+	if err := k.Checkpoints.Set(ctx, collections.Join(cp.SidechainId, cp.LcSequence), cp); err != nil {
 		return err
 	}
-	return k.LatestSequence.Set(ctx, cp.SidechainId, cp.Sequence)
+	return k.LatestSequence.Set(ctx, cp.SidechainId, cp.LcSequence)
 }
 
 // SubmitCheckpoint validates, verifies, charges for, and stores a checkpoint.
@@ -156,7 +156,7 @@ func (k Keeper) storeCheckpoint(ctx context.Context, cp types.Checkpoint) error 
 // Flow:
 //  1. stateless limits from params
 //  2. sidechain exists, is ACTIVE, signer_set_version matches
-//  3. sequence == latest + 1 and previous_checkpoint_hash links to the latest
+//  3. lc_sequence == latest + 1 and previous_checkpoint_hash links to the latest
 //  4. build sign bytes, check threshold, verify every signature
 //  5. collect the fee, store the checkpoint, update x/sidechain
 //
@@ -201,7 +201,7 @@ func (k Keeper) SubmitCheckpoint(ctx context.Context, msg *types.MsgSubmitCheckp
 	signBytes, err := types.CheckpointSignBytes(&types.CheckpointSignDoc{
 		ChainId:                sdkCtx.ChainID(),
 		SidechainId:            msg.SidechainId,
-		Sequence:               msg.Sequence,
+		LcSequence:             msg.LcSequence,
 		StateRoot:              msg.StateRoot,
 		PreviousCheckpointHash: msg.PreviousCheckpointHash,
 		RecordCount:            msg.RecordCount,
@@ -225,7 +225,7 @@ func (k Keeper) SubmitCheckpoint(ctx context.Context, msg *types.MsgSubmitCheckp
 	height := sdkCtx.BlockHeight()
 	cp := types.Checkpoint{
 		SidechainId:            msg.SidechainId,
-		Sequence:               msg.Sequence,
+		LcSequence:             msg.LcSequence,
 		StateRoot:              msg.StateRoot,
 		PreviousCheckpointHash: msg.PreviousCheckpointHash,
 		RecordCount:            msg.RecordCount,
@@ -241,14 +241,14 @@ func (k Keeper) SubmitCheckpoint(ctx context.Context, msg *types.MsgSubmitCheckp
 		return nil, err
 	}
 
-	if err := k.sidechainKeeper.RecordCheckpoint(ctx, msg.SidechainId, msg.Sequence, height, checkpointHash); err != nil {
+	if err := k.sidechainKeeper.RecordCheckpoint(ctx, msg.SidechainId, msg.LcSequence, height, checkpointHash); err != nil {
 		return nil, err
 	}
 
 	sdkCtx.EventManager().EmitEvent(sdk.NewEvent(
 		eventTypeCheckpointSubmitted,
 		sdk.NewAttribute(attributeSidechainID, msg.SidechainId),
-		sdk.NewAttribute(attributeSequence, strconv.FormatUint(msg.Sequence, 10)),
+		sdk.NewAttribute(attributeSequence, strconv.FormatUint(msg.LcSequence, 10)),
 		sdk.NewAttribute(attributeStateRoot, hex.EncodeToString(msg.StateRoot)),
 		sdk.NewAttribute(attributeCheckpointHash, hex.EncodeToString(checkpointHash)),
 	))
@@ -264,8 +264,8 @@ func validateSubmission(msg *types.MsgSubmitCheckpoint, p types.Params) error {
 	switch {
 	case msg.SidechainId == "":
 		return errorsmod.Wrap(types.ErrInvalidCheckpoint, "sidechain_id is required")
-	case msg.Sequence == 0:
-		return errorsmod.Wrap(types.ErrInvalidSequence, "sequence must be >= 1")
+	case msg.LcSequence == 0:
+		return errorsmod.Wrap(types.ErrInvalidSequence, "lc_sequence must be >= 1")
 	case len(msg.StateRoot) == 0:
 		return errorsmod.Wrap(types.ErrInvalidCheckpoint, "state_root is required")
 	case len(msg.StateRoot) > types.MaxStateRootBytes:
@@ -295,7 +295,7 @@ func validateSubmission(msg *types.MsgSubmitCheckpoint, p types.Params) error {
 	return nil
 }
 
-// checkChaining enforces sequence == latest+1 and the previous-hash link.
+// checkChaining enforces lc_sequence == latest+1 and the previous-hash link.
 func (k Keeper) checkChaining(ctx context.Context, msg *types.MsgSubmitCheckpoint) error {
 	lastSeq, err := k.LatestSequence.Get(ctx, msg.SidechainId)
 	if err != nil {
@@ -305,15 +305,15 @@ func (k Keeper) checkChaining(ctx context.Context, msg *types.MsgSubmitCheckpoin
 		lastSeq = 0 // first checkpoint for this sidechain
 	}
 
-	if msg.Sequence != lastSeq+1 {
+	if msg.LcSequence != lastSeq+1 {
 		return errorsmod.Wrapf(types.ErrInvalidSequence,
-			"expected sequence %d, got %d", lastSeq+1, msg.Sequence)
+			"expected lc_sequence %d, got %d", lastSeq+1, msg.LcSequence)
 	}
 
 	if lastSeq == 0 {
 		if len(msg.PreviousCheckpointHash) != 0 {
 			return errorsmod.Wrap(types.ErrInvalidPreviousHash,
-				"previous_checkpoint_hash must be empty for sequence 1")
+				"previous_checkpoint_hash must be empty for lc_sequence 1")
 		}
 		return nil
 	}
@@ -324,7 +324,7 @@ func (k Keeper) checkChaining(ctx context.Context, msg *types.MsgSubmitCheckpoin
 	}
 	if !bytes.Equal(prev.CheckpointHash, msg.PreviousCheckpointHash) {
 		return errorsmod.Wrapf(types.ErrInvalidPreviousHash,
-			"does not match checkpoint hash of sequence %d", lastSeq)
+			"does not match checkpoint hash of lc_sequence %d", lastSeq)
 	}
 	return nil
 }

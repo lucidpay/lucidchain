@@ -39,7 +39,7 @@ func ValidateID(field, id string) error {
 
 // ProofID derives the deterministic proof record id:
 //
-//	hex(sha256(domain || lp(sidechain_id) || be64(sequence) || lp(proof_system_id) || lp(claim_id)))
+//	hex(sha256(domain || lp(sidechain_id) || be64(lc_sequence) || lp(proof_system_id) || lp(claim_id)))
 //
 // where lp is a uvarint length prefix, so field boundaries are unambiguous.
 func ProofID(sidechainID string, checkpointSequence uint64, proofSystemID, claimID string) string {
@@ -59,7 +59,7 @@ type Binding [32]byte
 
 // ComputeBinding derives the binding:
 //
-//	sha256(domain || lp(chain_id) || lp(sidechain_id) || be64(sequence)
+//	sha256(domain || lp(chain_id) || lp(sidechain_id) || be64(lc_sequence)
 //	       || lp(state_root) || lp(checkpoint_hash) || lp(claim_id))
 //
 // Including chain_id stops replay on another chain, and checkpoint_hash (not

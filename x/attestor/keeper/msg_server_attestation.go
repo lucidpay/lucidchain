@@ -27,7 +27,7 @@ import (
 //  5. the threshold is met and every signature verifies over the sign bytes
 //  6. the attestation is stored ACTIVE and the attestor's reputation goes up
 //
-// The same (schema, sidechain, sequence, attestor) tuple can only ever be
+// The same (schema, sidechain, lc_sequence, attestor) tuple can only ever be
 // attested once, even after the attestation was revoked or overturned.
 func (ms msgServer) SubmitAttestation(ctx context.Context, msg *types.MsgSubmitAttestation) (*types.MsgSubmitAttestationResponse, error) {
 	sdkCtx := sdk.UnwrapSDKContext(ctx)
@@ -83,7 +83,7 @@ func (ms msgServer) SubmitAttestation(ctx context.Context, msg *types.MsgSubmitA
 	if err != nil {
 		if errors.Is(err, collections.ErrNotFound) {
 			return nil, errorsmod.Wrapf(types.ErrCheckpointNotFound,
-				"sidechain %q sequence %d", msg.SidechainId, msg.CheckpointSequence)
+				"sidechain %q lc_sequence %d", msg.SidechainId, msg.CheckpointSequence)
 		}
 		return nil, err
 	}

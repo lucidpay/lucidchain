@@ -125,12 +125,12 @@ func (k Keeper) SetSidechain(ctx context.Context, sc types.Sidechain) error {
 //
 // Rules enforced here (state owned by x/sidechain):
 //   - the sidechain must exist and be ACTIVE
-//   - the sequence must be strictly greater than the last recorded one
+//   - the lc_sequence must be strictly greater than the last recorded one
 //   - the height must not decrease
 func (k Keeper) RecordCheckpoint(
 	ctx context.Context,
 	id string,
-	sequence uint64,
+	lc_sequence uint64,
 	height int64,
 	hash []byte,
 ) error {
@@ -146,9 +146,9 @@ func (k Keeper) RecordCheckpoint(
 		return errorsmod.Wrapf(sdkerrors.ErrInvalidRequest,
 			"sidechain %q is not active (status %s)", id, sc.Status)
 	}
-	if sequence <= sc.LastCheckpointSequence {
+	if lc_sequence <= sc.LastCheckpointSequence {
 		return errorsmod.Wrapf(sdkerrors.ErrInvalidRequest,
-			"checkpoint sequence %d must exceed last sequence %d", sequence, sc.LastCheckpointSequence)
+			"checkpoint lc_sequence %d must exceed last lc_sequence %d", lc_sequence, sc.LastCheckpointSequence)
 	}
 	if height < sc.LastCheckpointHeight {
 		return errorsmod.Wrapf(sdkerrors.ErrInvalidRequest,
@@ -160,7 +160,7 @@ func (k Keeper) RecordCheckpoint(
 
 	blockTime := sdk.UnwrapSDKContext(ctx).BlockTime()
 
-	sc.LastCheckpointSequence = sequence
+	sc.LastCheckpointSequence = lc_sequence
 	sc.LastCheckpointHeight = height
 	sc.LastCheckpointHash = hash
 	sc.LastCheckpointAt = &blockTime

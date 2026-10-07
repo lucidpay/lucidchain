@@ -35,5 +35,5 @@ type SidechainKeeper interface {
 	GetSidechain(ctx context.Context, id string) (sidechaintypes.Sidechain, error)
 
 	// RecordCheckpoint updates the sidechain's last-checkpoint fields.
-	RecordCheckpoint(ctx context.Context, id string, sequence uint64, height int64, hash []byte) error
+	RecordCheckpoint(ctx context.Context, id string, lc_sequence uint64, height int64, hash []byte) error
 }

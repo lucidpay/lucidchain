@@ -83,7 +83,7 @@ func (m *mockCheckpointKeeper) add(id string, seq uint64) []byte {
 	h := sha256.Sum256([]byte(cpKey(id, seq)))
 	m.checkpoints[cpKey(id, seq)] = checkpointtypes.Checkpoint{
 		SidechainId:    id,
-		Sequence:       seq,
+		LcSequence:     seq,
 		CheckpointHash: h[:],
 	}
 	return h[:]
@@ -1026,7 +1026,7 @@ func TestSubmitAttestation_Failures(t *testing.T) {
 		{"empty sidechain id", func(t *testing.T, f *fixture, m *types.MsgSubmitAttestation) {
 			m.SidechainId = ""
 		}, types.ErrInvalidRequest},
-		{"checkpoint sequence zero", func(t *testing.T, f *fixture, m *types.MsgSubmitAttestation) {
+		{"checkpoint lc_sequence zero", func(t *testing.T, f *fixture, m *types.MsgSubmitAttestation) {
 			m.CheckpointSequence = 0
 		}, types.ErrInvalidRequest},
 		{"empty claim payload", func(t *testing.T, f *fixture, m *types.MsgSubmitAttestation) {

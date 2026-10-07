@@ -36,7 +36,7 @@ func h(b byte) []byte { return bytes.Repeat([]byte{b}, 32) }
 // cp builds a checkpoint whose hash is h(hash) and whose link is h(prev);
 // prev == 0 means "no previous hash".
 func cp(id string, seq uint64, hash, prev byte) types.Checkpoint {
-	c := types.Checkpoint{SidechainId: id, Sequence: seq, CheckpointHash: h(hash)}
+	c := types.Checkpoint{SidechainId: id, LcSequence: seq, CheckpointHash: h(hash)}
 	if prev != 0 {
 		c.PreviousCheckpointHash = h(prev)
 	}
@@ -57,16 +57,16 @@ func TestGenesisValidate(t *testing.T) {
 			},
 			false,
 		},
-		{"first checkpoint is not sequence 1", []types.Checkpoint{cp("a", 2, 0x12, 0x11)}, true},
-		{"sequence 1 has a previous hash", []types.Checkpoint{cp("a", 1, 0x11, 0x99)}, true},
-		{"gap in sequence", []types.Checkpoint{cp("a", 1, 0x11, 0), cp("a", 3, 0x13, 0x11)}, true},
-		{"duplicate sequence", []types.Checkpoint{cp("a", 1, 0x11, 0), cp("a", 1, 0x11, 0)}, true},
+		{"first checkpoint is not lc_sequence 1", []types.Checkpoint{cp("a", 2, 0x12, 0x11)}, true},
+		{"lc_sequence 1 has a previous hash", []types.Checkpoint{cp("a", 1, 0x11, 0x99)}, true},
+		{"gap in lc_sequence", []types.Checkpoint{cp("a", 1, 0x11, 0), cp("a", 3, 0x13, 0x11)}, true},
+		{"duplicate lc_sequence", []types.Checkpoint{cp("a", 1, 0x11, 0), cp("a", 1, 0x11, 0)}, true},
 		{"broken hash link", []types.Checkpoint{cp("a", 1, 0x11, 0), cp("a", 2, 0x12, 0x77)}, true},
 		{"empty sidechain id", []types.Checkpoint{cp("", 1, 0x11, 0)}, true},
-		{"sequence zero", []types.Checkpoint{cp("a", 0, 0x11, 0)}, true},
+		{"lc_sequence zero", []types.Checkpoint{cp("a", 0, 0x11, 0)}, true},
 		{
 			"short checkpoint hash",
-			[]types.Checkpoint{{SidechainId: "a", Sequence: 1, CheckpointHash: []byte{1, 2, 3}}},
+			[]types.Checkpoint{{SidechainId: "a", LcSequence: 1, CheckpointHash: []byte{1, 2, 3}}},
 			true,
 		},
 	}
@@ -127,7 +127,7 @@ func TestCheckpointSignBytes(t *testing.T) {
 	doc := &types.CheckpointSignDoc{
 		ChainId:          "lucidchain-1",
 		SidechainId:      "sc-1",
-		Sequence:         1,
+		LcSequence:       1,
 		StateRoot:        h(0xAA),
 		RecordCount:      3,
 		SignerSetVersion: 1,
@@ -144,7 +144,7 @@ func TestCheckpointSignBytes(t *testing.T) {
 	mutations := map[string]func(d *types.CheckpointSignDoc){
 		"chain_id":           func(d *types.CheckpointSignDoc) { d.ChainId = "other" },
 		"sidechain_id":       func(d *types.CheckpointSignDoc) { d.SidechainId = "sc-2" },
-		"sequence":           func(d *types.CheckpointSignDoc) { d.Sequence = 2 },
+		"lc_sequence":        func(d *types.CheckpointSignDoc) { d.LcSequence = 2 },
 		"state_root":         func(d *types.CheckpointSignDoc) { d.StateRoot = h(0xBB) },
 		"previous_hash":      func(d *types.CheckpointSignDoc) { d.PreviousCheckpointHash = h(0x01) },
 		"record_count":       func(d *types.CheckpointSignDoc) { d.RecordCount = 4 },

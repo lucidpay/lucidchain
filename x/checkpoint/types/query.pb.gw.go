@@ -55,15 +55,15 @@ func request_Query_Checkpoint_0(ctx context.Context, marshaler runtime.Marshaler
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "sidechain_id", err)
 	}
 
-	val, ok = pathParams["sequence"]
+	val, ok = pathParams["lc_sequence"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "sequence")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "lc_sequence")
 	}
 
-	protoReq.Sequence, err = runtime.Uint64(val)
+	protoReq.LcSequence, err = runtime.Uint64(val)
 
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "sequence", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "lc_sequence", err)
 	}
 
 	msg, err := client.Checkpoint(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
@@ -93,15 +93,15 @@ func local_request_Query_Checkpoint_0(ctx context.Context, marshaler runtime.Mar
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "sidechain_id", err)
 	}
 
-	val, ok = pathParams["sequence"]
+	val, ok = pathParams["lc_sequence"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "sequence")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "lc_sequence")
 	}
 
-	protoReq.Sequence, err = runtime.Uint64(val)
+	protoReq.LcSequence, err = runtime.Uint64(val)
 
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "sequence", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "lc_sequence", err)
 	}
 
 	msg, err := server.Checkpoint(ctx, &protoReq)
@@ -476,7 +476,7 @@ func RegisterQueryHandlerClient(ctx context.Context, mux *runtime.ServeMux, clie
 }
 
 var (
-	pattern_Query_Checkpoint_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5, 1, 0, 4, 1, 5, 6}, []string{"lucidchain", "checkpoint", "v1", "sidechains", "sidechain_id", "checkpoints", "sequence"}, "", runtime.AssumeColonVerbOpt(false)))
+	pattern_Query_Checkpoint_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5, 1, 0, 4, 1, 5, 6}, []string{"lucidchain", "checkpoint", "v1", "sidechains", "sidechain_id", "checkpoints", "lc_sequence"}, "", runtime.AssumeColonVerbOpt(false)))
 
 	pattern_Query_LatestCheckpoint_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5, 2, 6}, []string{"lucidchain", "checkpoint", "v1", "sidechains", "sidechain_id", "checkpoints", "latest-checkpoint"}, "", runtime.AssumeColonVerbOpt(false)))
 

@@ -12,7 +12,7 @@ option go_package = "github.com/lucidpay/lucidchain/x/checkpoint/types";
 // CheckpointHash is the canonical hash of a Checkpoint used for chaining
 // and for the `previous_checkpoint_hash` field of the next checkpoint.
 // Computed off-chain and on-chain as:
-//   sha256(chain_id || sidechain_id || sequence || state_root || previous_checkpoint_hash || record_count || signer_set_version || data_pointer)
+//   sha256(chain_id || sidechain_id || lc_sequence || state_root || previous_checkpoint_hash || record_count || signer_set_version || data_pointer)
 // (Exact byte-encoding rules defined in the module spec, section 4.3.)
 
 
