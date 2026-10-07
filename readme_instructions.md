@@ -1,6 +1,7 @@
 # Jump start your node
 
 lucidchaind init dev-test-node --chain-id my-testnet-1
+
 nano $HOME/.lucidchain/config/app.toml
 
 **modify using nano**
