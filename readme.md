@@ -277,27 +277,27 @@ type ProofsKeeper interface {
                             │
                             │  MsgSubmitCheckpoint
                             ▼
-                  ┌────────────────────┐        GetSidechain() etc.     ┌────────────────────┐
-                  │   x/checkpoint      │ ─────────────────────────────►│   x/sidechain       │
-                  │  - validates         │◄───────────────────────────── │  - registry, bonds  │
+                  ┌──────────────────────┐        GetSidechain() etc.     ┌─────────────────────┐
+                  │   x/checkpoint       │ ──────────────────────────────►│   x/sidechain       │
+                  │  - validates         │◄────────────────────────────── │  - registry, bonds  │
                   │  - sequences         │                                │  - status/tier      │
-                  │  - stores commitment │                                └────────────────────┘
-                  └────────────────────┘
-                       ▲            ▲
-     GetCheckpoint()   │            │   GetCheckpoint()
+                  │  - stores commitment │                                └─────────────────────┘
+                  └──────────────────────┘
+                        ▲            ▲
+      GetCheckpoint()   │            │   GetCheckpoint()
                         │            │
-        ┌───────────────┘            └───────────────┐
+        ┌───────────────┘            └────────────────┐
         │                                             │
-┌───────────────┐                            ┌────────────────┐
-│  x/attestor     │                            │  x/proofs        │
+┌──────────────────┐                            ┌───────────────────┐
+│  x/attestor      │                            │  x/proofs         │
 │  - registry      │                            │  - verifier       │
 │  - schemas       │                            │    registry       │
 │  - attestations  │                            │  - proof records  │
 │  - disputes      │                            │    (sync-verified)│
-└───────────────┘                            └────────────────┘
-        │                                             │
+└──────────────────┘                            └───────────────────┘
+        │                                              │
         │ EventAttestationPublished                    │ EventProofVerified
-        ▼                                             ▼
+        ▼                                              ▼
               Indexers / explorers / relying parties
               (a relying party queries x/checkpoint for the anchor,
                then x/attestor and/or x/proofs for whatever additional
