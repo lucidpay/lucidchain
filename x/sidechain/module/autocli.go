@@ -17,6 +17,15 @@ func (am AppModule) AutoCLIOptions() *autocliv1.ModuleOptions {
 					Use:       "params",
 					Short:     "Shows the parameters of the module",
 				},
+				{
+					RpcMethod:      "Sidechain",
+					Use:            "sidechain [id]",
+					Short:          "Show a sidechain",
+					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "id"}}},
+				{
+					RpcMethod: "Sidechains",
+					Use:       "sidechains",
+					Short:     "List sidechains (filter with --tier, --status)"},
 			},
 		},
 		Tx: &autocliv1.ServiceCommandDescriptor{
@@ -27,6 +36,30 @@ func (am AppModule) AutoCLIOptions() *autocliv1.ModuleOptions {
 					RpcMethod: "UpdateParams",
 					Skip:      true, // skipped because authority gated
 				},
+				{
+					RpcMethod:      "RegisterSidechain",
+					Use:            "register-sidechain [id] [name] [tier] [bond]",
+					Short:          "Register a sidechain and escrow its bond",
+					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "id"}, {ProtoField: "name"}, {ProtoField: "tier"}, {ProtoField: "bond"}}},
+				{
+					RpcMethod:      "UpdateSidechainSigners",
+					Use:            "update-signers [id]",
+					Short:          "Update the signers of a sidechain",
+					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "id"}}},
+				{
+					RpcMethod:      "UpdateSidechain",
+					Use:            "update-sidechain [id]",
+					Short:          "Update a sidechain",
+					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "id"}}},
+				{
+					RpcMethod:      "InitiateSidechainExit",
+					Use:            "exit [id]",
+					Short:          "Initiate the exit process for a sidechain",
+					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "id"}}},
+				// Governance-only messages are skipped; they go through proposals.
+				{RpcMethod: "ActivateSidechain", Skip: true},
+				{RpcMethod: "SuspendSidechain", Skip: true},
+				{RpcMethod: "ResumeSidechain", Skip: true},
 			},
 		},
 	}
