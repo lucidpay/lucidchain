@@ -35,6 +35,10 @@ lucidchaind query bank total
 
 lucidchaind query sidechain -h
 
+lucidchaind tx sidechain -h
+
+lucidchaind tx sidechain register-sidechain -h
+
 lucidchaind query sidechain sidechain -h
 
 lucidchaind query checkpoint -h

@@ -22,8 +22,9 @@ service Query {
   }
 
   // Parameters queries the parameters of the module.
+  // CHANGED: the route prefix now matches the other routes (was /lucidpay/...).
   rpc Params(QueryParamsRequest) returns (QueryParamsResponse) {
-    option (google.api.http).get = "/lucidpay/lucidchain/sidechain/v1/params";
+    option (google.api.http).get = "/lucidchain/sidechain/v1/params";
   }
 }
 
@@ -36,7 +37,7 @@ message QuerySidechainResponse {
 }
 
 message QuerySidechainsRequest {
-  // Optional filters
+  // Optional filters; UNSPECIFIED means no filter.
   AssuranceTier tier = 1;
   SidechainStatus status = 2;
   cosmos.base.query.v1beta1.PageRequest pagination = 3;

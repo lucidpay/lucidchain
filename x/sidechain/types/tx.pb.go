@@ -7,11 +7,13 @@ import (
 	context "context"
 	fmt "fmt"
 	_ "github.com/cosmos/cosmos-proto"
+	types "github.com/cosmos/cosmos-sdk/types"
 	_ "github.com/cosmos/cosmos-sdk/types/msgservice"
 	_ "github.com/cosmos/cosmos-sdk/types/tx/amino"
 	_ "github.com/cosmos/gogoproto/gogoproto"
 	grpc1 "github.com/cosmos/gogoproto/grpc"
 	proto "github.com/cosmos/gogoproto/proto"
+	any "github.com/cosmos/gogoproto/types/any"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -31,6 +33,743 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
+type MsgRegisterSidechain struct {
+	Operator           string        `protobuf:"bytes,1,opt,name=operator,proto3" json:"operator,omitempty"`
+	Id                 string        `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
+	Name               string        `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	SignerKeys         []*any.Any    `protobuf:"bytes,4,rep,name=signer_keys,json=signerKeys,proto3" json:"signer_keys,omitempty"`
+	SignatureThreshold uint32        `protobuf:"varint,5,opt,name=signature_threshold,json=signatureThreshold,proto3" json:"signature_threshold,omitempty"`
+	Tier               AssuranceTier `protobuf:"varint,6,opt,name=tier,proto3,enum=lucidchain.sidechain.v1.AssuranceTier" json:"tier,omitempty"`
+	// Must use the denom of the tier's min bond and be at least that amount.
+	Bond                      types.Coin `protobuf:"bytes,7,opt,name=bond,proto3" json:"bond"`
+	CheckpointIntervalSeconds uint64     `protobuf:"varint,8,opt,name=checkpoint_interval_seconds,json=checkpointIntervalSeconds,proto3" json:"checkpoint_interval_seconds,omitempty"`
+	MetadataUri               string     `protobuf:"bytes,9,opt,name=metadata_uri,json=metadataUri,proto3" json:"metadata_uri,omitempty"`
+}
+
+func (m *MsgRegisterSidechain) Reset()         { *m = MsgRegisterSidechain{} }
+func (m *MsgRegisterSidechain) String() string { return proto.CompactTextString(m) }
+func (*MsgRegisterSidechain) ProtoMessage()    {}
+func (*MsgRegisterSidechain) Descriptor() ([]byte, []int) {
+	return fileDescriptor_dbc30bde34a5359a, []int{0}
+}
+func (m *MsgRegisterSidechain) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *MsgRegisterSidechain) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_MsgRegisterSidechain.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *MsgRegisterSidechain) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MsgRegisterSidechain.Merge(m, src)
+}
+func (m *MsgRegisterSidechain) XXX_Size() int {
+	return m.Size()
+}
+func (m *MsgRegisterSidechain) XXX_DiscardUnknown() {
+	xxx_messageInfo_MsgRegisterSidechain.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MsgRegisterSidechain proto.InternalMessageInfo
+
+func (m *MsgRegisterSidechain) GetOperator() string {
+	if m != nil {
+		return m.Operator
+	}
+	return ""
+}
+
+func (m *MsgRegisterSidechain) GetId() string {
+	if m != nil {
+		return m.Id
+	}
+	return ""
+}
+
+func (m *MsgRegisterSidechain) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
+func (m *MsgRegisterSidechain) GetSignerKeys() []*any.Any {
+	if m != nil {
+		return m.SignerKeys
+	}
+	return nil
+}
+
+func (m *MsgRegisterSidechain) GetSignatureThreshold() uint32 {
+	if m != nil {
+		return m.SignatureThreshold
+	}
+	return 0
+}
+
+func (m *MsgRegisterSidechain) GetTier() AssuranceTier {
+	if m != nil {
+		return m.Tier
+	}
+	return AssuranceTier_ASSURANCE_TIER_UNSPECIFIED
+}
+
+func (m *MsgRegisterSidechain) GetBond() types.Coin {
+	if m != nil {
+		return m.Bond
+	}
+	return types.Coin{}
+}
+
+func (m *MsgRegisterSidechain) GetCheckpointIntervalSeconds() uint64 {
+	if m != nil {
+		return m.CheckpointIntervalSeconds
+	}
+	return 0
+}
+
+func (m *MsgRegisterSidechain) GetMetadataUri() string {
+	if m != nil {
+		return m.MetadataUri
+	}
+	return ""
+}
+
+type MsgRegisterSidechainResponse struct {
+	Id     string          `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Status SidechainStatus `protobuf:"varint,2,opt,name=status,proto3,enum=lucidchain.sidechain.v1.SidechainStatus" json:"status,omitempty"`
+}
+
+func (m *MsgRegisterSidechainResponse) Reset()         { *m = MsgRegisterSidechainResponse{} }
+func (m *MsgRegisterSidechainResponse) String() string { return proto.CompactTextString(m) }
+func (*MsgRegisterSidechainResponse) ProtoMessage()    {}
+func (*MsgRegisterSidechainResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_dbc30bde34a5359a, []int{1}
+}
+func (m *MsgRegisterSidechainResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *MsgRegisterSidechainResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_MsgRegisterSidechainResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *MsgRegisterSidechainResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MsgRegisterSidechainResponse.Merge(m, src)
+}
+func (m *MsgRegisterSidechainResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *MsgRegisterSidechainResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_MsgRegisterSidechainResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MsgRegisterSidechainResponse proto.InternalMessageInfo
+
+func (m *MsgRegisterSidechainResponse) GetId() string {
+	if m != nil {
+		return m.Id
+	}
+	return ""
+}
+
+func (m *MsgRegisterSidechainResponse) GetStatus() SidechainStatus {
+	if m != nil {
+		return m.Status
+	}
+	return SidechainStatus_SIDECHAIN_STATUS_UNSPECIFIED
+}
+
+type MsgActivateSidechain struct {
+	Authority string `protobuf:"bytes,1,opt,name=authority,proto3" json:"authority,omitempty"`
+	Id        string `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
+}
+
+func (m *MsgActivateSidechain) Reset()         { *m = MsgActivateSidechain{} }
+func (m *MsgActivateSidechain) String() string { return proto.CompactTextString(m) }
+func (*MsgActivateSidechain) ProtoMessage()    {}
+func (*MsgActivateSidechain) Descriptor() ([]byte, []int) {
+	return fileDescriptor_dbc30bde34a5359a, []int{2}
+}
+func (m *MsgActivateSidechain) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *MsgActivateSidechain) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_MsgActivateSidechain.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *MsgActivateSidechain) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MsgActivateSidechain.Merge(m, src)
+}
+func (m *MsgActivateSidechain) XXX_Size() int {
+	return m.Size()
+}
+func (m *MsgActivateSidechain) XXX_DiscardUnknown() {
+	xxx_messageInfo_MsgActivateSidechain.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MsgActivateSidechain proto.InternalMessageInfo
+
+func (m *MsgActivateSidechain) GetAuthority() string {
+	if m != nil {
+		return m.Authority
+	}
+	return ""
+}
+
+func (m *MsgActivateSidechain) GetId() string {
+	if m != nil {
+		return m.Id
+	}
+	return ""
+}
+
+type MsgActivateSidechainResponse struct {
+}
+
+func (m *MsgActivateSidechainResponse) Reset()         { *m = MsgActivateSidechainResponse{} }
+func (m *MsgActivateSidechainResponse) String() string { return proto.CompactTextString(m) }
+func (*MsgActivateSidechainResponse) ProtoMessage()    {}
+func (*MsgActivateSidechainResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_dbc30bde34a5359a, []int{3}
+}
+func (m *MsgActivateSidechainResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *MsgActivateSidechainResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_MsgActivateSidechainResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *MsgActivateSidechainResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MsgActivateSidechainResponse.Merge(m, src)
+}
+func (m *MsgActivateSidechainResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *MsgActivateSidechainResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_MsgActivateSidechainResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MsgActivateSidechainResponse proto.InternalMessageInfo
+
+type MsgUpdateSidechainSigners struct {
+	Operator           string     `protobuf:"bytes,1,opt,name=operator,proto3" json:"operator,omitempty"`
+	Id                 string     `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
+	SignerKeys         []*any.Any `protobuf:"bytes,3,rep,name=signer_keys,json=signerKeys,proto3" json:"signer_keys,omitempty"`
+	SignatureThreshold uint32     `protobuf:"varint,4,opt,name=signature_threshold,json=signatureThreshold,proto3" json:"signature_threshold,omitempty"`
+}
+
+func (m *MsgUpdateSidechainSigners) Reset()         { *m = MsgUpdateSidechainSigners{} }
+func (m *MsgUpdateSidechainSigners) String() string { return proto.CompactTextString(m) }
+func (*MsgUpdateSidechainSigners) ProtoMessage()    {}
+func (*MsgUpdateSidechainSigners) Descriptor() ([]byte, []int) {
+	return fileDescriptor_dbc30bde34a5359a, []int{4}
+}
+func (m *MsgUpdateSidechainSigners) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *MsgUpdateSidechainSigners) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_MsgUpdateSidechainSigners.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *MsgUpdateSidechainSigners) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MsgUpdateSidechainSigners.Merge(m, src)
+}
+func (m *MsgUpdateSidechainSigners) XXX_Size() int {
+	return m.Size()
+}
+func (m *MsgUpdateSidechainSigners) XXX_DiscardUnknown() {
+	xxx_messageInfo_MsgUpdateSidechainSigners.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MsgUpdateSidechainSigners proto.InternalMessageInfo
+
+func (m *MsgUpdateSidechainSigners) GetOperator() string {
+	if m != nil {
+		return m.Operator
+	}
+	return ""
+}
+
+func (m *MsgUpdateSidechainSigners) GetId() string {
+	if m != nil {
+		return m.Id
+	}
+	return ""
+}
+
+func (m *MsgUpdateSidechainSigners) GetSignerKeys() []*any.Any {
+	if m != nil {
+		return m.SignerKeys
+	}
+	return nil
+}
+
+func (m *MsgUpdateSidechainSigners) GetSignatureThreshold() uint32 {
+	if m != nil {
+		return m.SignatureThreshold
+	}
+	return 0
+}
+
+type MsgUpdateSidechainSignersResponse struct {
+	SignerSetVersion uint64 `protobuf:"varint,1,opt,name=signer_set_version,json=signerSetVersion,proto3" json:"signer_set_version,omitempty"`
+}
+
+func (m *MsgUpdateSidechainSignersResponse) Reset()         { *m = MsgUpdateSidechainSignersResponse{} }
+func (m *MsgUpdateSidechainSignersResponse) String() string { return proto.CompactTextString(m) }
+func (*MsgUpdateSidechainSignersResponse) ProtoMessage()    {}
+func (*MsgUpdateSidechainSignersResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_dbc30bde34a5359a, []int{5}
+}
+func (m *MsgUpdateSidechainSignersResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *MsgUpdateSidechainSignersResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_MsgUpdateSidechainSignersResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *MsgUpdateSidechainSignersResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MsgUpdateSidechainSignersResponse.Merge(m, src)
+}
+func (m *MsgUpdateSidechainSignersResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *MsgUpdateSidechainSignersResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_MsgUpdateSidechainSignersResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MsgUpdateSidechainSignersResponse proto.InternalMessageInfo
+
+func (m *MsgUpdateSidechainSignersResponse) GetSignerSetVersion() uint64 {
+	if m != nil {
+		return m.SignerSetVersion
+	}
+	return 0
+}
+
+type MsgUpdateSidechain struct {
+	Operator                  string `protobuf:"bytes,1,opt,name=operator,proto3" json:"operator,omitempty"`
+	Id                        string `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
+	Name                      string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	MetadataUri               string `protobuf:"bytes,4,opt,name=metadata_uri,json=metadataUri,proto3" json:"metadata_uri,omitempty"`
+	CheckpointIntervalSeconds uint64 `protobuf:"varint,5,opt,name=checkpoint_interval_seconds,json=checkpointIntervalSeconds,proto3" json:"checkpoint_interval_seconds,omitempty"`
+}
+
+func (m *MsgUpdateSidechain) Reset()         { *m = MsgUpdateSidechain{} }
+func (m *MsgUpdateSidechain) String() string { return proto.CompactTextString(m) }
+func (*MsgUpdateSidechain) ProtoMessage()    {}
+func (*MsgUpdateSidechain) Descriptor() ([]byte, []int) {
+	return fileDescriptor_dbc30bde34a5359a, []int{6}
+}
+func (m *MsgUpdateSidechain) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *MsgUpdateSidechain) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_MsgUpdateSidechain.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *MsgUpdateSidechain) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MsgUpdateSidechain.Merge(m, src)
+}
+func (m *MsgUpdateSidechain) XXX_Size() int {
+	return m.Size()
+}
+func (m *MsgUpdateSidechain) XXX_DiscardUnknown() {
+	xxx_messageInfo_MsgUpdateSidechain.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MsgUpdateSidechain proto.InternalMessageInfo
+
+func (m *MsgUpdateSidechain) GetOperator() string {
+	if m != nil {
+		return m.Operator
+	}
+	return ""
+}
+
+func (m *MsgUpdateSidechain) GetId() string {
+	if m != nil {
+		return m.Id
+	}
+	return ""
+}
+
+func (m *MsgUpdateSidechain) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
+func (m *MsgUpdateSidechain) GetMetadataUri() string {
+	if m != nil {
+		return m.MetadataUri
+	}
+	return ""
+}
+
+func (m *MsgUpdateSidechain) GetCheckpointIntervalSeconds() uint64 {
+	if m != nil {
+		return m.CheckpointIntervalSeconds
+	}
+	return 0
+}
+
+type MsgUpdateSidechainResponse struct {
+}
+
+func (m *MsgUpdateSidechainResponse) Reset()         { *m = MsgUpdateSidechainResponse{} }
+func (m *MsgUpdateSidechainResponse) String() string { return proto.CompactTextString(m) }
+func (*MsgUpdateSidechainResponse) ProtoMessage()    {}
+func (*MsgUpdateSidechainResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_dbc30bde34a5359a, []int{7}
+}
+func (m *MsgUpdateSidechainResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *MsgUpdateSidechainResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_MsgUpdateSidechainResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *MsgUpdateSidechainResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MsgUpdateSidechainResponse.Merge(m, src)
+}
+func (m *MsgUpdateSidechainResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *MsgUpdateSidechainResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_MsgUpdateSidechainResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MsgUpdateSidechainResponse proto.InternalMessageInfo
+
+type MsgInitiateSidechainExit struct {
+	Operator string `protobuf:"bytes,1,opt,name=operator,proto3" json:"operator,omitempty"`
+	Id       string `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
+}
+
+func (m *MsgInitiateSidechainExit) Reset()         { *m = MsgInitiateSidechainExit{} }
+func (m *MsgInitiateSidechainExit) String() string { return proto.CompactTextString(m) }
+func (*MsgInitiateSidechainExit) ProtoMessage()    {}
+func (*MsgInitiateSidechainExit) Descriptor() ([]byte, []int) {
+	return fileDescriptor_dbc30bde34a5359a, []int{8}
+}
+func (m *MsgInitiateSidechainExit) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *MsgInitiateSidechainExit) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_MsgInitiateSidechainExit.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *MsgInitiateSidechainExit) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MsgInitiateSidechainExit.Merge(m, src)
+}
+func (m *MsgInitiateSidechainExit) XXX_Size() int {
+	return m.Size()
+}
+func (m *MsgInitiateSidechainExit) XXX_DiscardUnknown() {
+	xxx_messageInfo_MsgInitiateSidechainExit.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MsgInitiateSidechainExit proto.InternalMessageInfo
+
+func (m *MsgInitiateSidechainExit) GetOperator() string {
+	if m != nil {
+		return m.Operator
+	}
+	return ""
+}
+
+func (m *MsgInitiateSidechainExit) GetId() string {
+	if m != nil {
+		return m.Id
+	}
+	return ""
+}
+
+type MsgInitiateSidechainExitResponse struct {
+}
+
+func (m *MsgInitiateSidechainExitResponse) Reset()         { *m = MsgInitiateSidechainExitResponse{} }
+func (m *MsgInitiateSidechainExitResponse) String() string { return proto.CompactTextString(m) }
+func (*MsgInitiateSidechainExitResponse) ProtoMessage()    {}
+func (*MsgInitiateSidechainExitResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_dbc30bde34a5359a, []int{9}
+}
+func (m *MsgInitiateSidechainExitResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *MsgInitiateSidechainExitResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_MsgInitiateSidechainExitResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *MsgInitiateSidechainExitResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MsgInitiateSidechainExitResponse.Merge(m, src)
+}
+func (m *MsgInitiateSidechainExitResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *MsgInitiateSidechainExitResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_MsgInitiateSidechainExitResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MsgInitiateSidechainExitResponse proto.InternalMessageInfo
+
+type MsgSuspendSidechain struct {
+	Authority string `protobuf:"bytes,1,opt,name=authority,proto3" json:"authority,omitempty"`
+	Id        string `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
+}
+
+func (m *MsgSuspendSidechain) Reset()         { *m = MsgSuspendSidechain{} }
+func (m *MsgSuspendSidechain) String() string { return proto.CompactTextString(m) }
+func (*MsgSuspendSidechain) ProtoMessage()    {}
+func (*MsgSuspendSidechain) Descriptor() ([]byte, []int) {
+	return fileDescriptor_dbc30bde34a5359a, []int{10}
+}
+func (m *MsgSuspendSidechain) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *MsgSuspendSidechain) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_MsgSuspendSidechain.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *MsgSuspendSidechain) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MsgSuspendSidechain.Merge(m, src)
+}
+func (m *MsgSuspendSidechain) XXX_Size() int {
+	return m.Size()
+}
+func (m *MsgSuspendSidechain) XXX_DiscardUnknown() {
+	xxx_messageInfo_MsgSuspendSidechain.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MsgSuspendSidechain proto.InternalMessageInfo
+
+func (m *MsgSuspendSidechain) GetAuthority() string {
+	if m != nil {
+		return m.Authority
+	}
+	return ""
+}
+
+func (m *MsgSuspendSidechain) GetId() string {
+	if m != nil {
+		return m.Id
+	}
+	return ""
+}
+
+type MsgSuspendSidechainResponse struct {
+}
+
+func (m *MsgSuspendSidechainResponse) Reset()         { *m = MsgSuspendSidechainResponse{} }
+func (m *MsgSuspendSidechainResponse) String() string { return proto.CompactTextString(m) }
+func (*MsgSuspendSidechainResponse) ProtoMessage()    {}
+func (*MsgSuspendSidechainResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_dbc30bde34a5359a, []int{11}
+}
+func (m *MsgSuspendSidechainResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *MsgSuspendSidechainResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_MsgSuspendSidechainResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *MsgSuspendSidechainResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MsgSuspendSidechainResponse.Merge(m, src)
+}
+func (m *MsgSuspendSidechainResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *MsgSuspendSidechainResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_MsgSuspendSidechainResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MsgSuspendSidechainResponse proto.InternalMessageInfo
+
+type MsgResumeSidechain struct {
+	Authority string `protobuf:"bytes,1,opt,name=authority,proto3" json:"authority,omitempty"`
+	Id        string `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
+}
+
+func (m *MsgResumeSidechain) Reset()         { *m = MsgResumeSidechain{} }
+func (m *MsgResumeSidechain) String() string { return proto.CompactTextString(m) }
+func (*MsgResumeSidechain) ProtoMessage()    {}
+func (*MsgResumeSidechain) Descriptor() ([]byte, []int) {
+	return fileDescriptor_dbc30bde34a5359a, []int{12}
+}
+func (m *MsgResumeSidechain) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *MsgResumeSidechain) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_MsgResumeSidechain.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *MsgResumeSidechain) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MsgResumeSidechain.Merge(m, src)
+}
+func (m *MsgResumeSidechain) XXX_Size() int {
+	return m.Size()
+}
+func (m *MsgResumeSidechain) XXX_DiscardUnknown() {
+	xxx_messageInfo_MsgResumeSidechain.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MsgResumeSidechain proto.InternalMessageInfo
+
+func (m *MsgResumeSidechain) GetAuthority() string {
+	if m != nil {
+		return m.Authority
+	}
+	return ""
+}
+
+func (m *MsgResumeSidechain) GetId() string {
+	if m != nil {
+		return m.Id
+	}
+	return ""
+}
+
+type MsgResumeSidechainResponse struct {
+}
+
+func (m *MsgResumeSidechainResponse) Reset()         { *m = MsgResumeSidechainResponse{} }
+func (m *MsgResumeSidechainResponse) String() string { return proto.CompactTextString(m) }
+func (*MsgResumeSidechainResponse) ProtoMessage()    {}
+func (*MsgResumeSidechainResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_dbc30bde34a5359a, []int{13}
+}
+func (m *MsgResumeSidechainResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *MsgResumeSidechainResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_MsgResumeSidechainResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *MsgResumeSidechainResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MsgResumeSidechainResponse.Merge(m, src)
+}
+func (m *MsgResumeSidechainResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *MsgResumeSidechainResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_MsgResumeSidechainResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MsgResumeSidechainResponse proto.InternalMessageInfo
+
 // MsgUpdateParams is the Msg/UpdateParams request type.
 type MsgUpdateParams struct {
 	// authority is the address that controls the module (defaults to x/gov unless overwritten).
@@ -45,7 +784,7 @@ func (m *MsgUpdateParams) Reset()         { *m = MsgUpdateParams{} }
 func (m *MsgUpdateParams) String() string { return proto.CompactTextString(m) }
 func (*MsgUpdateParams) ProtoMessage()    {}
 func (*MsgUpdateParams) Descriptor() ([]byte, []int) {
-	return fileDescriptor_dbc30bde34a5359a, []int{0}
+	return fileDescriptor_dbc30bde34a5359a, []int{14}
 }
 func (m *MsgUpdateParams) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -97,7 +836,7 @@ func (m *MsgUpdateParamsResponse) Reset()         { *m = MsgUpdateParamsResponse
 func (m *MsgUpdateParamsResponse) String() string { return proto.CompactTextString(m) }
 func (*MsgUpdateParamsResponse) ProtoMessage()    {}
 func (*MsgUpdateParamsResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_dbc30bde34a5359a, []int{1}
+	return fileDescriptor_dbc30bde34a5359a, []int{15}
 }
 func (m *MsgUpdateParamsResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -127,6 +866,20 @@ func (m *MsgUpdateParamsResponse) XXX_DiscardUnknown() {
 var xxx_messageInfo_MsgUpdateParamsResponse proto.InternalMessageInfo
 
 func init() {
+	proto.RegisterType((*MsgRegisterSidechain)(nil), "lucidchain.sidechain.v1.MsgRegisterSidechain")
+	proto.RegisterType((*MsgRegisterSidechainResponse)(nil), "lucidchain.sidechain.v1.MsgRegisterSidechainResponse")
+	proto.RegisterType((*MsgActivateSidechain)(nil), "lucidchain.sidechain.v1.MsgActivateSidechain")
+	proto.RegisterType((*MsgActivateSidechainResponse)(nil), "lucidchain.sidechain.v1.MsgActivateSidechainResponse")
+	proto.RegisterType((*MsgUpdateSidechainSigners)(nil), "lucidchain.sidechain.v1.MsgUpdateSidechainSigners")
+	proto.RegisterType((*MsgUpdateSidechainSignersResponse)(nil), "lucidchain.sidechain.v1.MsgUpdateSidechainSignersResponse")
+	proto.RegisterType((*MsgUpdateSidechain)(nil), "lucidchain.sidechain.v1.MsgUpdateSidechain")
+	proto.RegisterType((*MsgUpdateSidechainResponse)(nil), "lucidchain.sidechain.v1.MsgUpdateSidechainResponse")
+	proto.RegisterType((*MsgInitiateSidechainExit)(nil), "lucidchain.sidechain.v1.MsgInitiateSidechainExit")
+	proto.RegisterType((*MsgInitiateSidechainExitResponse)(nil), "lucidchain.sidechain.v1.MsgInitiateSidechainExitResponse")
+	proto.RegisterType((*MsgSuspendSidechain)(nil), "lucidchain.sidechain.v1.MsgSuspendSidechain")
+	proto.RegisterType((*MsgSuspendSidechainResponse)(nil), "lucidchain.sidechain.v1.MsgSuspendSidechainResponse")
+	proto.RegisterType((*MsgResumeSidechain)(nil), "lucidchain.sidechain.v1.MsgResumeSidechain")
+	proto.RegisterType((*MsgResumeSidechainResponse)(nil), "lucidchain.sidechain.v1.MsgResumeSidechainResponse")
 	proto.RegisterType((*MsgUpdateParams)(nil), "lucidchain.sidechain.v1.MsgUpdateParams")
 	proto.RegisterType((*MsgUpdateParamsResponse)(nil), "lucidchain.sidechain.v1.MsgUpdateParamsResponse")
 }
@@ -134,29 +887,69 @@ func init() {
 func init() { proto.RegisterFile("lucidchain/sidechain/v1/tx.proto", fileDescriptor_dbc30bde34a5359a) }
 
 var fileDescriptor_dbc30bde34a5359a = []byte{
-	// 351 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x51, 0x31, 0x4b, 0xc3, 0x40,
-	0x14, 0xce, 0x29, 0x16, 0x7a, 0x0a, 0x62, 0x28, 0xb4, 0xcd, 0x90, 0x96, 0x22, 0x52, 0x0a, 0xe6,
-	0xda, 0x0a, 0x82, 0x6e, 0x66, 0x14, 0x0a, 0x52, 0x71, 0x71, 0x91, 0x6b, 0x12, 0xae, 0x27, 0x26,
-	0x17, 0xf2, 0xae, 0xa5, 0xdd, 0xc4, 0xd1, 0xc9, 0x9f, 0xe1, 0xd8, 0xc1, 0x1f, 0xd1, 0xb1, 0x38,
-	0x39, 0x89, 0xb4, 0x43, 0xff, 0x86, 0x34, 0x17, 0x6d, 0x0d, 0x04, 0x5c, 0x8e, 0xf7, 0xde, 0xf7,
-	0xbd, 0xef, 0x7d, 0x1f, 0x87, 0xab, 0x0f, 0x03, 0x87, 0xbb, 0x4e, 0x9f, 0xf2, 0x80, 0x00, 0x77,
-	0x3d, 0x55, 0x0d, 0x5b, 0x44, 0x8e, 0xac, 0x30, 0x12, 0x52, 0xe8, 0xc5, 0x35, 0xc3, 0xfa, 0x65,
-	0x58, 0xc3, 0x96, 0x71, 0x40, 0x7d, 0x1e, 0x08, 0x12, 0xbf, 0x8a, 0x6b, 0x14, 0x1d, 0x01, 0xbe,
-	0x00, 0xe2, 0x03, 0x5b, 0x69, 0xf8, 0xc0, 0x12, 0xa0, 0xac, 0x80, 0xbb, 0xb8, 0x23, 0xaa, 0x49,
-	0xa0, 0x02, 0x13, 0x4c, 0xa8, 0xf9, 0xaa, 0x4a, 0xa6, 0x87, 0x59, 0xbe, 0x42, 0x1a, 0x51, 0x3f,
-	0xd9, 0xad, 0x4d, 0x11, 0xde, 0xef, 0x00, 0xbb, 0x09, 0x5d, 0x2a, 0xbd, 0xab, 0x18, 0xd1, 0x4f,
-	0x71, 0x9e, 0x0e, 0x64, 0x5f, 0x44, 0x5c, 0x8e, 0x4b, 0xa8, 0x8a, 0xea, 0x79, 0xbb, 0xf4, 0xfe,
-	0x76, 0x5c, 0x48, 0x8e, 0x5e, 0xb8, 0x6e, 0xe4, 0x01, 0x5c, 0xcb, 0x88, 0x07, 0xac, 0xbb, 0xa6,
-	0xea, 0x36, 0xce, 0x29, 0xed, 0xd2, 0x56, 0x15, 0xd5, 0x77, 0xdb, 0x15, 0x2b, 0x23, 0xb8, 0xa5,
-	0x0e, 0xd9, 0xf9, 0xe9, 0x67, 0x45, 0x7b, 0x5d, 0x4e, 0x1a, 0xa8, 0x9b, 0x6c, 0x9e, 0x9f, 0x3d,
-	0x2d, 0x27, 0x8d, 0xb5, 0xe6, 0xf3, 0x72, 0xd2, 0x38, 0xda, 0x08, 0x32, 0xda, 0x88, 0x92, 0xb2,
-	0x5d, 0x2b, 0xe3, 0x62, 0x6a, 0xd4, 0xf5, 0x20, 0x14, 0x01, 0x78, 0xed, 0x11, 0xde, 0xee, 0x00,
-	0xd3, 0xef, 0xf1, 0xde, 0x9f, 0xa0, 0xf5, 0x4c, 0x83, 0x29, 0x21, 0xa3, 0xf9, 0x5f, 0xe6, 0xcf,
-	0x49, 0x63, 0xe7, 0x71, 0x95, 0xcb, 0xbe, 0x9c, 0xce, 0x4d, 0x34, 0x9b, 0x9b, 0xe8, 0x6b, 0x6e,
-	0xa2, 0x97, 0x85, 0xa9, 0xcd, 0x16, 0xa6, 0xf6, 0xb1, 0x30, 0xb5, 0xdb, 0x26, 0xe3, 0xb2, 0x3f,
-	0xe8, 0x59, 0x8e, 0xf0, 0x49, 0x2c, 0x1e, 0xd2, 0x31, 0xc9, 0x88, 0x2a, 0xc7, 0xa1, 0x07, 0xbd,
-	0x5c, 0xfc, 0x65, 0x27, 0xdf, 0x03, 0x00, 0x4b, 0x40, 0xd1, 0xa8, 0x72, 0x02, 0x00, 0x00,
+	// 992 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xbc, 0x56, 0x4f, 0x6f, 0x1b, 0x45,
+	0x14, 0xcf, 0xd6, 0x4e, 0xda, 0x8c, 0xdb, 0xb4, 0xd9, 0x06, 0xb2, 0xde, 0x06, 0xd7, 0xb5, 0x50,
+	0xb1, 0xd2, 0x76, 0xb7, 0x76, 0x5a, 0x44, 0x7d, 0x40, 0xc4, 0x88, 0x43, 0xa9, 0x2c, 0xca, 0xba,
+	0xe5, 0xc0, 0xc5, 0x1a, 0xef, 0x0e, 0xeb, 0xa1, 0xde, 0x99, 0xd5, 0xcc, 0xac, 0x95, 0xbd, 0x21,
+	0x24, 0x24, 0xc4, 0x89, 0x8f, 0xc1, 0x31, 0x07, 0x3e, 0x44, 0xc4, 0xa9, 0xe2, 0x84, 0x38, 0xa0,
+	0x2a, 0x39, 0xe4, 0xce, 0x27, 0x40, 0x9e, 0xfd, 0x63, 0x67, 0xed, 0x75, 0x30, 0x6a, 0xb8, 0x58,
+	0x3b, 0xf3, 0x7e, 0xef, 0xbd, 0xdf, 0x9b, 0xf7, 0x9b, 0x37, 0x06, 0xd5, 0x61, 0x60, 0x63, 0xc7,
+	0x1e, 0x40, 0x4c, 0x4c, 0x8e, 0x1d, 0x14, 0x7d, 0x8d, 0x1a, 0xa6, 0x38, 0x30, 0x7c, 0x46, 0x05,
+	0x55, 0xb7, 0x27, 0x08, 0x23, 0x45, 0x18, 0xa3, 0x86, 0xbe, 0x09, 0x3d, 0x4c, 0xa8, 0x29, 0x7f,
+	0x23, 0xac, 0x5e, 0xb1, 0x29, 0xf7, 0x28, 0x37, 0xfb, 0x90, 0x23, 0x73, 0xd4, 0xe8, 0x23, 0x01,
+	0x1b, 0xa6, 0x4d, 0x31, 0x89, 0xed, 0xdb, 0xb1, 0xdd, 0xe3, 0xee, 0x38, 0x87, 0xc7, 0xdd, 0xd8,
+	0x50, 0x8e, 0x0c, 0x3d, 0xb9, 0x32, 0xa3, 0x45, 0x6c, 0xda, 0x72, 0xa9, 0x4b, 0xa3, 0xfd, 0xf1,
+	0x57, 0xe2, 0xe0, 0x52, 0xea, 0x0e, 0x91, 0x29, 0x57, 0xfd, 0xe0, 0x1b, 0x13, 0x92, 0x30, 0x36,
+	0xbd, 0x9f, 0x57, 0x92, 0x0f, 0x19, 0xf4, 0x92, 0xb0, 0x1f, 0xe4, 0xa1, 0x26, 0x35, 0x4a, 0x60,
+	0xed, 0xcf, 0x02, 0xd8, 0xea, 0x70, 0xd7, 0x42, 0x2e, 0xe6, 0x02, 0xb1, 0x6e, 0x62, 0x56, 0x1f,
+	0x81, 0x2b, 0xd4, 0x47, 0x0c, 0x0a, 0xca, 0x34, 0xa5, 0xaa, 0xd4, 0xd7, 0xdb, 0xda, 0xef, 0xbf,
+	0x3e, 0xd8, 0x8a, 0xc9, 0xef, 0x3b, 0x0e, 0x43, 0x9c, 0x77, 0x05, 0xc3, 0xc4, 0xb5, 0x52, 0xa4,
+	0xba, 0x01, 0x2e, 0x61, 0x47, 0xbb, 0x34, 0xc6, 0x5b, 0x97, 0xb0, 0xa3, 0xaa, 0xa0, 0x48, 0xa0,
+	0x87, 0xb4, 0x82, 0xdc, 0x91, 0xdf, 0xea, 0x17, 0xa0, 0xc4, 0xb1, 0x4b, 0x10, 0xeb, 0xbd, 0x42,
+	0x21, 0xd7, 0x8a, 0xd5, 0x42, 0xbd, 0xd4, 0xdc, 0x32, 0xa2, 0x92, 0x8d, 0xa4, 0x64, 0x63, 0x9f,
+	0x84, 0x6d, 0xed, 0xb7, 0x49, 0x4a, 0x9b, 0x85, 0xbe, 0xa0, 0xc6, 0xf3, 0xa0, 0xff, 0x0c, 0x85,
+	0x16, 0x88, 0x42, 0x3c, 0x43, 0x21, 0x57, 0x4d, 0x70, 0x73, 0xbc, 0x82, 0x22, 0x60, 0xa8, 0x27,
+	0x06, 0x0c, 0xf1, 0x01, 0x1d, 0x3a, 0xda, 0x6a, 0x55, 0xa9, 0x5f, 0xb3, 0xd4, 0xd4, 0xf4, 0x22,
+	0xb1, 0xa8, 0x2d, 0x50, 0x14, 0x18, 0x31, 0x6d, 0xad, 0xaa, 0xd4, 0x37, 0x9a, 0x77, 0x8d, 0x1c,
+	0x0d, 0x18, 0xfb, 0x9c, 0x07, 0x0c, 0x12, 0x1b, 0xbd, 0xc0, 0x88, 0x59, 0xd2, 0x47, 0xfd, 0x08,
+	0x14, 0xfb, 0x94, 0x38, 0xda, 0xe5, 0xaa, 0x52, 0x2f, 0x35, 0xcb, 0x46, 0xcc, 0x6e, 0xac, 0x09,
+	0x23, 0xd6, 0x84, 0xf1, 0x29, 0xc5, 0xa4, 0xbd, 0x7e, 0xf4, 0xd7, 0xed, 0x95, 0x5f, 0x4e, 0x0f,
+	0x77, 0x15, 0x4b, 0x7a, 0xa8, 0x1f, 0x83, 0x5b, 0xf6, 0x00, 0xd9, 0xaf, 0x7c, 0x8a, 0x89, 0xe8,
+	0x61, 0x22, 0x10, 0x1b, 0xc1, 0x61, 0x8f, 0x23, 0x9b, 0x12, 0x87, 0x6b, 0x57, 0xaa, 0x4a, 0xbd,
+	0x68, 0x95, 0x27, 0x90, 0xa7, 0x31, 0xa2, 0x1b, 0x01, 0xd4, 0x3b, 0xe0, 0xaa, 0x87, 0x04, 0x74,
+	0xa0, 0x80, 0xbd, 0x80, 0x61, 0x6d, 0x5d, 0x9e, 0x69, 0x29, 0xd9, 0x7b, 0xc9, 0x70, 0xeb, 0xda,
+	0xf7, 0xa7, 0x87, 0xbb, 0x69, 0x37, 0x6a, 0x3e, 0xd8, 0x99, 0xd7, 0x5b, 0x0b, 0x71, 0x9f, 0x12,
+	0x8e, 0xe2, 0x6e, 0x29, 0x69, 0xb7, 0x3e, 0x01, 0x6b, 0x5c, 0x40, 0x11, 0x70, 0xd9, 0xc1, 0x8d,
+	0x66, 0x3d, 0xf7, 0x64, 0xd2, 0x58, 0x5d, 0x89, 0xb7, 0x62, 0xbf, 0x1a, 0x91, 0x6a, 0xda, 0xb7,
+	0x05, 0x1e, 0x41, 0x81, 0x26, 0x6a, 0xfa, 0x10, 0xac, 0xc3, 0x40, 0x0c, 0x28, 0xc3, 0x22, 0x3c,
+	0x57, 0x4e, 0x13, 0x68, 0x56, 0x4f, 0xad, 0x8d, 0x71, 0x81, 0x13, 0x7b, 0xad, 0x02, 0x76, 0xe6,
+	0xe5, 0x4b, 0x2a, 0xac, 0xfd, 0xad, 0x80, 0x72, 0x87, 0xbb, 0x2f, 0x7d, 0x67, 0xda, 0xdc, 0x95,
+	0xda, 0xe1, 0x6f, 0x49, 0xe3, 0x19, 0x3d, 0x17, 0x2e, 0x4a, 0xcf, 0xc5, 0x3c, 0x3d, 0x67, 0xdb,
+	0xfe, 0x25, 0xb8, 0x93, 0x5b, 0x73, 0xda, 0xfb, 0xfb, 0x40, 0x8d, 0x59, 0x73, 0x24, 0x7a, 0x23,
+	0xc4, 0x38, 0xa6, 0x44, 0x9e, 0x42, 0xd1, 0xba, 0x11, 0x59, 0xba, 0x48, 0x7c, 0x15, 0xed, 0xd7,
+	0xde, 0x28, 0x40, 0x9d, 0x8d, 0x79, 0x81, 0x43, 0x22, 0x2b, 0xf6, 0xe2, 0x8c, 0xd8, 0xcf, 0xbb,
+	0x4f, 0xab, 0xe7, 0xdc, 0xa7, 0xec, 0xa9, 0xed, 0x00, 0x7d, 0xb6, 0xc2, 0x54, 0x48, 0x14, 0x68,
+	0x1d, 0xee, 0x3e, 0x25, 0x58, 0xe0, 0x69, 0xfb, 0x67, 0x07, 0x58, 0xbc, 0x9d, 0x53, 0xc8, 0xd2,
+	0xa9, 0x81, 0x6a, 0x5e, 0xc2, 0x94, 0x94, 0x07, 0x6e, 0x76, 0xb8, 0xdb, 0x0d, 0xb8, 0x8f, 0x88,
+	0x73, 0xf1, 0x97, 0xed, 0x3d, 0x70, 0x6b, 0x4e, 0xba, 0x94, 0xcd, 0x50, 0x4a, 0xc4, 0x42, 0x3c,
+	0xf0, 0xfe, 0x87, 0x9b, 0x1f, 0xb5, 0x2b, 0x93, 0x2d, 0xe5, 0x72, 0xa4, 0x80, 0xeb, 0x69, 0x37,
+	0x9f, 0xcb, 0x97, 0xf1, 0x3f, 0x33, 0x69, 0x83, 0xb5, 0xe8, 0x6d, 0x95, 0x6c, 0x4a, 0xcd, 0xdb,
+	0xb9, 0x53, 0x31, 0x4a, 0x34, 0x3d, 0xf9, 0x63, 0xcf, 0xd6, 0x93, 0xb3, 0xec, 0x7f, 0x3a, 0x3d,
+	0xdc, 0xbd, 0x3b, 0xf5, 0x44, 0x1f, 0x4c, 0x3d, 0xd2, 0x19, 0xda, 0xb5, 0x32, 0xd8, 0xce, 0x6c,
+	0x25, 0x55, 0x36, 0x4f, 0x2e, 0x83, 0x42, 0x87, 0xbb, 0x6a, 0x08, 0x36, 0x67, 0x1f, 0xf0, 0x07,
+	0xb9, 0x34, 0xe7, 0xbd, 0x09, 0xfa, 0xe3, 0xa5, 0xe0, 0xe9, 0x18, 0x09, 0xc1, 0xe6, 0xec, 0xb4,
+	0x5f, 0x98, 0x7a, 0x06, 0xae, 0x3f, 0x5e, 0x0a, 0x9e, 0xa6, 0xfe, 0x51, 0x01, 0xef, 0xe6, 0x0c,
+	0xf6, 0xe6, 0xa2, 0x88, 0xf3, 0x7d, 0xf4, 0xd6, 0xf2, 0x3e, 0x29, 0x15, 0x0e, 0xae, 0x67, 0x47,
+	0xe3, 0xbd, 0x25, 0xc2, 0xe9, 0x7b, 0x4b, 0x80, 0xd3, 0xa4, 0x3f, 0x28, 0xe0, 0x9d, 0xf9, 0x03,
+	0xa9, 0xb1, 0x28, 0xdc, 0x5c, 0x17, 0xfd, 0xc9, 0xd2, 0x2e, 0x29, 0x8f, 0x11, 0xb8, 0x31, 0x33,
+	0x82, 0xee, 0x2f, 0x0a, 0x97, 0x45, 0xeb, 0x8f, 0x96, 0x41, 0x4f, 0x1f, 0x7a, 0x76, 0xd8, 0xdc,
+	0x5b, 0x2c, 0xe2, 0x33, 0x60, 0x7d, 0x6f, 0x09, 0x70, 0x9a, 0xf4, 0x5b, 0x70, 0xf5, 0xcc, 0x50,
+	0xa9, 0x9f, 0xdf, 0xb9, 0x08, 0xa9, 0x3f, 0xfc, 0xb7, 0xc8, 0x24, 0x97, 0xbe, 0xfa, 0xdd, 0x78,
+	0x86, 0xb4, 0x3f, 0x3f, 0x3a, 0xae, 0x28, 0xaf, 0x8f, 0x2b, 0xca, 0x9b, 0xe3, 0x8a, 0xf2, 0xf3,
+	0x49, 0x65, 0xe5, 0xf5, 0x49, 0x65, 0xe5, 0x8f, 0x93, 0xca, 0xca, 0xd7, 0x0f, 0x5d, 0x2c, 0x06,
+	0x41, 0xdf, 0xb0, 0xa9, 0x67, 0xca, 0xe0, 0x3e, 0x0c, 0xcd, 0x9c, 0xb1, 0x22, 0x42, 0x1f, 0xf1,
+	0xfe, 0x9a, 0xfc, 0x3b, 0xb2, 0xf7, 0xcf, 0x00, 0x5a, 0x81, 0xe3, 0x30, 0x19, 0x0d, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -171,6 +964,24 @@ const _ = grpc.SupportPackageIsVersion4
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type MsgClient interface {
+	// RegisterSidechain registers a new sidechain and escrows its bond. The
+	// sidechain is PENDING until governance activates it, unless
+	// params.auto_activate is set.
+	RegisterSidechain(ctx context.Context, in *MsgRegisterSidechain, opts ...grpc.CallOption) (*MsgRegisterSidechainResponse, error)
+	// ActivateSidechain moves a PENDING sidechain to ACTIVE. Authority only.
+	ActivateSidechain(ctx context.Context, in *MsgActivateSidechain, opts ...grpc.CallOption) (*MsgActivateSidechainResponse, error)
+	// UpdateSidechainSigners replaces the signer keys and threshold and bumps
+	// signer_set_version. Operator only.
+	UpdateSidechainSigners(ctx context.Context, in *MsgUpdateSidechainSigners, opts ...grpc.CallOption) (*MsgUpdateSidechainSignersResponse, error)
+	// UpdateSidechain changes name, metadata and checkpoint interval. Operator only.
+	UpdateSidechain(ctx context.Context, in *MsgUpdateSidechain, opts ...grpc.CallOption) (*MsgUpdateSidechainResponse, error)
+	// InitiateSidechainExit deregisters the sidechain; the bond is returned
+	// after exit_cooldown_seconds. Operator only.
+	InitiateSidechainExit(ctx context.Context, in *MsgInitiateSidechainExit, opts ...grpc.CallOption) (*MsgInitiateSidechainExitResponse, error)
+	// SuspendSidechain / ResumeSidechain are governance levers: a suspended
+	// sidechain cannot submit checkpoints. Authority only.
+	SuspendSidechain(ctx context.Context, in *MsgSuspendSidechain, opts ...grpc.CallOption) (*MsgSuspendSidechainResponse, error)
+	ResumeSidechain(ctx context.Context, in *MsgResumeSidechain, opts ...grpc.CallOption) (*MsgResumeSidechainResponse, error)
 	// UpdateParams defines a (governance) operation for updating the module
 	// parameters. The authority defaults to the x/gov module account.
 	UpdateParams(ctx context.Context, in *MsgUpdateParams, opts ...grpc.CallOption) (*MsgUpdateParamsResponse, error)
@@ -184,6 +995,69 @@ func NewMsgClient(cc grpc1.ClientConn) MsgClient {
 	return &msgClient{cc}
 }
 
+func (c *msgClient) RegisterSidechain(ctx context.Context, in *MsgRegisterSidechain, opts ...grpc.CallOption) (*MsgRegisterSidechainResponse, error) {
+	out := new(MsgRegisterSidechainResponse)
+	err := c.cc.Invoke(ctx, "/lucidchain.sidechain.v1.Msg/RegisterSidechain", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *msgClient) ActivateSidechain(ctx context.Context, in *MsgActivateSidechain, opts ...grpc.CallOption) (*MsgActivateSidechainResponse, error) {
+	out := new(MsgActivateSidechainResponse)
+	err := c.cc.Invoke(ctx, "/lucidchain.sidechain.v1.Msg/ActivateSidechain", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *msgClient) UpdateSidechainSigners(ctx context.Context, in *MsgUpdateSidechainSigners, opts ...grpc.CallOption) (*MsgUpdateSidechainSignersResponse, error) {
+	out := new(MsgUpdateSidechainSignersResponse)
+	err := c.cc.Invoke(ctx, "/lucidchain.sidechain.v1.Msg/UpdateSidechainSigners", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *msgClient) UpdateSidechain(ctx context.Context, in *MsgUpdateSidechain, opts ...grpc.CallOption) (*MsgUpdateSidechainResponse, error) {
+	out := new(MsgUpdateSidechainResponse)
+	err := c.cc.Invoke(ctx, "/lucidchain.sidechain.v1.Msg/UpdateSidechain", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *msgClient) InitiateSidechainExit(ctx context.Context, in *MsgInitiateSidechainExit, opts ...grpc.CallOption) (*MsgInitiateSidechainExitResponse, error) {
+	out := new(MsgInitiateSidechainExitResponse)
+	err := c.cc.Invoke(ctx, "/lucidchain.sidechain.v1.Msg/InitiateSidechainExit", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *msgClient) SuspendSidechain(ctx context.Context, in *MsgSuspendSidechain, opts ...grpc.CallOption) (*MsgSuspendSidechainResponse, error) {
+	out := new(MsgSuspendSidechainResponse)
+	err := c.cc.Invoke(ctx, "/lucidchain.sidechain.v1.Msg/SuspendSidechain", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *msgClient) ResumeSidechain(ctx context.Context, in *MsgResumeSidechain, opts ...grpc.CallOption) (*MsgResumeSidechainResponse, error) {
+	out := new(MsgResumeSidechainResponse)
+	err := c.cc.Invoke(ctx, "/lucidchain.sidechain.v1.Msg/ResumeSidechain", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *msgClient) UpdateParams(ctx context.Context, in *MsgUpdateParams, opts ...grpc.CallOption) (*MsgUpdateParamsResponse, error) {
 	out := new(MsgUpdateParamsResponse)
 	err := c.cc.Invoke(ctx, "/lucidchain.sidechain.v1.Msg/UpdateParams", in, out, opts...)
@@ -195,6 +1069,24 @@ func (c *msgClient) UpdateParams(ctx context.Context, in *MsgUpdateParams, opts 
 
 // MsgServer is the server API for Msg service.
 type MsgServer interface {
+	// RegisterSidechain registers a new sidechain and escrows its bond. The
+	// sidechain is PENDING until governance activates it, unless
+	// params.auto_activate is set.
+	RegisterSidechain(context.Context, *MsgRegisterSidechain) (*MsgRegisterSidechainResponse, error)
+	// ActivateSidechain moves a PENDING sidechain to ACTIVE. Authority only.
+	ActivateSidechain(context.Context, *MsgActivateSidechain) (*MsgActivateSidechainResponse, error)
+	// UpdateSidechainSigners replaces the signer keys and threshold and bumps
+	// signer_set_version. Operator only.
+	UpdateSidechainSigners(context.Context, *MsgUpdateSidechainSigners) (*MsgUpdateSidechainSignersResponse, error)
+	// UpdateSidechain changes name, metadata and checkpoint interval. Operator only.
+	UpdateSidechain(context.Context, *MsgUpdateSidechain) (*MsgUpdateSidechainResponse, error)
+	// InitiateSidechainExit deregisters the sidechain; the bond is returned
+	// after exit_cooldown_seconds. Operator only.
+	InitiateSidechainExit(context.Context, *MsgInitiateSidechainExit) (*MsgInitiateSidechainExitResponse, error)
+	// SuspendSidechain / ResumeSidechain are governance levers: a suspended
+	// sidechain cannot submit checkpoints. Authority only.
+	SuspendSidechain(context.Context, *MsgSuspendSidechain) (*MsgSuspendSidechainResponse, error)
+	ResumeSidechain(context.Context, *MsgResumeSidechain) (*MsgResumeSidechainResponse, error)
 	// UpdateParams defines a (governance) operation for updating the module
 	// parameters. The authority defaults to the x/gov module account.
 	UpdateParams(context.Context, *MsgUpdateParams) (*MsgUpdateParamsResponse, error)
@@ -204,12 +1096,159 @@ type MsgServer interface {
 type UnimplementedMsgServer struct {
 }
 
+func (*UnimplementedMsgServer) RegisterSidechain(ctx context.Context, req *MsgRegisterSidechain) (*MsgRegisterSidechainResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RegisterSidechain not implemented")
+}
+func (*UnimplementedMsgServer) ActivateSidechain(ctx context.Context, req *MsgActivateSidechain) (*MsgActivateSidechainResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ActivateSidechain not implemented")
+}
+func (*UnimplementedMsgServer) UpdateSidechainSigners(ctx context.Context, req *MsgUpdateSidechainSigners) (*MsgUpdateSidechainSignersResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateSidechainSigners not implemented")
+}
+func (*UnimplementedMsgServer) UpdateSidechain(ctx context.Context, req *MsgUpdateSidechain) (*MsgUpdateSidechainResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateSidechain not implemented")
+}
+func (*UnimplementedMsgServer) InitiateSidechainExit(ctx context.Context, req *MsgInitiateSidechainExit) (*MsgInitiateSidechainExitResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method InitiateSidechainExit not implemented")
+}
+func (*UnimplementedMsgServer) SuspendSidechain(ctx context.Context, req *MsgSuspendSidechain) (*MsgSuspendSidechainResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SuspendSidechain not implemented")
+}
+func (*UnimplementedMsgServer) ResumeSidechain(ctx context.Context, req *MsgResumeSidechain) (*MsgResumeSidechainResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ResumeSidechain not implemented")
+}
 func (*UnimplementedMsgServer) UpdateParams(ctx context.Context, req *MsgUpdateParams) (*MsgUpdateParamsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateParams not implemented")
 }
 
 func RegisterMsgServer(s grpc1.Server, srv MsgServer) {
 	s.RegisterService(&_Msg_serviceDesc, srv)
+}
+
+func _Msg_RegisterSidechain_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgRegisterSidechain)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MsgServer).RegisterSidechain(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/lucidchain.sidechain.v1.Msg/RegisterSidechain",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MsgServer).RegisterSidechain(ctx, req.(*MsgRegisterSidechain))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Msg_ActivateSidechain_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgActivateSidechain)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MsgServer).ActivateSidechain(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/lucidchain.sidechain.v1.Msg/ActivateSidechain",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MsgServer).ActivateSidechain(ctx, req.(*MsgActivateSidechain))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Msg_UpdateSidechainSigners_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgUpdateSidechainSigners)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MsgServer).UpdateSidechainSigners(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/lucidchain.sidechain.v1.Msg/UpdateSidechainSigners",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MsgServer).UpdateSidechainSigners(ctx, req.(*MsgUpdateSidechainSigners))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Msg_UpdateSidechain_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgUpdateSidechain)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MsgServer).UpdateSidechain(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/lucidchain.sidechain.v1.Msg/UpdateSidechain",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MsgServer).UpdateSidechain(ctx, req.(*MsgUpdateSidechain))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Msg_InitiateSidechainExit_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgInitiateSidechainExit)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MsgServer).InitiateSidechainExit(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/lucidchain.sidechain.v1.Msg/InitiateSidechainExit",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MsgServer).InitiateSidechainExit(ctx, req.(*MsgInitiateSidechainExit))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Msg_SuspendSidechain_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgSuspendSidechain)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MsgServer).SuspendSidechain(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/lucidchain.sidechain.v1.Msg/SuspendSidechain",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MsgServer).SuspendSidechain(ctx, req.(*MsgSuspendSidechain))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Msg_ResumeSidechain_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgResumeSidechain)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MsgServer).ResumeSidechain(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/lucidchain.sidechain.v1.Msg/ResumeSidechain",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MsgServer).ResumeSidechain(ctx, req.(*MsgResumeSidechain))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _Msg_UpdateParams_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -236,12 +1275,568 @@ var _Msg_serviceDesc = grpc.ServiceDesc{
 	HandlerType: (*MsgServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
+			MethodName: "RegisterSidechain",
+			Handler:    _Msg_RegisterSidechain_Handler,
+		},
+		{
+			MethodName: "ActivateSidechain",
+			Handler:    _Msg_ActivateSidechain_Handler,
+		},
+		{
+			MethodName: "UpdateSidechainSigners",
+			Handler:    _Msg_UpdateSidechainSigners_Handler,
+		},
+		{
+			MethodName: "UpdateSidechain",
+			Handler:    _Msg_UpdateSidechain_Handler,
+		},
+		{
+			MethodName: "InitiateSidechainExit",
+			Handler:    _Msg_InitiateSidechainExit_Handler,
+		},
+		{
+			MethodName: "SuspendSidechain",
+			Handler:    _Msg_SuspendSidechain_Handler,
+		},
+		{
+			MethodName: "ResumeSidechain",
+			Handler:    _Msg_ResumeSidechain_Handler,
+		},
+		{
 			MethodName: "UpdateParams",
 			Handler:    _Msg_UpdateParams_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
 	Metadata: "lucidchain/sidechain/v1/tx.proto",
+}
+
+func (m *MsgRegisterSidechain) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *MsgRegisterSidechain) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *MsgRegisterSidechain) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.MetadataUri) > 0 {
+		i -= len(m.MetadataUri)
+		copy(dAtA[i:], m.MetadataUri)
+		i = encodeVarintTx(dAtA, i, uint64(len(m.MetadataUri)))
+		i--
+		dAtA[i] = 0x4a
+	}
+	if m.CheckpointIntervalSeconds != 0 {
+		i = encodeVarintTx(dAtA, i, uint64(m.CheckpointIntervalSeconds))
+		i--
+		dAtA[i] = 0x40
+	}
+	{
+		size, err := m.Bond.MarshalToSizedBuffer(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = encodeVarintTx(dAtA, i, uint64(size))
+	}
+	i--
+	dAtA[i] = 0x3a
+	if m.Tier != 0 {
+		i = encodeVarintTx(dAtA, i, uint64(m.Tier))
+		i--
+		dAtA[i] = 0x30
+	}
+	if m.SignatureThreshold != 0 {
+		i = encodeVarintTx(dAtA, i, uint64(m.SignatureThreshold))
+		i--
+		dAtA[i] = 0x28
+	}
+	if len(m.SignerKeys) > 0 {
+		for iNdEx := len(m.SignerKeys) - 1; iNdEx >= 0; iNdEx-- {
+			{
+				size, err := m.SignerKeys[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarintTx(dAtA, i, uint64(size))
+			}
+			i--
+			dAtA[i] = 0x22
+		}
+	}
+	if len(m.Name) > 0 {
+		i -= len(m.Name)
+		copy(dAtA[i:], m.Name)
+		i = encodeVarintTx(dAtA, i, uint64(len(m.Name)))
+		i--
+		dAtA[i] = 0x1a
+	}
+	if len(m.Id) > 0 {
+		i -= len(m.Id)
+		copy(dAtA[i:], m.Id)
+		i = encodeVarintTx(dAtA, i, uint64(len(m.Id)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.Operator) > 0 {
+		i -= len(m.Operator)
+		copy(dAtA[i:], m.Operator)
+		i = encodeVarintTx(dAtA, i, uint64(len(m.Operator)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *MsgRegisterSidechainResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *MsgRegisterSidechainResponse) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *MsgRegisterSidechainResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.Status != 0 {
+		i = encodeVarintTx(dAtA, i, uint64(m.Status))
+		i--
+		dAtA[i] = 0x10
+	}
+	if len(m.Id) > 0 {
+		i -= len(m.Id)
+		copy(dAtA[i:], m.Id)
+		i = encodeVarintTx(dAtA, i, uint64(len(m.Id)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *MsgActivateSidechain) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *MsgActivateSidechain) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *MsgActivateSidechain) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Id) > 0 {
+		i -= len(m.Id)
+		copy(dAtA[i:], m.Id)
+		i = encodeVarintTx(dAtA, i, uint64(len(m.Id)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.Authority) > 0 {
+		i -= len(m.Authority)
+		copy(dAtA[i:], m.Authority)
+		i = encodeVarintTx(dAtA, i, uint64(len(m.Authority)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *MsgActivateSidechainResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *MsgActivateSidechainResponse) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *MsgActivateSidechainResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	return len(dAtA) - i, nil
+}
+
+func (m *MsgUpdateSidechainSigners) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *MsgUpdateSidechainSigners) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *MsgUpdateSidechainSigners) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.SignatureThreshold != 0 {
+		i = encodeVarintTx(dAtA, i, uint64(m.SignatureThreshold))
+		i--
+		dAtA[i] = 0x20
+	}
+	if len(m.SignerKeys) > 0 {
+		for iNdEx := len(m.SignerKeys) - 1; iNdEx >= 0; iNdEx-- {
+			{
+				size, err := m.SignerKeys[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarintTx(dAtA, i, uint64(size))
+			}
+			i--
+			dAtA[i] = 0x1a
+		}
+	}
+	if len(m.Id) > 0 {
+		i -= len(m.Id)
+		copy(dAtA[i:], m.Id)
+		i = encodeVarintTx(dAtA, i, uint64(len(m.Id)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.Operator) > 0 {
+		i -= len(m.Operator)
+		copy(dAtA[i:], m.Operator)
+		i = encodeVarintTx(dAtA, i, uint64(len(m.Operator)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *MsgUpdateSidechainSignersResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *MsgUpdateSidechainSignersResponse) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *MsgUpdateSidechainSignersResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.SignerSetVersion != 0 {
+		i = encodeVarintTx(dAtA, i, uint64(m.SignerSetVersion))
+		i--
+		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *MsgUpdateSidechain) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *MsgUpdateSidechain) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *MsgUpdateSidechain) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.CheckpointIntervalSeconds != 0 {
+		i = encodeVarintTx(dAtA, i, uint64(m.CheckpointIntervalSeconds))
+		i--
+		dAtA[i] = 0x28
+	}
+	if len(m.MetadataUri) > 0 {
+		i -= len(m.MetadataUri)
+		copy(dAtA[i:], m.MetadataUri)
+		i = encodeVarintTx(dAtA, i, uint64(len(m.MetadataUri)))
+		i--
+		dAtA[i] = 0x22
+	}
+	if len(m.Name) > 0 {
+		i -= len(m.Name)
+		copy(dAtA[i:], m.Name)
+		i = encodeVarintTx(dAtA, i, uint64(len(m.Name)))
+		i--
+		dAtA[i] = 0x1a
+	}
+	if len(m.Id) > 0 {
+		i -= len(m.Id)
+		copy(dAtA[i:], m.Id)
+		i = encodeVarintTx(dAtA, i, uint64(len(m.Id)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.Operator) > 0 {
+		i -= len(m.Operator)
+		copy(dAtA[i:], m.Operator)
+		i = encodeVarintTx(dAtA, i, uint64(len(m.Operator)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *MsgUpdateSidechainResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *MsgUpdateSidechainResponse) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *MsgUpdateSidechainResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	return len(dAtA) - i, nil
+}
+
+func (m *MsgInitiateSidechainExit) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *MsgInitiateSidechainExit) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *MsgInitiateSidechainExit) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Id) > 0 {
+		i -= len(m.Id)
+		copy(dAtA[i:], m.Id)
+		i = encodeVarintTx(dAtA, i, uint64(len(m.Id)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.Operator) > 0 {
+		i -= len(m.Operator)
+		copy(dAtA[i:], m.Operator)
+		i = encodeVarintTx(dAtA, i, uint64(len(m.Operator)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *MsgInitiateSidechainExitResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *MsgInitiateSidechainExitResponse) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *MsgInitiateSidechainExitResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	return len(dAtA) - i, nil
+}
+
+func (m *MsgSuspendSidechain) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *MsgSuspendSidechain) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *MsgSuspendSidechain) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Id) > 0 {
+		i -= len(m.Id)
+		copy(dAtA[i:], m.Id)
+		i = encodeVarintTx(dAtA, i, uint64(len(m.Id)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.Authority) > 0 {
+		i -= len(m.Authority)
+		copy(dAtA[i:], m.Authority)
+		i = encodeVarintTx(dAtA, i, uint64(len(m.Authority)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *MsgSuspendSidechainResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *MsgSuspendSidechainResponse) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *MsgSuspendSidechainResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	return len(dAtA) - i, nil
+}
+
+func (m *MsgResumeSidechain) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *MsgResumeSidechain) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *MsgResumeSidechain) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Id) > 0 {
+		i -= len(m.Id)
+		copy(dAtA[i:], m.Id)
+		i = encodeVarintTx(dAtA, i, uint64(len(m.Id)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.Authority) > 0 {
+		i -= len(m.Authority)
+		copy(dAtA[i:], m.Authority)
+		i = encodeVarintTx(dAtA, i, uint64(len(m.Authority)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *MsgResumeSidechainResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *MsgResumeSidechainResponse) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *MsgResumeSidechainResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	return len(dAtA) - i, nil
 }
 
 func (m *MsgUpdateParams) Marshal() (dAtA []byte, err error) {
@@ -318,6 +1913,243 @@ func encodeVarintTx(dAtA []byte, offset int, v uint64) int {
 	dAtA[offset] = uint8(v)
 	return base
 }
+func (m *MsgRegisterSidechain) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Operator)
+	if l > 0 {
+		n += 1 + l + sovTx(uint64(l))
+	}
+	l = len(m.Id)
+	if l > 0 {
+		n += 1 + l + sovTx(uint64(l))
+	}
+	l = len(m.Name)
+	if l > 0 {
+		n += 1 + l + sovTx(uint64(l))
+	}
+	if len(m.SignerKeys) > 0 {
+		for _, e := range m.SignerKeys {
+			l = e.Size()
+			n += 1 + l + sovTx(uint64(l))
+		}
+	}
+	if m.SignatureThreshold != 0 {
+		n += 1 + sovTx(uint64(m.SignatureThreshold))
+	}
+	if m.Tier != 0 {
+		n += 1 + sovTx(uint64(m.Tier))
+	}
+	l = m.Bond.Size()
+	n += 1 + l + sovTx(uint64(l))
+	if m.CheckpointIntervalSeconds != 0 {
+		n += 1 + sovTx(uint64(m.CheckpointIntervalSeconds))
+	}
+	l = len(m.MetadataUri)
+	if l > 0 {
+		n += 1 + l + sovTx(uint64(l))
+	}
+	return n
+}
+
+func (m *MsgRegisterSidechainResponse) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Id)
+	if l > 0 {
+		n += 1 + l + sovTx(uint64(l))
+	}
+	if m.Status != 0 {
+		n += 1 + sovTx(uint64(m.Status))
+	}
+	return n
+}
+
+func (m *MsgActivateSidechain) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Authority)
+	if l > 0 {
+		n += 1 + l + sovTx(uint64(l))
+	}
+	l = len(m.Id)
+	if l > 0 {
+		n += 1 + l + sovTx(uint64(l))
+	}
+	return n
+}
+
+func (m *MsgActivateSidechainResponse) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	return n
+}
+
+func (m *MsgUpdateSidechainSigners) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Operator)
+	if l > 0 {
+		n += 1 + l + sovTx(uint64(l))
+	}
+	l = len(m.Id)
+	if l > 0 {
+		n += 1 + l + sovTx(uint64(l))
+	}
+	if len(m.SignerKeys) > 0 {
+		for _, e := range m.SignerKeys {
+			l = e.Size()
+			n += 1 + l + sovTx(uint64(l))
+		}
+	}
+	if m.SignatureThreshold != 0 {
+		n += 1 + sovTx(uint64(m.SignatureThreshold))
+	}
+	return n
+}
+
+func (m *MsgUpdateSidechainSignersResponse) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.SignerSetVersion != 0 {
+		n += 1 + sovTx(uint64(m.SignerSetVersion))
+	}
+	return n
+}
+
+func (m *MsgUpdateSidechain) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Operator)
+	if l > 0 {
+		n += 1 + l + sovTx(uint64(l))
+	}
+	l = len(m.Id)
+	if l > 0 {
+		n += 1 + l + sovTx(uint64(l))
+	}
+	l = len(m.Name)
+	if l > 0 {
+		n += 1 + l + sovTx(uint64(l))
+	}
+	l = len(m.MetadataUri)
+	if l > 0 {
+		n += 1 + l + sovTx(uint64(l))
+	}
+	if m.CheckpointIntervalSeconds != 0 {
+		n += 1 + sovTx(uint64(m.CheckpointIntervalSeconds))
+	}
+	return n
+}
+
+func (m *MsgUpdateSidechainResponse) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	return n
+}
+
+func (m *MsgInitiateSidechainExit) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Operator)
+	if l > 0 {
+		n += 1 + l + sovTx(uint64(l))
+	}
+	l = len(m.Id)
+	if l > 0 {
+		n += 1 + l + sovTx(uint64(l))
+	}
+	return n
+}
+
+func (m *MsgInitiateSidechainExitResponse) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	return n
+}
+
+func (m *MsgSuspendSidechain) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Authority)
+	if l > 0 {
+		n += 1 + l + sovTx(uint64(l))
+	}
+	l = len(m.Id)
+	if l > 0 {
+		n += 1 + l + sovTx(uint64(l))
+	}
+	return n
+}
+
+func (m *MsgSuspendSidechainResponse) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	return n
+}
+
+func (m *MsgResumeSidechain) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Authority)
+	if l > 0 {
+		n += 1 + l + sovTx(uint64(l))
+	}
+	l = len(m.Id)
+	if l > 0 {
+		n += 1 + l + sovTx(uint64(l))
+	}
+	return n
+}
+
+func (m *MsgResumeSidechainResponse) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	return n
+}
+
 func (m *MsgUpdateParams) Size() (n int) {
 	if m == nil {
 		return 0
@@ -347,6 +2179,1548 @@ func sovTx(x uint64) (n int) {
 }
 func sozTx(x uint64) (n int) {
 	return sovTx(uint64((x << 1) ^ uint64((int64(x) >> 63))))
+}
+func (m *MsgRegisterSidechain) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTx
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: MsgRegisterSidechain: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: MsgRegisterSidechain: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Operator", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Operator = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Id", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Id = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Name", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Name = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SignerKeys", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.SignerKeys = append(m.SignerKeys, &any.Any{})
+			if err := m.SignerKeys[len(m.SignerKeys)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 5:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SignatureThreshold", wireType)
+			}
+			m.SignatureThreshold = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.SignatureThreshold |= uint32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 6:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Tier", wireType)
+			}
+			m.Tier = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Tier |= AssuranceTier(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 7:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Bond", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.Bond.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 8:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field CheckpointIntervalSeconds", wireType)
+			}
+			m.CheckpointIntervalSeconds = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.CheckpointIntervalSeconds |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 9:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MetadataUri", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.MetadataUri = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTx(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthTx
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *MsgRegisterSidechainResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTx
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: MsgRegisterSidechainResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: MsgRegisterSidechainResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Id", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Id = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Status", wireType)
+			}
+			m.Status = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Status |= SidechainStatus(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTx(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthTx
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *MsgActivateSidechain) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTx
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: MsgActivateSidechain: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: MsgActivateSidechain: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Authority", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Authority = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Id", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Id = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTx(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthTx
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *MsgActivateSidechainResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTx
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: MsgActivateSidechainResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: MsgActivateSidechainResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTx(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthTx
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *MsgUpdateSidechainSigners) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTx
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: MsgUpdateSidechainSigners: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: MsgUpdateSidechainSigners: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Operator", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Operator = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Id", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Id = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SignerKeys", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.SignerKeys = append(m.SignerKeys, &any.Any{})
+			if err := m.SignerKeys[len(m.SignerKeys)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 4:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SignatureThreshold", wireType)
+			}
+			m.SignatureThreshold = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.SignatureThreshold |= uint32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTx(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthTx
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *MsgUpdateSidechainSignersResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTx
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: MsgUpdateSidechainSignersResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: MsgUpdateSidechainSignersResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SignerSetVersion", wireType)
+			}
+			m.SignerSetVersion = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.SignerSetVersion |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTx(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthTx
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *MsgUpdateSidechain) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTx
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: MsgUpdateSidechain: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: MsgUpdateSidechain: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Operator", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Operator = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Id", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Id = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Name", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Name = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MetadataUri", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.MetadataUri = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 5:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field CheckpointIntervalSeconds", wireType)
+			}
+			m.CheckpointIntervalSeconds = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.CheckpointIntervalSeconds |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTx(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthTx
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *MsgUpdateSidechainResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTx
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: MsgUpdateSidechainResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: MsgUpdateSidechainResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTx(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthTx
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *MsgInitiateSidechainExit) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTx
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: MsgInitiateSidechainExit: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: MsgInitiateSidechainExit: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Operator", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Operator = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Id", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Id = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTx(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthTx
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *MsgInitiateSidechainExitResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTx
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: MsgInitiateSidechainExitResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: MsgInitiateSidechainExitResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTx(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthTx
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *MsgSuspendSidechain) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTx
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: MsgSuspendSidechain: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: MsgSuspendSidechain: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Authority", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Authority = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Id", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Id = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTx(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthTx
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *MsgSuspendSidechainResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTx
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: MsgSuspendSidechainResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: MsgSuspendSidechainResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTx(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthTx
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *MsgResumeSidechain) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTx
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: MsgResumeSidechain: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: MsgResumeSidechain: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Authority", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Authority = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Id", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Id = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTx(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthTx
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *MsgResumeSidechainResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTx
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: MsgResumeSidechainResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: MsgResumeSidechainResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTx(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthTx
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
 }
 func (m *MsgUpdateParams) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)

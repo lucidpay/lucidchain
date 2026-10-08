@@ -13,7 +13,7 @@ option go_package = "github.com/lucidpay/lucidchain/x/sidechain/types";
 message TierBond {
   option (gogoproto.equal) = true;
   AssuranceTier tier = 1;
-  cosmos.base.v1beta1.Coin min_bond = 2 [(gogoproto.nullable) = false];
+  cosmos.base.v1beta1.Coin min_bond = 2 [(gogoproto.nullable) = false, (amino.dont_omitempty) = true];
 }
 
 // Params defines module-wide parameters, settable via governance.
@@ -36,4 +36,10 @@ message Params {
   // to ML-DSA-65 only; adding classical types (ed25519, secp256k1) re-opens the
   // sidechain to quantum forgery of its checkpoint signatures.
   repeated string allowed_pubkey_type_urls = 5;
+
+
+  // NEW: when true, RegisterSidechain creates sidechains ACTIVE immediately
+  // (permissionless registration, bond is the only gate). When false, they
+  // are PENDING until governance calls ActivateSidechain.
+  bool auto_activate = 6;
 }

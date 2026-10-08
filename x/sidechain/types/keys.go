@@ -22,4 +22,7 @@ var (
 
 	// SidechainKey is the prefix for sidechain registration records, keyed by id.
 	SidechainKey = collections.NewPrefix("sidechain/value/")
+
+	// ExitQueueKey orders exited sidechains by (bond_return_at unix seconds, id).
+	ExitQueueKey = collections.NewPrefix("sidechain/exit_queue/")
 )

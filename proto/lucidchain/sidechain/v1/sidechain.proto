@@ -83,5 +83,10 @@ message Sidechain {
 
   // Off-chain metadata document URI.
   string metadata_uri = 18;
+
+  // NEW: when the sidechain first became ACTIVE (the baseline for any
+  // missed-checkpoint liveness rule before its first checkpoint).
+  google.protobuf.Timestamp activated_at = 19
+      [(gogoproto.stdtime) = true, (gogoproto.nullable) = true];
 }
 

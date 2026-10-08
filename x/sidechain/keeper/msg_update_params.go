@@ -9,6 +9,19 @@ import (
 	"github.com/lucidpay/lucidchain/x/sidechain/types"
 )
 
+/*
+// UpdateParams implements types.MsgServer.
+func (k msgServer) UpdateParams(ctx context.Context, req *types.MsgUpdateParams) (*types.MsgUpdateParamsResponse, error) {
+	if err := k.checkAuthority(k.authority, req.Authority); err != nil {
+		return nil, err
+	}
+	if err := k.SetParams(ctx, req.Params); err != nil {
+		return nil, err
+	}
+	return &types.MsgUpdateParamsResponse{}, nil
+}
+*/
+
 func (k msgServer) UpdateParams(ctx context.Context, req *types.MsgUpdateParams) (*types.MsgUpdateParamsResponse, error) {
 	authority, err := k.addressCodec.StringToBytes(req.Authority)
 	if err != nil {
