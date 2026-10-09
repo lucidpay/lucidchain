@@ -119,7 +119,73 @@ lucidchaind tx sidechain register-sidechain \
 
 lucidchaind query sidechain sidechain -h
 
+**How to work with checkpoints***
+
+```bash
+
+# Tx
+#lucidchaind tx checkpoint submit-checkpoint [sidechain-id] [lc-sequence] [state-root] [previous-checkpoint-hash] [record-count] [data-pointer] [signer-set-version] [flags]
+
+lucidchaind tx checkpoint submit-checkpoint \
+  hospitality-platform-01 \  
+  1 \
+  d841f966f8bf17d49335f4b134c2178fd5aca8244d46b8d5f9a5470338095b7b \
+  "" \
+  100 \
+  "ipfs://test-checkpoint-1" \
+  1 \
+  --signatures '{"signer_index":0,"signature":"<base64>"}' \
+  --signatures '{"signer_index":1,"signature":"<base64>"}' \
+  --from <key> \
+  --chain-id <id> \
+  --gas auto --gas-adjustment 1.5 \
+  --gas-prices 0.025stake \
+  -y
+
+#Steps needed 
+# first build a signature. make sure you are in the root folder of the source code e.g. lucidchain
+# and tehn run the code bellow
+
+export STATE_ROOT=d841f966f8bf17d49335f4b134c2178fd5aca8244d46b8d5f9a5470338095b7b
+export STATE_ROOT_B64=$(echo $STATE_ROOT | xxd -r -p | base64 -w0)
+K1=$(lucidchaind keys export signer1 --unarmored-hex --unsafe --keyring-backend test)
+K2=$(lucidchaind keys export signer2 --unarmored-hex --unsafe --keyring-backend test)
+
+go run ./cmd/signcheckpoint \
+  --chain-id my-testnet-1 \
+  --sidechain-id hospitality-platform-0 \
+  --lc-sequence 1 \
+  --state-root $STATE_ROOT \
+  --previous-hash "" \
+  --record-count 100 \
+  --data-pointer "ipfs://test-checkpoint-1" \
+  --signer-set-version 1 \
+  --key 0=$K1 --key 1=$K2
+
+# take the signatures and add them to submit-checkpoint
+export STATE_ROOT=d841f966f8bf17d49335f4b134c2178fd5aca8244d46b8d5f9a5470338095b7b
+export STATE_ROOT_B64=$(echo $STATE_ROOT | xxd -r -p | base64 -w0)
+
+lucidchaind tx checkpoint submit-checkpoint \
+  hospitality-platform-01 1 $STATE_ROOT_B64 "" 100 "ipfs://test-checkpoint-1" 1 \
+  --signatures '{"signature":"aFRDy/dnz6A04jQH56LlE/ab1euIa63niAliCSPlvClQIgC0GmVoJkGxGQuu36UdUFponbQC5Fb8XpHPHZc/eQ==","signer_index":0}' \
+  --signatures '{"signature":"x9UovSNqbc+QNoJKSnuyw5L9rmpWmUUylMm3cE98uqQiPhwNpK+kJXKHP4zLf0+RYntvuQkB/bIYSrFwRhmq/A==","signer_index":1}' \
+  --from validator --chain-id my-testnet-1 \
+  --gas auto --gas-adjustment 1.5 -y
+
+
+# Queries
+lucidchaind q checkpoint params
+lucidchaind q checkpoint checkpoint hospitality-platform-01 1
+lucidchaind q checkpoint latest-checkpoint hospitality-platform-01
+lucidchaind q checkpoint checkpoints hospitality-platform-01 --page-limit 10 --page-reverse
+
+
+  ```
+
 lucidchaind query checkpoint -h
+
+**How to work with attestor**
 
 lucidchaind query attestor -h
 
