@@ -128,6 +128,8 @@ lucidchaind tx sidechain register-sidechain \
 #  --checkpoint-interval-seconds 300 \
 #  --metadata-uri https://example.org/meta.json \
 #  --from validator --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5
+
+#you should see something similar to this
 #gas estimate: 121149
 #auth_info:
 #  fee:
