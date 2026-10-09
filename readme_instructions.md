@@ -119,7 +119,7 @@ lucidchaind tx sidechain register-sidechain \
 
 lucidchaind query sidechain sidechain -h
 
-**How to work with checkpoints***
+**How to work with checkpoints**
 
 ```bash
 
