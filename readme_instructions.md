@@ -47,13 +47,17 @@ lucidchaind tx sidechain register-sidechain -h
 
 **How to register a chain**
 
-Firt enable secp256k1 in dev. Do not do this for production to keep the node quantum-resistant
+First enable secp256k1 in dev, for both sidechains and attestors. Do not do this for production, to keep the node quantum-resistant.
+
+A fresh `lucidchaind init` also sets `auto_activate` to `false`, which leaves a new sidechain `PENDING` so every checkpoint is rejected. Set it to `true` for dev.
 
 ```bash
 
 #make sure you are in your home directory
 G=~/.lucidchain/config/genesis.json
-jq '.app_state.sidechain.params.allowed_pubkey_type_urls += ["/cosmos.crypto.secp256k1.PubKey"]' "$G" > /tmp/g.json && mv /tmp/g.json "$G"
+jq '.app_state.sidechain.params.allowed_pubkey_type_urls += ["/cosmos.crypto.secp256k1.PubKey"]
+  | .app_state.attestor.params.allowed_pubkey_type_urls += ["/cosmos.crypto.secp256k1.PubKey"]
+  | .app_state.sidechain.params.auto_activate = true' "$G" > /tmp/g.json && mv /tmp/g.json "$G"
 
 lucidchaind genesis validate
 lucidchaind comet unsafe-reset-all
@@ -223,7 +227,7 @@ lucidchaind query sidechain sidechains
 #lucidchaind tx checkpoint submit-checkpoint [sidechain-id] [lc-sequence] [state-root] [previous-checkpoint-hash] [record-count] [data-pointer] [signer-set-version] [flags]
 
 lucidchaind tx checkpoint submit-checkpoint \
-  hospitality-platform-01 \  
+  hospitality-platform-01 \
   1 \
   d841f966f8bf17d49335f4b134c2178fd5aca8244d46b8d5f9a5470338095b7b \
   "" \
@@ -241,13 +245,15 @@ lucidchaind tx checkpoint submit-checkpoint \
 #Steps needed 
 # first build a signature. make sure you have the following folder structure in your home directory ./tools/signcheckpoint/
 # and the binary signcheckpoint is in it "chmod +x signcheckpoint" then run the code bellow
+# to build the binary, run this from the repository folder:
+#   go build -o ~/tools/signcheckpoint/signcheckpoint ./tools/signcheckpoint
 
 export STATE_ROOT=d841f966f8bf17d49335f4b134c2178fd5aca8244d46b8d5f9a5470338095b7b
 export STATE_ROOT_B64=$(echo $STATE_ROOT | xxd -r -p | base64 -w0)
 K1=$(lucidchaind keys export sidechainkey1 --unarmored-hex --unsafe)
 K2=$(lucidchaind keys export sidechainkey2 --unarmored-hex --unsafe)
 
-go run ./tools/signcheckpoint \
+./tools/signcheckpoint/signcheckpoint \
   --chain-id my-testnet-1 \
   --sidechain-id hospitality-platform-01 \
   --lc-sequence 1 \
@@ -317,6 +323,59 @@ lucidchaind q checkpoint checkpoints hospitality-platform-01 --page-limit 10 --p
 lucidchaind query checkpoint -h
 
 **How to work with attestor**
+
+`submit-attestation.sh` expects schema `kyc-v1` and an ACTIVE attestor `acme` whose signer key is the `validator` key. Creating the schema and activating the attestor are governance-only, so set them up first.
+
+Note: with the default genesis the governance voting period is 48 hours, so each proposal below takes two days to pass. For a dev chain, shorten it before the first start:
+`jq '.app_state.gov.params.voting_period = "60s" | .app_state.gov.params.expedited_voting_period = "30s"' "$G" > /tmp/g.json && mv /tmp/g.json "$G"`
+
+```bash
+
+# 1. create the schema (governance)
+cat > schema.json <<'EOF'
+{
+  "messages": [{
+    "@type": "/lucidchain.attestor.v1.MsgCreateAttestationSchema",
+    "authority": "cosmos10d07y265gmmuvt4z0w9aw880jnsr700j6zn9kn",
+    "schema": {
+      "id": "kyc-v1",
+      "title": "Revenue report",
+      "domain": "hospitality",
+      "claim_description": "Reported revenue matches the source data",
+      "exclusions": "Does not verify transaction authenticity",
+      "required_data_sources": ["pms"],
+      "validity_period_seconds": "31536000",
+      "dispute_window_seconds": "3600",
+      "active": true
+    }
+  }],
+  "metadata": "ipfs://test",
+  "deposit": "10000000stake",
+  "title": "Create kyc-v1 schema",
+  "summary": "Create kyc-v1 schema"
+}
+EOF
+lucidchaind tx gov submit-proposal schema.json --from validator \
+    --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
+lucidchaind tx gov vote <proposal-id> yes --from validator --chain-id my-testnet-1 --gas-prices 0stake --yes
+lucidchaind query attestor schemas   # after the voting period
+
+# 2. register the attestor, with the validator key as its signer
+lucidchaind tx attestor register-attestor \
+  --id acme --name Acme --authorized-schema-ids kyc-v1 \
+  --signer-keys "$(lucidchaind keys show validator --pubkey)" \
+  --signature-threshold 1 --bond-amount 1000000 \
+  --credential-uri https://example.org/acme.json \
+  --from validator --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
+
+# 3. activate it (governance): same proposal format as step 1, with this message
+#   {"@type": "/lucidchain.attestor.v1.MsgActivateAttestor",
+#    "authority": "cosmos10d07y265gmmuvt4z0w9aw880jnsr700j6zn9kn", "id": "acme"}
+lucidchaind query attestor attestor acme   # status should be ATTESTOR_STATUS_ACTIVE
+
+```
+
+The script is `tools/signbytes/submit-attestation.sh`. Copy it to the folder you work in and make it executable with `chmod +x submit-attestation.sh`.
 
 First step is to create a claim
 
@@ -418,7 +477,7 @@ lucidchaind tx attestor raise-dispute \
 lucidchaind tx gov submit-proposal proposal.json --from validator \
     --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
 
-#wait until block created and then run
+#wait until block created and then run (the proposal passes after the voting period: 48 hours by default)
 lucidchaind tx gov vote 1 yes --from validator \
     --chain-id my-testnet-1 --gas-prices 0stake --yes
 
