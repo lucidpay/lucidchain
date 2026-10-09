@@ -114,6 +114,22 @@ lucidchaind tx sidechain register-sidechain \
   --metadata-uri https://example.org/meta.json \
   --from validator --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5
 
+#you should get an outpout similar to
+#gas estimate: 103869
+#code: 0
+#codespace: ""
+#data: ""
+#events: []
+#gas_used: "0"
+#gas_wanted: "0"
+#height: "0"
+#info: ""
+#logs: []
+#raw_log: ""
+#timestamp: ""
+#tx: null
+#txhash: 4EF7DE7820B56FC7FAECA5C13AD1B79E9588BDFEA1FA9DDA6BDFAD4C8701FA75
+
 
 ```
 
