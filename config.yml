@@ -25,3 +25,5 @@ validators:
   bonded: 200000000stake
 - name: validator2
   bonded: 100000000stake
+build:
+  main: cmd/lucidchaind
