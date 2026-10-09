@@ -167,7 +167,7 @@ export STATE_ROOT_B64=$(echo $STATE_ROOT | xxd -r -p | base64 -w0)
 K1=$(lucidchaind keys export sidechainkey1 --unarmored-hex --unsafe --keyring-backend test)
 K2=$(lucidchaind keys export sidechainkey2 --unarmored-hex --unsafe --keyring-backend test)
 
-go run ./cmd/signcheckpoint \
+go run ./tools/signcheckpoint \
   --chain-id my-testnet-1 \
   --sidechain-id hospitality-platform-0 \
   --lc-sequence 1 \
