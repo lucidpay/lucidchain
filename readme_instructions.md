@@ -318,6 +318,63 @@ lucidchaind query checkpoint -h
 
 **How to work with attestor**
 
+First step is to create a claim
+
+```bash
+
+printf '%s' '{"revenue":"1250000","period":"2026-09"}' > claim.json
+
+#run the shell script. shell script can be found under tools/signbytes
+
+./submit-attestation.sh
+
+# you should get something like this
+#Checkpoint: sidechain=hospitality-platform-01 seq=1 hash=51e2aa1150901af2f76b4469c4c1ce4db21053c4cceeaecc49c49ed183dbd704
+#Signer key matches the attestor's registered key.
+#Wrote sigs.json
+#gas estimate: 174748
+#code: 0
+#codespace: ""
+#data: ""
+#events: []
+#gas_used: "0"
+#gas_wanted: "0"
+#height: "0"
+#nfo: ""
+#logs: []
+#raw_log: ""
+#timestamp: ""
+#tx: null
+#txhash: 5D1C540C4E110B77D05FDE3E74EAC2FE9D2685B522C77AB7BBE6993E52928AEB
+
+# now run 
+
+lucidchaind query attestor checkpoint-attestations hospitality-platform-01 1
+
+#you should get something similar to this
+#attestations:
+#- attestor_id: acme
+#  checkpoint_hash: UeKqEVCQGvL3a0RpxMHOTbIQU8TM7q7MScSe0YPb1wQ=
+#  checkpoint_sequence: "1"
+#  claim_payload: eyJyZXZlbnVlIjoiMTI1MDAwMCIsInBlcmlvZCI6IjIwMjYtMDkifQ==
+#  expires_at: "2027-10-09T15:20:14.54848753Z"
+#  id: 30dd87b708f6bbd7a6e6c6527aceec4340cce248ee583fdff0b8455eb03aaafc
+#  issued_at: "2026-10-09T15:20:14.54848753Z"
+#  issued_height: "383"
+#  schema_id: kyc-v1
+#  sidechain_id: hospitality-platform-01
+#  signatures_digest: XQLZ1BN9olL0dEc6OG8k1PCnciJyFtt/Txfs4b4Y/GU=
+#  signer_bitmap: AQ==
+#  signer_set_version: "1"
+#  status: ATTESTATION_STATUS_ACTIVE
+#pagination:
+#  total: "1"
+
+
+
+```
+
+
 lucidchaind query attestor -h
 
 lucidchaind query proofs -h
