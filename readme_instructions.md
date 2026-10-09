@@ -159,15 +159,15 @@ lucidchaind tx checkpoint submit-checkpoint \
   -y
 
 #Steps needed 
-# first build a signature. make sure you are in the root folder of the source code e.g. lucidchain
-# and then run the code bellow
+# first build a signature. make sure you have the following folder structure in your home directory ./tools/signcheckpoint/
+# and the binary signcheckpoint is in it "chmod +x signcheckpoint" then run the code bellow
 
 export STATE_ROOT=d841f966f8bf17d49335f4b134c2178fd5aca8244d46b8d5f9a5470338095b7b
 export STATE_ROOT_B64=$(echo $STATE_ROOT | xxd -r -p | base64 -w0)
 K1=$(lucidchaind keys export sidechainkey1 --unarmored-hex --unsafe --keyring-backend test)
 K2=$(lucidchaind keys export sidechainkey2 --unarmored-hex --unsafe --keyring-backend test)
 
-go run ./tools/signcheckpoint \
+go run ./tools/signcheckpoint/signcheckpoint \
   --chain-id my-testnet-1 \
   --sidechain-id hospitality-platform-0 \
   --lc-sequence 1 \
