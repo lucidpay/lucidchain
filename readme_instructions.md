@@ -19,6 +19,10 @@ lucidchaind genesis gentx validator 1000000stake --chain-id my-testnet-1
 
 lucidchaind genesis collect-gentxs
 
+lucidchaind keys show validator --address
+
+lucidchaind query bank balances <address>
+
 lucidchaind start
 
 
@@ -114,8 +118,53 @@ lucidchaind tx sidechain register-sidechain \
   --metadata-uri https://example.org/meta.json \
   --from validator --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5
 
-#you should get an outpout similar to
-#gas estimate: 103869
+#EXAMPLE
+#lucidchaind tx sidechain register-sidechain \
+#  hospitality-platform-01 "Hospitality Platform" notarized 1000000stake \
+#  --signer-keys '{"@type":"/cosmos.crypto.secp256k1.PubKey","key":"Aj3S0dAItEDqOpHm7lw2eU79vgigg29etjNMO0i+BgZF"}' \
+#  --signer-keys '{"@type":"/cosmos.crypto.secp256k1.PubKey","key":"AsxltdpDXisuwLfiuSC0S5MzJ/EN1ATdzULinSEZZKjM"}' \
+#  --signer-keys '{"@type":"/cosmos.crypto.secp256k1.PubKey","key":"Am9As0veC6DyLha69fjDFbeO7eUU78GQ7La0d474+T0Q"}' \
+#  --signature-threshold 2 \
+#  --checkpoint-interval-seconds 300 \
+#  --metadata-uri https://example.org/meta.json \
+#  --from validator --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5
+#gas estimate: 121149
+#auth_info:
+#  fee:
+#    amount: []
+#    gas_limit: "121149"
+#    granter: ""
+#    payer: ""
+#  signer_infos: []
+#  tip: null
+#body:
+#  extension_options: []
+#  memo: ""
+#  messages:
+#  - '@type': /lucidchain.sidechain.v1.MsgRegisterSidechain
+#    bond:
+#      amount: "1000000"
+#      denom: stake
+#    checkpoint_interval_seconds: "300"
+#    id: hospitality-platform-01
+#    metadata_uri: https://example.org/meta.json
+#    name: Hospitality Platform
+#    operator: cosmos18yem5p78w8efrx6dvc45dufjntvq0j6kng2ce0
+#    signature_threshold: 2
+#    signer_keys:
+#    - '@type': /cosmos.crypto.secp256k1.PubKey
+#      key: Aj3S0dAItEDqOpHm7lw2eU79vgigg29etjNMO0i+BgZF
+#    - '@type': /cosmos.crypto.secp256k1.PubKey
+#      key: AsxltdpDXisuwLfiuSC0S5MzJ/EN1ATdzULinSEZZKjM
+#    - '@type': /cosmos.crypto.secp256k1.PubKey
+#      key: Am9As0veC6DyLha69fjDFbeO7eUU78GQ7La0d474+T0Q
+#    tier: ASSURANCE_TIER_NOTARIZED
+#  non_critical_extension_options: []
+#  timeout_height: "0"
+#  timeout_timestamp: null
+#  unordered: false
+#signatures: []
+#confirm transaction before signing and broadcasting [y/N]: y
 #code: 0
 #codespace: ""
 #data: ""
@@ -128,12 +177,41 @@ lucidchaind tx sidechain register-sidechain \
 #raw_log: ""
 #timestamp: ""
 #tx: null
-#txhash: 4EF7DE7820B56FC7FAECA5C13AD1B79E9588BDFEA1FA9DDA6BDFAD4C8701FA75
+#txhash: 3AA09EE67BCF0960D6F30FDEA10BE40365EE5C2B076FA427CB690ED2245320FA
+
+
+lucidchaind q tx 3AA09EE67BCF0960D6F30FDEA10BE40365EE5C2B076FA427CB690ED2245320FA # will show information about the registration
+
+lucidchaind query sidechain sidechains
+#will show something similar to this
+#pagination:
+#  total: "1"
+#sidechains:
+#- activated_at: "2026-10-09T10:39:29.496697798Z"
+#  bond:
+#    amount: "1000000"
+#    denom: stake
+#  checkpoint_interval_seconds: "300"
+#  id: hospitality-platform-01
+#  metadata_uri: https://example.org/meta.json
+#  name: Hospitality Platform
+#  operator: cosmos18yem5p78w8efrx6dvc45dufjntvq0j6kng2ce0
+#  registered_at: "2026-10-09T10:39:29.496697798Z"
+#  signature_threshold: 2
+#  signer_keys:
+#  - type: /cosmos.crypto.secp256k1.PubKey
+#    value: Aj3S0dAItEDqOpHm7lw2eU79vgigg29etjNMO0i+BgZF
+#  - type: /cosmos.crypto.secp256k1.PubKey
+#    value: AsxltdpDXisuwLfiuSC0S5MzJ/EN1ATdzULinSEZZKjM
+#  - type: /cosmos.crypto.secp256k1.PubKey
+#    value: Am9As0veC6DyLha69fjDFbeO7eUU78GQ7La0d474+T0Q
+#  signer_set_version: "1"
+#  status: SIDECHAIN_STATUS_ACTIVE
+#  tier: ASSURANCE_TIER_NOTARIZED
 
 
 ```
 
-lucidchaind query sidechain sidechain -h
 
 **How to work with checkpoints**
 
@@ -164,12 +242,12 @@ lucidchaind tx checkpoint submit-checkpoint \
 
 export STATE_ROOT=d841f966f8bf17d49335f4b134c2178fd5aca8244d46b8d5f9a5470338095b7b
 export STATE_ROOT_B64=$(echo $STATE_ROOT | xxd -r -p | base64 -w0)
-K1=$(lucidchaind keys export sidechainkey1 --unarmored-hex --unsafe --keyring-backend test)
-K2=$(lucidchaind keys export sidechainkey2 --unarmored-hex --unsafe --keyring-backend test)
+K1=$(lucidchaind keys export sidechainkey1 --unarmored-hex --unsafe)
+K2=$(lucidchaind keys export sidechainkey2 --unarmored-hex --unsafe)
 
-go run ./tools/signcheckpoint/signcheckpoint \
+go run ./tools/signcheckpoint \
   --chain-id my-testnet-1 \
-  --sidechain-id hospitality-platform-0 \
+  --sidechain-id hospitality-platform-01 \
   --lc-sequence 1 \
   --state-root $STATE_ROOT \
   --previous-hash "" \
@@ -184,8 +262,8 @@ export STATE_ROOT_B64=$(echo $STATE_ROOT | xxd -r -p | base64 -w0)
 
 lucidchaind tx checkpoint submit-checkpoint \
   hospitality-platform-01 1 $STATE_ROOT_B64 "" 100 "ipfs://test-checkpoint-1" 1 \
-  --signatures '{"signature":"aFRDy/dnz6A04jQH56LlE/ab1euIa63niAliCSPlvClQIgC0GmVoJkGxGQuu36UdUFponbQC5Fb8XpHPHZc/eQ==","signer_index":0}' \
-  --signatures '{"signature":"x9UovSNqbc+QNoJKSnuyw5L9rmpWmUUylMm3cE98uqQiPhwNpK+kJXKHP4zLf0+RYntvuQkB/bIYSrFwRhmq/A==","signer_index":1}' \
+  --signatures '{"signature":"baV//6Hw/F37LTggzIV3mUyx0h1GoX20KF7H3IAf2W867R0cIaEDETtRCs2LdpSnz89ijDPVSb11L3Tm5RbHgg==","signer_index":0}' \
+  --signatures '{"signature":"QWFPMHbhGTXrwgKmMAYrnSuCbpV3MXNa8MBRqzb4mhEoGoxwqlkUS8iTikGZfURbtBZ9HaRBiYS/j/abAxe68w==","signer_index":1}' \
   --from validator --chain-id my-testnet-1 \
   --gas auto --gas-adjustment 1.5 -y
 

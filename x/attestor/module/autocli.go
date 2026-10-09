@@ -17,6 +17,41 @@ func (am AppModule) AutoCLIOptions() *autocliv1.ModuleOptions {
 					Use:       "params",
 					Short:     "Shows the parameters of the module",
 				},
+				{
+					RpcMethod:      "Attestor",
+					Use:            "attestor [id]",
+					Short:          "Show one attestor",
+					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "id"}},
+				},
+				{RpcMethod: "Attestors", Use: "attestors", Short: "List attestors (--domain, --status)"},
+				{
+					RpcMethod:      "Schema",
+					Use:            "schema [id]",
+					Short:          "Show one schema",
+					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "id"}},
+				},
+				{RpcMethod: "Schemas", Use: "schemas", Short: "List schemas (--domain)"},
+				{
+					RpcMethod:      "Attestation",
+					Use:            "attestation [id]",
+					Short:          "Show one attestation",
+					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "id"}},
+				},
+				{
+					RpcMethod: "AttestationsForCheckpoint",
+					Use:       "checkpoint-attestations [sidechain-id] [checkpoint-sequence]",
+					Short:     "List attestations for a checkpoint",
+					PositionalArgs: []*autocliv1.PositionalArgDescriptor{
+						{ProtoField: "sidechain_id"},
+						{ProtoField: "checkpoint_sequence"},
+					},
+				},
+				{
+					RpcMethod:      "Dispute",
+					Use:            "dispute [id]",
+					Short:          "Show one dispute",
+					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "id"}},
+				},
 			},
 		},
 		Tx: &autocliv1.ServiceCommandDescriptor{
@@ -26,6 +61,16 @@ func (am AppModule) AutoCLIOptions() *autocliv1.ModuleOptions {
 				{
 					RpcMethod: "UpdateParams",
 					Skip:      true, // skipped because authority gated
+				},
+				{RpcMethod: "SubmitAttestation", Skip: true}, // hand-written in client/cli
+				{RpcMethod: "RaiseDispute",
+					Use:   "raise-dispute [attestation-id] [evidence-uri] [bond-amount]",
+					Short: "Challenge an active attestation within its dispute window",
+					PositionalArgs: []*autocliv1.PositionalArgDescriptor{
+						{ProtoField: "attestation_id"},
+						{ProtoField: "evidence_uri"},
+						{ProtoField: "bond_amount"},
+					},
 				},
 			},
 		},

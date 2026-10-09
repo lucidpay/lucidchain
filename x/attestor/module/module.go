@@ -16,6 +16,9 @@ import (
 
 	"github.com/lucidpay/lucidchain/x/attestor/keeper"
 	"github.com/lucidpay/lucidchain/x/attestor/types"
+	"github.com/spf13/cobra"
+
+	"github.com/lucidpay/lucidchain/x/attestor/client/cli"
 )
 
 var (
@@ -52,6 +55,12 @@ func NewAppModule(
 
 // IsAppModule implements the appmodule.AppModule interface.
 func (AppModule) IsAppModule() {}
+
+// GetTxCmd returns the hand-written tx commands (sign-bytes, submit-attestation).
+// autocli merges them with the generated commands (EnhanceCustomCommand: true).
+func (am AppModule) GetTxCmd() *cobra.Command {
+	return cli.GetTxCmd()
+}
 
 // Name returns the name of the module as a string.
 func (AppModule) Name() string {
