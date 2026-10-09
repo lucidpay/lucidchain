@@ -148,8 +148,8 @@ lucidchaind tx checkpoint submit-checkpoint \
 
 export STATE_ROOT=d841f966f8bf17d49335f4b134c2178fd5aca8244d46b8d5f9a5470338095b7b
 export STATE_ROOT_B64=$(echo $STATE_ROOT | xxd -r -p | base64 -w0)
-K1=$(lucidchaind keys export signer1 --unarmored-hex --unsafe --keyring-backend test)
-K2=$(lucidchaind keys export signer2 --unarmored-hex --unsafe --keyring-backend test)
+K1=$(lucidchaind keys export sidechainkey1 --unarmored-hex --unsafe --keyring-backend test)
+K2=$(lucidchaind keys export sidechainkey2 --unarmored-hex --unsafe --keyring-backend test)
 
 go run ./cmd/signcheckpoint \
   --chain-id my-testnet-1 \
@@ -173,11 +173,46 @@ lucidchaind tx checkpoint submit-checkpoint \
   --from validator --chain-id my-testnet-1 \
   --gas auto --gas-adjustment 1.5 -y
 
+#you should get an output similar to this
+
+#gas estimate: 258096
+#code: 0
+#codespace: ""
+#data: ""
+#events: []
+#gas_used: "0"
+#gas_wanted: "0"
+#height: "0"
+#info: ""
+#logs: []
+#raw_log: ""
+#timestamp: ""
+#tx: null
+#txhash: 058043461378E698B4168564CFBB30963EABB252FE1A2D2B81F3097D9D2F310F
+
 
 # Queries
 lucidchaind q checkpoint params
+
 lucidchaind q checkpoint checkpoint hospitality-platform-01 1
+
 lucidchaind q checkpoint latest-checkpoint hospitality-platform-01
+#this should output something similar to this
+#checkpoint:
+#  checkpoint_hash: 0VvDymCJ4DU02QeRm3Z423D1g2ICxKetgCLr1xq1zhs=
+#  data_pointer: ipfs://test-checkpoint-1
+#  finalized_at: "2026-10-09T06:17:54.235499177Z"
+#  finalized_height: "1239"
+#  lc_sequence: "2"
+#  previous_checkpoint_hash: KMsdoqcJeJIMp64OmPh8j7Ia5shHYU0rhfFmN3cTTBk=
+#  record_count: "50"
+#  sidechain_id: hospitality-platform-01
+#  signatures_digest: pd1NgFzaJxzI6l+FtZ54OYWAHP0WzQvXHdtzfx1xqG8=
+#  signer_bitmap: Aw==
+#  signer_set_version: "1"
+#  state_root: TDlx18fsUYPdjmEg7o1UKP2otukHED7xLvYB6ya1D1w=
+
+
 lucidchaind q checkpoint checkpoints hospitality-platform-01 --page-limit 10 --page-reverse
 
 
