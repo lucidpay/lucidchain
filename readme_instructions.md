@@ -374,6 +374,59 @@ lucidchaind query attestor checkpoint-attestations hospitality-platform-01 1
 
 ```
 
+**dispute and attestation**
+
+Create a challenger 
+
+```bash
+
+lucidchaind keys add challenger
+lucidchaind keys show challenger -a      # copy the address
+#fund the wallet
+lucidchaind tx bank send validator <challenger-address> 5000000stake \
+  --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
+
+
+#raise a dispute
+lucidchaind tx attestor raise-dispute \
+  30dd87b708f6bbd7a6e6c6527aceec4340cce248ee583fdff0b8455eb03aaafc \
+  ipfs://test-evidence 100000 \
+  --from challenger --chain-id my-testnet-1 \
+  --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
+```
+
+**resolve it**
+
+```bash
+# create proposal.json with the json data bellow. Get dispute_id from the raise dispute tx
+
+  {
+    "messages": [{
+      "@type": "/lucidchain.attestor.v1.MsgResolveDispute",
+      "authority": "cosmos10d07y265gmmuvt4z0w9aw880jnsr700j6zn9kn",
+      "dispute_id": "d754de88bd68083b99594458e9463d743fc911772fdf7a83298725e75de3b0c8",
+      "upheld": true,
+      "rationale_uri": "ipfs://test-rationale"
+    }],
+    "metadata": "ipfs://test",
+    "deposit": "10000000stake",
+    "title": "Resolve dispute",
+    "summary": "Resolve the test dispute"
+  }
+
+#run
+lucidchaind tx gov submit-proposal proposal.json --from validator \
+    --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
+
+#wait until block created and then run
+lucidchaind tx gov vote 1 yes --from validator \
+    --chain-id my-testnet-1 --gas-prices 0stake --yes
+
+#check
+lucidchaind q tx <txID>
+
+
+```
 
 lucidchaind query attestor -h
 
