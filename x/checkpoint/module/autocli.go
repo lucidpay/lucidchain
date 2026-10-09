@@ -17,6 +17,31 @@ func (am AppModule) AutoCLIOptions() *autocliv1.ModuleOptions {
 					Use:       "params",
 					Short:     "Shows the parameters of the module",
 				},
+				{
+					RpcMethod: "Checkpoint",
+					Use:       "checkpoint [sidechain-id] [lc-sequence]",
+					Short:     "Shows the checkpoint at a given sequence",
+					PositionalArgs: []*autocliv1.PositionalArgDescriptor{
+						{ProtoField: "sidechain_id"},
+						{ProtoField: "lc_sequence"},
+					},
+				},
+				{
+					RpcMethod: "LatestCheckpoint",
+					Use:       "latest-checkpoint [sidechain-id]",
+					Short:     "Shows the newest checkpoint of a sidechain",
+					PositionalArgs: []*autocliv1.PositionalArgDescriptor{
+						{ProtoField: "sidechain_id"},
+					},
+				},
+				{
+					RpcMethod: "Checkpoints",
+					Use:       "checkpoints [sidechain-id]",
+					Short:     "Lists the checkpoints of a sidechain",
+					PositionalArgs: []*autocliv1.PositionalArgDescriptor{
+						{ProtoField: "sidechain_id"},
+					},
+				},
 			},
 		},
 		Tx: &autocliv1.ServiceCommandDescriptor{
@@ -26,6 +51,20 @@ func (am AppModule) AutoCLIOptions() *autocliv1.ModuleOptions {
 				{
 					RpcMethod: "UpdateParams",
 					Skip:      true, // skipped because authority gated
+				},
+				{
+					RpcMethod: "SubmitCheckpoint",
+					Use:       "submit-checkpoint [sidechain-id] [lc-sequence] [state-root] [previous-checkpoint-hash] [record-count] [data-pointer] [signer-set-version]",
+					Short:     "Submit a signed sidechain checkpoint",
+					PositionalArgs: []*autocliv1.PositionalArgDescriptor{
+						{ProtoField: "sidechain_id"},
+						{ProtoField: "lc_sequence"},
+						{ProtoField: "state_root"},
+						{ProtoField: "previous_checkpoint_hash"},
+						{ProtoField: "record_count"},
+						{ProtoField: "data_pointer"},
+						{ProtoField: "signer_set_version"},
+					},
 				},
 			},
 		},

@@ -42,13 +42,21 @@ func (k Keeper) InitGenesis(ctx context.Context, genState types.GenesisState) er
 
 // ExportGenesis returns the module's exported genesis.
 func (k Keeper) ExportGenesis(ctx context.Context) (*types.GenesisState, error) {
-	var err error
-
-	genesis := types.DefaultGenesis()
-	genesis.Params, err = k.Params.Get(ctx)
+	params, err := k.Params.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	iter, err := k.Checkpoints.Iterate(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	cps, err := iter.Values() // collects and closes the iterator
 	if err != nil {
 		return nil, err
 	}
 
+	genesis := types.DefaultGenesis()
+	genesis.Params = params
+	genesis.Checkpoints = cps
 	return genesis, nil
 }
