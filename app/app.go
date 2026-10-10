@@ -44,6 +44,7 @@ import (
 	attestormodulekeeper "github.com/lucidpay/lucidchain/x/attestor/keeper"
 	checkpointmodulekeeper "github.com/lucidpay/lucidchain/x/checkpoint/keeper"
 	proofsmodulekeeper "github.com/lucidpay/lucidchain/x/proofs/keeper"
+	proofsverifiers "github.com/lucidpay/lucidchain/x/proofs/verifiers"
 	sidechainmodulekeeper "github.com/lucidpay/lucidchain/x/sidechain/keeper"
 )
 
@@ -120,6 +121,8 @@ func AppConfig() depinject.Config {
 			map[string]module.AppModuleBasic{
 				genutiltypes.ModuleName: genutil.NewAppModuleBasic(genutiltypes.DefaultMessageValidator),
 			},
+			// proof verifier implementations compiled into the binary
+			proofsverifiers.Default(),
 		),
 	)
 }
