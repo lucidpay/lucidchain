@@ -19,13 +19,18 @@ cp "$GENESIS" "$GENESIS.bak"
 TMP="$(mktemp)"
 
 jq --arg id "$ID" --arg vk "$VK_B64" --arg gas "$GAS" '
-  .app_state.proofs.verifiers =
-    ((.app_state.proofs.verifiers // []) | map(select(.proof_system_id != $id)))
-    + [{
-        proof_system_id:  $id,
-        verification_key: $vk,
-        verification_gas: $gas
-      }]
+  .genesis_time as $now
+  | .app_state.proofs.verifiers =
+      ((.app_state.proofs.verifiers // []) | map(select(.proof_system_id != $id)))
+      + [{
+          proof_system_id:  $id,
+          description:      ("dev " + $id),
+          verification_key: $vk,
+          status:           "VERIFIER_STATUS_ACTIVE",
+          version:          1,
+          registered_at:    $now,
+          verification_gas: $gas
+        }]
 ' "$GENESIS" > "$TMP"
 
 mv "$TMP" "$GENESIS"

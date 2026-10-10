@@ -25,6 +25,13 @@ service Query {
   rpc ProofsForCheckpoint(QueryProofsForCheckpointRequest) returns (QueryProofsForCheckpointResponse) {
     option (google.api.http).get = "/lucidchain/proofs/v1/sidechains/{sidechain_id}/checkpoints/{checkpoint_sequence}/proofs";
   }
+
+  // Proofs lists proof summaries (no proof bytes), ordered by proof id.
+  rpc Proofs(QueryProofsRequest) returns (QueryProofsResponse) {
+    option (google.api.http).get = "/lucidchain/proofs/v1/proofs";
+  }
+
+
   // NEW: the exact value a prover must put in the first two public inputs.
   rpc Binding(QueryBindingRequest) returns (QueryBindingResponse) {
     option (google.api.http).get = "/lucidchain/proofs/v1/sidechains/{sidechain_id}/checkpoints/{checkpoint_sequence}/claims/{claim_id}/binding";
@@ -59,6 +66,16 @@ message QueryProofsForCheckpointResponse {
   // NEW
   cosmos.base.query.v1beta1.PageResponse pagination = 2;
 }
+
+message QueryProofsRequest {
+  cosmos.base.query.v1beta1.PageRequest pagination = 1;
+}
+message QueryProofsResponse {
+  repeated ProofSummary proofs = 1 [(gogoproto.nullable) = false];
+  cosmos.base.query.v1beta1.PageResponse pagination = 2;
+}
+
+
 
 // NEW
 message QueryBindingRequest {

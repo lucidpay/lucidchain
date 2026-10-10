@@ -13,6 +13,10 @@ import (
 	"github.com/lucidpay/lucidchain/x/proofs/types"
 )
 
+// maxProofsPageLimit bounds one page: each item is loaded in full (proof
+// bytes included) even though only a summary is returned.
+const maxProofsPageLimit = 50
+
 var _ types.QueryServer = queryServer{}
 
 // NewQueryServerImpl returns an implementation of the QueryServer interface
@@ -63,6 +67,42 @@ func (q queryServer) Verifiers(ctx context.Context, req *types.QueryVerifiersReq
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	return &types.QueryVerifiersResponse{Verifiers: vs, Pagination: pageRes}, nil
+}
+
+// Proofs lists proof summaries, ordered by proof id.
+func (q queryServer) Proofs(ctx context.Context, req *types.QueryProofsRequest) (*types.QueryProofsResponse, error) {
+	if req == nil {
+		return nil, status.Error(codes.InvalidArgument, "empty request")
+	}
+	if req.Pagination == nil {
+		req.Pagination = &query.PageRequest{}
+	}
+	if req.Pagination.Limit == 0 || req.Pagination.Limit > maxProofsPageLimit {
+		req.Pagination.Limit = maxProofsPageLimit
+	}
+
+	proofs, pageRes, err := query.CollectionPaginate(
+		ctx,
+		q.k.Proofs,
+		req.Pagination,
+		func(_ string, p types.ProofRecord) (types.ProofSummary, error) {
+			return types.ProofSummary{
+				Id:                 p.Id,
+				SidechainId:        p.SidechainId,
+				CheckpointSequence: p.CheckpointSequence,
+				ProofSystemId:      p.ProofSystemId,
+				ClaimId:            p.ClaimId,
+				Verified:           p.Verified,
+				VerifiedHeight:     p.VerifiedHeight,
+				VerifiedAt:         p.VerifiedAt,
+				Submitter:          p.Submitter,
+			}, nil
+		},
+	)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	return &types.QueryProofsResponse{Proofs: proofs, Pagination: pageRes}, nil
 }
 
 // ProofRecord returns one proof record.

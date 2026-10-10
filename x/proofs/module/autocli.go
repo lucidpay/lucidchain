@@ -17,6 +17,11 @@ func (am AppModule) AutoCLIOptions() *autocliv1.ModuleOptions {
 					Use:       "params",
 					Short:     "Shows the parameters of the module",
 				},
+				{
+					RpcMethod: "Proofs",
+					Use:       "list",
+					Short:     "List proof summaries (without proof bytes)",
+				},
 			},
 		},
 		Tx: &autocliv1.ServiceCommandDescriptor{

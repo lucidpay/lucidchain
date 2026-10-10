@@ -253,7 +253,7 @@ export STATE_ROOT_B64=$(echo $STATE_ROOT | xxd -r -p | base64 -w0)
 K1=$(lucidchaind keys export sidechainkey1 --unarmored-hex --unsafe)
 K2=$(lucidchaind keys export sidechainkey2 --unarmored-hex --unsafe)
 
-./tools/signcheckpoint/signcheckpoint \
+$HOME/tools/signcheckpoint/signcheckpoint \
   --chain-id my-testnet-1 \
   --sidechain-id hospitality-platform-01 \
   --lc-sequence 1 \
@@ -542,5 +542,72 @@ lucidchaind query proofs verifier --proof-system-id groth16-bn254
 ```
 lucidchaind query proofs verifiers
 
+
+**build a proof system**
+
+```bash
+
+ 
+cd tools/prove
+chmod +x prove-and-submit.sh
+
+./prove-and-submit.sh 
+
+#you should see something similar to this
+
+#binding hi=lY3I4mLg8f3O1lyYbB0f4Q== lo=lgIZtZypaOPDIJGMYI9iUg==
+#17:59:27 INF compiling circuit
+#17:59:27 INF parsed circuit inputs nbPublic=2 nbSecret=1
+#17:59:27 INF building constraint builder nbConstraints=1
+#17:59:27 DBG constraint system solver done nbConstraints=1 took=0.021333
+#17:59:27 DBG prover done acceleration=none backend=groth16 curve=bn254 nbConstraints=1 took=1.444299
+#17:59:27 DBG verifier done backend=groth16 curve=bn254 took=1.029061
+#proof 164 bytes, public inputs 76 bytes, local verify ok
+#gas estimate: 399475
+#code: 0
+#codespace: ""
+#data: ""
+#events: []
+#gas_used: "0"
+#gas_wanted: "0"
+#height: "0"
+#info: ""
+#logs: []
+#raw_log: ""
+#timestamp: ""
+#tx: null
+#txhash: AD31674DD9608B4DDB37A361966F47706888686159381DDC28A76EDD8FB43306
+
+
+```
+
+To validate 
+
+```bash
+
+lucidchaind q proofs proofs-for-checkpoint --sidechain-id hospitality-platform-01 --checkpoint-sequence 1
+
+#you should see something like this
+
+#pagination:
+#  total: "1"
+#proofs:
+#- binding: lY3I4mLg8f3O1lyYbB0f4ZYCGbWcqWjjwyCRjGCPYlI=
+#  checkpoint_hash: UeKqEVCQGvL3a0RpxMHOTbIQU8TM7q7MScSe0YPb1wQ=
+#  checkpoint_sequence: "1"
+#  claim_id: geofence.v1
+#  id: d3ccd1dc31e6accd20028e460b95680483523c9ecc6e088592ba8bd2ed7f71fe
+#  proof: 7m4d5SPE9s2PD8P0HimpK7zVc4EV96gthWfqCfh7Z8uXwT2aLmNO3Dhgd0xVRibr5ZFCChmG/4nKyCRNwcPNdA5OLn6jEfNu7JaQoIdZbUkE6CABTKaVE6xJoKX1jxVcyic1dIK3MLv8JsVp5FQwtgFoTAMDTCaueMBZ3EtfSg0AAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+#  proof_system_id: groth16-bn254
+#  public_inputs: AAAAAgAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAJWNyOJi4PH9ztZcmGwdH+EAAAAAAAAAAAAAAAAAAAAAlgIZtZypaOPDIJGMYI9iUg==
+#  sidechain_id: hospitality-platform-01
+#  submitter: cosmos18yem5p78w8efrx6dvc45dufjntvq0j6kng2ce0
+#  verified: true
+#  verified_at: "2026-10-10T13:59:27.012497883Z"
+#  verified_height: "319"
+#  verifier_version: 1
+
+
+```
 
 lucidchaind tx sign -h
