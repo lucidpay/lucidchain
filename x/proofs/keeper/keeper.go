@@ -217,6 +217,30 @@ func (k Keeper) checkAuthority(expected []byte, actual string) error {
 	return nil
 }
 
+// callVerifier runs a verifier call. Panics inside the verifier become
+// ordinary (deterministic) errors via safely. An error wrapping
+// types.ErrVerifierFault is an infrastructure failure, not a verdict. While
+// executing a block it escalates to a typed panic that the app's recovery
+// handler turns into a node halt. In any other mode (simulation, check) the
+// fault is returned as-is and must not be reported as an invalid proof.
+func (k Keeper) callVerifier(ctx context.Context, op string, fn func() error) error {
+	err := safely(op, fn)
+	if err != nil && errors.Is(err, types.ErrVerifierFault) &&
+		sdk.UnwrapSDKContext(ctx).ExecMode() == sdk.ExecModeFinalize {
+		panic(types.VerifierFault{Op: op, Err: err})
+	}
+	return err
+}
+
+// rejection wraps a verifier error as a deterministic rejection, but passes
+// faults through untouched so they never look like an invalid proof.
+func rejection(sentinel *errorsmod.Error, err error) error {
+	if errors.Is(err, types.ErrVerifierFault) {
+		return err
+	}
+	return errorsmod.Wrap(sentinel, err.Error())
+}
+
 // safely runs a verifier call and turns a panic into an error, so a
 // malformed proof can never crash block execution. It must only wrap verifier
 // code: it would also swallow an out-of-gas panic.
@@ -302,21 +326,21 @@ func (k Keeper) SubmitProof(ctx context.Context, msg *types.MsgSubmitProof) (*ty
 	if err != nil {
 		return nil, err
 	}
-	if err := safely("binding check", func() error {
+
+	if err := k.callVerifier(ctx, "binding check", func() error {
 		return impl.CheckBinding(msg.PublicInputs, binding)
 	}); err != nil {
-		return nil, errorsmod.Wrap(types.ErrBindingMismatch, err.Error())
+		return nil, rejection(types.ErrBindingMismatch, err)
 	}
-
 	if err := k.chargeFee(ctx, submitter, params); err != nil {
 		return nil, err
 	}
 	sdkCtx.GasMeter().ConsumeGas(reg.VerificationGas, "proof verification")
 
-	if err := safely("verification", func() error {
+	if err := k.callVerifier(ctx, "verification", func() error {
 		return impl.Verify(reg.VerificationKey, msg.PublicInputs, msg.Proof)
 	}); err != nil {
-		return nil, errorsmod.Wrap(types.ErrInvalidProof, err.Error())
+		return nil, rejection(types.ErrInvalidProof, err)
 	}
 
 	record := types.ProofRecord{
@@ -427,8 +451,9 @@ func (k Keeper) RegisterVerifier(ctx context.Context, msg *types.MsgRegisterVeri
 	if !ok {
 		return nil, errorsmod.Wrapf(types.ErrVerifierUnavailable, "%q", msg.ProofSystemId)
 	}
-	if err := safely("key validation", func() error { return impl.ValidateKey(msg.VerificationKey) }); err != nil {
-		return nil, errorsmod.Wrap(types.ErrInvalidVerifierKey, err.Error())
+
+	if err := k.callVerifier(ctx, "key validation", func() error { return impl.ValidateKey(msg.VerificationKey) }); err != nil {
+		return nil, rejection(types.ErrInvalidVerifierKey, err)
 	}
 
 	now := sdkCtx.BlockTime()

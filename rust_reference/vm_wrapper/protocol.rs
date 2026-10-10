@@ -14,7 +14,7 @@ use std::{fmt, io, time::Duration};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use tokio::time::timeout;
 
-pub const VERSION: u8 = 1;
+pub const VERSION: u8 = 2;
 pub const VKID_LEN: usize = 32;
 pub const HASH_LEN: usize = 32;
 

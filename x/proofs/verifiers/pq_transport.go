@@ -9,7 +9,9 @@ package verifiers
 // which halts the node. Only a complete, well-formed response is passed up.
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -22,7 +24,11 @@ import (
 )
 
 const (
-	wireVersion byte = 1
+	wireVersion     byte = 2
+	wireDigestLen        = 16
+	wireResponseLen      = 1 + 32 + wireDigestLen
+
+	//wireVersion byte = 1
 
 	// PQWireMaxProofBytes is the largest proof the guest accepts. Pass a value
 	// no larger than this as maxProofBytes to NewPQ.
@@ -30,7 +36,7 @@ const (
 
 	wireMaxPublicInputBytes = 4 + 4*maxPQPublicValues
 	wireHeaderLen           = 1 + VKIDLen + 4 + 4
-	wireResponseLen         = 1 + 32
+	//wireResponseLen         = 1 + 32
 )
 
 // Dialer opens a fresh connection to the verifier service in the guest.
@@ -176,6 +182,12 @@ func roundTrip(conn net.Conn, frame []byte, deadline time.Time) (PQResponse, err
 	if _, err := io.ReadFull(conn, buf[:]); err != nil {
 		return PQResponse{}, fmt.Errorf("read response: %w", err)
 	}
+
+	sum := sha256.Sum256(frame)
+	if !bytes.Equal(buf[33:], sum[:wireDigestLen]) {
+		return PQResponse{}, errors.New("response does not match request (stream desync)")
+	}
+
 	var resp PQResponse
 	resp.Status = Status(buf[0])
 	copy(resp.ImageHash[:], buf[1:])

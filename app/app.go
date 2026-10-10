@@ -194,6 +194,8 @@ func New(
 	// build app
 	app.App = appBuilder.Build(db, baseAppOptions...)
 
+	app.AddRunTxRecoveryHandler(FaultRecoveryHandler(HardHalt(logger)))
+
 	// register legacy modules
 	if err := app.registerIBCModules(appOpts); err != nil {
 		panic(err)

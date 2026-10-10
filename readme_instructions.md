@@ -489,6 +489,58 @@ lucidchaind q tx <txID>
 
 lucidchaind query attestor -h
 
-lucidchaind query proofs -h
+
+**working with proofs**
+
+Start by running a utility to generate a verification key
+
+```bash
+cd ./tools/gen-vk/
+go run main.go
+
+#you should get an output similar to this
+
+#13:21:33 INF compiling circuit
+#13:21:33 INF parsed circuit inputs nbPublic=2 nbSecret=1
+#13:21:33 INF building constraint builder nbConstraints=1
+#o1mPh5apdmZicSlFiDjzEmmfa4896anU+OxjyTcF0qid7K+Rw67mm8dBbyul4k3UZFHpHtCyhZp+4akM0Qzbo6oR/j7/owFfkZXsdxkPL/owezscYgNc1EsDBUZZIYE/IpEB4kE4xqN4JgQ5TZN8UMmxuYHMVoxyVhPdoZM+sufA7WltWYJ5bMCWPhgBYYQBzJlDwYZ3mmBcVgIB97qiViY36RSWkGU1fEqMrRdTjGENY2HcRugl4uoL1Z76FFfeiuQMCu/uKN+mwxTIRMEbBwQGNbMHsYXXKuJuEYs+u0OwSzyKOOYZ+J8UfV+SGsBJ0HQbywsODYm8QpH9MqV3DSj6JFzR9qGicDDY2qdujfmnwa8wN6C0SSv0Uxf0O7qoAAAAA89WSrKOhyF/BQjIXmMSAQQq/I7F1hIrcNMXRU16FIv0kdLeNy9O6rtJRep5PXy7IKFlyGltfXYq94B1QBNexdiR0t43L07qu0lF6nk9fLsgoWXIaW19dir3gHVAE17F2AAAAAAAAAAA
+
+#plus it will generate two new files vk.bin (the raw key) and pk.bin (the proving key) into the directory you run it from. 
+#Note that you’ll need pk.bin later to build proofs, so keep it.
+
+#now run 
+chmod +x add-verifier.sh
+./add-verifier.sh                       # defaults: ~/.lucidchain/config/genesis.json, ./vk.bin
+
+```
+
+```bash
+#this will add the verifier to the genesis.json file.
+#now the usual
+lucidchaind genesis validate
+lucidchaind comet unsafe-reset-all
+lucidchaind start
+
+
+```
+
+Check if the verifiers
+
+```bash
+
+lucidchaind query proofs verifier --proof-system-id groth16-bn254
+
+#it should show something like this
+
+#verifier:
+#  proof_system_id: groth16-bn254
+#  registered_at: "0001-01-01T00:00:00Z"
+#  verification_gas: "200000"
+#  verification_key: mqhmq1eRiM1jnHvR6A69eK+A07NREEhHpknEt2bxmbfYvUSzdVABv2DcKEru/lSko6VK6zqNgqOOQIUo4JjN2MUxicIzzQ0uIeTY275hgCcbnYm4Wrhxn3YkcoaXYBg0A3GF9v7JYZK9SGHmRuryAfho9Zpu9IFhB8mauKqF3bqOH6aYKR5Q+LhToCvGIzsntsgNZw9+Z4gPX0/lNbcs0CCib2jTjPON60LDy961Edrb1cFDx9VvQ5T27yBW0OD06I/nuXedqPSeaLwZYSyoPJhj7b7gM5IAjF4U2nv/zROBm0/c12BS0fdU+WuQamJCXKz7LplXGX+y/CfE58jUzQpZm+XLWHDv6+aNxjsaPbQ1Q6vXehEjQ53dxvS6dcORAAAAA5nWxLQjOn1gj4kltpcGCcyJhBC7fefVo3TRYkfi5O6Ez4Z1O+CcHYKxg8wOCKvJWUyQTBwgMdOYdO/bNQ3rRmLPhnU74JwdgrGDzA4Iq8lZTJBMHCAx05h079s1DetGYgAAAAAAAAAA
+
+
+```
+lucidchaind query proofs verifiers
+
 
 lucidchaind tx sign -h

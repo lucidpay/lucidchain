@@ -106,11 +106,43 @@ var _ types.ProofVerifier = pqVerifier{}
 //	m := verifiers.Default()
 //	m[verifiers.PQBabyBear] = verifiers.NewPQ(transport, imageHash, vkIDs, 512<<10)
 func NewPQ(transport PQTransport, imageHash [32]byte, vkIDs [][VKIDLen]byte, maxProofBytes int) types.ProofVerifier {
+	// run some sanity code first, so we don't panic in the middle of a fuzz run.
+	if maxProofBytes < 1 || maxProofBytes > PQWireMaxProofBytes {
+		panic(fmt.Sprintf("verifiers: maxProofBytes %d outside [1, %d]", maxProofBytes, PQWireMaxProofBytes))
+	}
+	if len(vkIDs) == 0 {
+		panic("verifiers: empty vk_id allowlist")
+	}
+
 	set := make(map[[VKIDLen]byte]struct{}, len(vkIDs))
 	for _, id := range vkIDs {
 		set[id] = struct{}{}
 	}
 	return pqVerifier{transport: transport, imageHash: imageHash, vkIDs: set, maxProofBytes: maxProofBytes}
+}
+
+// PQSelfCheck probes the guest once per allowlisted vk_id with a junk proof.
+// A healthy guest answers INVALID or MALFORMED. Anything else (no answer,
+// VALID, wrong image) means the deployment is wrong and the node must not
+// start, instead of halting on the first real proof.
+func PQSelfCheck(tr PQTransport, imageHash [32]byte, vkIDs [][VKIDLen]byte) error {
+	pub, err := PQPublicInputs(types.Binding{}, nil)
+	if err != nil {
+		return err
+	}
+	for _, id := range vkIDs {
+		resp, err := tr.Verify(PQRequest{VKID: id, PublicInputs: pub, Proof: []byte{0}})
+		if err != nil {
+			return fmt.Errorf("self-check vk_id %x: %w", id[:4], err)
+		}
+		if resp.ImageHash != imageHash {
+			return fmt.Errorf("self-check vk_id %x: image %x does not match pinned %x", id[:4], resp.ImageHash, imageHash)
+		}
+		if resp.Status != StatusInvalid && resp.Status != StatusMalformed {
+			return fmt.Errorf("self-check vk_id %x: junk proof got status %d", id[:4], resp.Status)
+		}
+	}
+	return nil
 }
 
 // ValidateKey implements types.ProofVerifier.
