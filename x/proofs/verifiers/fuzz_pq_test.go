@@ -2,6 +2,7 @@ package verifiers
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/binary"
 	"io"
 	"math/big"
@@ -84,14 +85,18 @@ func FuzzBindingInjective(f *testing.F) {
 	})
 }
 
-// The transport must return either a complete 33-byte response or an error,
-// and never panic or hang.
+// The transport must return either a complete response whose digest matches
+// the request, or an error, and never panic or hang.
 func FuzzRoundTripResponse(f *testing.F) {
-	f.Add(make([]byte, wireResponseLen))
+	frame := encodeRequest(PQRequest{PublicInputs: []byte{1, 2, 3}, Proof: []byte{4, 5}})
+	sum := sha256.Sum256(frame)
+	valid := make([]byte, wireResponseLen)
+	copy(valid[1+32:], sum[:wireDigestLen])
+	f.Add(valid)
+	f.Add(append(bytes.Clone(valid), make([]byte, 8)...))
+	f.Add(make([]byte, wireResponseLen)) // wrong digest
 	f.Add([]byte{})
 	f.Add(make([]byte, wireResponseLen-1))
-	f.Add(make([]byte, wireResponseLen+8))
-	frame := encodeRequest(PQRequest{PublicInputs: []byte{1, 2, 3}, Proof: []byte{4, 5}})
 	f.Fuzz(func(t *testing.T, reply []byte) {
 		client, server := net.Pipe()
 		defer client.Close()
@@ -105,9 +110,13 @@ func FuzzRoundTripResponse(f *testing.F) {
 			require.Error(t, err)
 			return
 		}
+		if !bytes.Equal(reply[1+32:wireResponseLen], sum[:wireDigestLen]) {
+			require.ErrorContains(t, err, "stream desync")
+			return
+		}
 		require.NoError(t, err)
 		require.Equal(t, Status(reply[0]), resp.Status)
-		require.Equal(t, reply[1:wireResponseLen], resp.ImageHash[:])
+		require.Equal(t, reply[1:1+32], resp.ImageHash[:])
 	})
 }
 

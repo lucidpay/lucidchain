@@ -529,6 +529,8 @@ lucidchaind start
 
 ```
 
+`unsafe-reset-all` deletes all chain data, including the sidechain and checkpoints created earlier. Before building a proof, register `hospitality-platform-01` again and submit checkpoint 1 (see "How to register a chain" and "How to work with checkpoints" above). Otherwise `prove-and-submit.sh` fails with `checkpoint not found`.
+
 Check if the verifiers
 
 ```bash
