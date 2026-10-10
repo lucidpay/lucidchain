@@ -7,3 +7,6 @@ release/
 *.dot
 *.log
 *.ign
+tools/gen-vk/pk.bin
+tools/gen-vk/vk.bin
+
