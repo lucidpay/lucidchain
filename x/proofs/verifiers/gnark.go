@@ -40,8 +40,9 @@ const minPublicInputs = 2
 //   - proof:            proof.WriteTo
 //   - public inputs:    publicWitness.MarshalBinary
 //
-// Every input must be consumed exactly: trailing bytes are rejected, so each
-// proof has a single valid encoding.
+// Every input must be consumed exactly: trailing bytes are rejected, and a
+// proof must re-encode to the same bytes, so each proof has a single valid
+// encoding.
 type gnarkVerifier struct {
 	curve  ecc.ID
 	scheme scheme
@@ -110,7 +111,7 @@ func (v gnarkVerifier) Verify(vkBytes, publicInputs, proofBytes []byte) error {
 			return fmt.Errorf("groth16 verifying key: %w", err)
 		}
 		proof := groth16.NewProof(v.curve)
-		if err := readExact(proof, proofBytes); err != nil {
+		if err := readCanonical(proof, proofBytes); err != nil {
 			return fmt.Errorf("groth16 proof: %w", err)
 		}
 		return groth16.Verify(proof, vk, w)
@@ -121,7 +122,7 @@ func (v gnarkVerifier) Verify(vkBytes, publicInputs, proofBytes []byte) error {
 			return fmt.Errorf("plonk verifying key: %w", err)
 		}
 		proof := plonk.NewProof(v.curve)
-		if err := readExact(proof, proofBytes); err != nil {
+		if err := readCanonical(proof, proofBytes); err != nil {
 			return fmt.Errorf("plonk proof: %w", err)
 		}
 		return plonk.Verify(proof, vk, w)
@@ -165,6 +166,26 @@ func firstTwo(w witness.Witness) (a, b *big.Int, err error) {
 	default:
 		return nil, nil, fmt.Errorf("unsupported witness vector type %T", vec)
 	}
+}
+
+// readCanonical is readExact plus a re-encoding check: gnark's reader also
+// accepts the uncompressed form, so a proof must re-encode (WriteTo) to exactly
+// the input bytes to keep a single valid encoding per proof.
+func readCanonical(obj interface {
+	io.ReaderFrom
+	io.WriterTo
+}, bz []byte) error {
+	if err := readExact(obj, bz); err != nil {
+		return err
+	}
+	var buf bytes.Buffer
+	if _, err := obj.WriteTo(&buf); err != nil {
+		return err
+	}
+	if !bytes.Equal(buf.Bytes(), bz) {
+		return errors.New("not canonically encoded")
+	}
+	return nil
 }
 
 // readExact reads a gnark object from bz and requires that all bytes are used.
