@@ -460,7 +460,8 @@ lucidchaind tx attestor raise-dispute \
 **resolve it**
 
 
-# create proposal.json with the json data bellow. Get dispute_id from the raise dispute tx
+create proposal.json with the json data bellow. Get dispute_id from the raise dispute tx
+
 ```json
   {
     "messages": [{
