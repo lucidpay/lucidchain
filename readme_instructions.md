@@ -215,7 +215,7 @@ lucidchaind query sidechain sidechains
 #  status: SIDECHAIN_STATUS_ACTIVE
 #  tier: ASSURANCE_TIER_NOTARIZED
 
-
+```
 
 **How to work with checkpoints**
 
@@ -617,6 +617,39 @@ lucidchaind q proofs proofs-for-checkpoint --sidechain-id hospitality-platform-0
 
 ```
 
+**How to suspend a sidechain**
+
+You will need to create a proposal suspend.json
+
+```json
+{
+  "messages": [
+    {
+      "@type": "/lucidchain.sidechain.v1.MsgSuspendSidechain",
+      "authority": "cosmos10d07y265gmmuvt4z0w9aw880jnsr700j6zn9kn",
+      "id": "hospitality-platform-01"
+    }
+  ],
+  "metadata": "",
+  "deposit": "10000000stake",
+  "title": "Suspend hospitality-platform-01",
+  "summary": "Temporarily halt checkpoint submission for this sidechain."
+}
+
+```
+
+Submit and vote in one go
+
+```bash
+
+lucidchaind tx gov submit-proposal suspend.json --from validator --chain-id my-testnet-1 -y; sleep 7; lucidchaind tx gov vote <proposal id> yes --from validator --chain-id my-testnet-1 -y
+
+#example
+#lucidchaind tx gov submit-proposal suspend.json --from validator --chain-id my-testnet-1 -y; sleep 7; lucidchaind tx gov vote 3 yes --from validator --chain-id my-testnet-1 -y
+
+```
+
+
 
 **How to slash a sidechain**
 You will need to create a proposal slash.json
@@ -704,4 +737,11 @@ lucidchaind query gov proposal 1
 
 ```
 
+**How to exit a sidechain**
 
+No proposals or voting is needed for this. There is a cool of period of 14 days, and the bond value returns to the sidechain owner
+
+```bash
+lucidchaind tx sidechain exit hospitality-platform-01 --from validator --chain-id my-testnet-1 -y
+
+```
