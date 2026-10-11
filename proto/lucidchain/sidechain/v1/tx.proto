@@ -41,7 +41,10 @@ service Msg {
   rpc SuspendSidechain(MsgSuspendSidechain) returns (MsgSuspendSidechainResponse);
   rpc ResumeSidechain(MsgResumeSidechain) returns (MsgResumeSidechainResponse);
 
-  // UpdateParams defines a (governance) operation for updating the module
+  // SlashSidechain burns a fraction of a sidechain's bond. Authority only.
+  rpc SlashSidechain(MsgSlashSidechain) returns (MsgSlashSidechainResponse);
+  
+   // UpdateParams defines a (governance) operation for updating the module
   // parameters. The authority defaults to the x/gov module account.
   rpc UpdateParams(MsgUpdateParams) returns (MsgUpdateParamsResponse);
 }
@@ -119,6 +122,24 @@ message MsgResumeSidechain {
 }
 message MsgResumeSidechainResponse {}
 
+message MsgSlashSidechain {
+  option (cosmos.msg.v1.signer) = "authority";
+  string authority = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  string id = 2;
+  // Fraction of the current bond to burn, in (0, 1].
+  string slash_fraction = 3 [
+    (cosmos_proto.scalar) = "cosmos.Dec",
+    (gogoproto.customtype) = "cosmossdk.io/math.LegacyDec",
+    (gogoproto.nullable) = false
+  ];
+  string reason = 4;
+}
+message MsgSlashSidechainResponse {
+  cosmos.base.v1beta1.Coin slashed = 1 [
+    (gogoproto.nullable) = false,
+    (amino.dont_omitempty) = true
+  ];
+}
 
 // MsgUpdateParams is the Msg/UpdateParams request type.
 message MsgUpdateParams {

@@ -313,3 +313,15 @@ func (ms msgServer) ResumeSidechain(ctx context.Context, msg *types.MsgResumeSid
 	emit(sdk.UnwrapSDKContext(ctx), "sidechain_resumed", attr("sidechain_id", sc.Id))
 	return &types.MsgResumeSidechainResponse{}, nil
 }
+
+// SlashSidechain burns a fraction of a sidechain's bond. Authority only.
+func (ms msgServer) SlashSidechain(ctx context.Context, msg *types.MsgSlashSidechain) (*types.MsgSlashSidechainResponse, error) {
+	if err := ms.checkAuthority(ms.authority, msg.Authority); err != nil {
+		return nil, err
+	}
+	slashed, err := ms.Keeper.Slash(ctx, msg.Id, msg.SlashFraction, msg.Reason)
+	if err != nil {
+		return nil, err
+	}
+	return &types.MsgSlashSidechainResponse{Slashed: slashed}, nil
+}

@@ -229,6 +229,14 @@ func (k Keeper) checkOperator(sc types.Sidechain, signer string) error {
 }
 
 // ---------------------------------------------------------------------------
+// Slashing
+// ---------------------------------------------------------------------------
+// burnBond burns coins held by the module account.
+func (k Keeper) burnBond(ctx context.Context, bond sdk.Coin) error {
+	return k.bankKeeper.BurnCoins(ctx, types.ModuleName, sdk.NewCoins(bond))
+}
+
+// ---------------------------------------------------------------------------
 // bond escrow
 // ---------------------------------------------------------------------------
 

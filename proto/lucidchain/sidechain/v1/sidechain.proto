@@ -88,5 +88,12 @@ message Sidechain {
   // missed-checkpoint liveness rule before its first checkpoint).
   google.protobuf.Timestamp activated_at = 19
       [(gogoproto.stdtime) = true, (gogoproto.nullable) = true];
+
+  // Set by Slash. For an EXITED sidechain the status stays EXITED.
+  google.protobuf.Timestamp slashed_at = 20
+      [(gogoproto.stdtime) = true, (gogoproto.nullable) = true];
+  // Reason given for the most recent slash.
+  string slash_reason = 21;
+
 }
 

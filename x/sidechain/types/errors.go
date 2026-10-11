@@ -19,4 +19,7 @@ var (
 	ErrInvalidRequest        = errorsmod.Register(ModuleName, 9, "invalid request")
 	ErrLimitExceeded         = errorsmod.Register(ModuleName, 10, "module limit exceeded")
 	ErrInvalidGenesis        = errorsmod.Register(ModuleName, 11, "invalid genesis state")
+	ErrInvalidSlashAmount    = errorsmod.Register(ModuleName, 12, "invalid slash amount")
+	ErrInvalidSlashFraction  = errorsmod.Register(ModuleName, 13, "invalid slash fraction")
+	ErrNothingToSlash        = errorsmod.Register(ModuleName, 14, "sidechain has no bond to slash")
 )

@@ -9,8 +9,9 @@ import (
 
 // Size limits that are not governance parameters.
 const (
-	MaxNameBytes = 128
-	MaxURIBytes  = 512
+	MaxNameBytes   = 128
+	MaxReasonBytes = 256
+	MaxURIBytes    = 512
 )
 
 // ValidateText checks a free-text field against a byte limit.
