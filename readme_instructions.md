@@ -697,7 +697,11 @@ lucidchaind query sidechain sidechain hospitality-platform-01
 #    denom: stake
 #...
 #  status: SIDECHAIN_STATUS_SLASHED
-  
+
+
+lucidchaind query gov proposal 1
+
+
 ```
 
 

@@ -7,6 +7,7 @@ package verifiers
 
 import (
 	"bytes"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
@@ -130,9 +131,48 @@ func (v gnarkVerifier) Verify(vkBytes, publicInputs, proofBytes []byte) error {
 	return errors.New("unknown proof scheme")
 }
 
+// maxWitnessElements bounds how many public inputs a witness may declare.
+const maxWitnessElements = 1024
+
+// witnessHeaderLen is gnark's witness header: nbPublic, nbSecret and the
+// vector length, each a big-endian uint32.
+const witnessHeaderLen = 12
+
+// checkWitnessFrame validates the declared counts against the actual byte
+// length BEFORE gnark decodes anything. gnark sizes its vector from the
+// declared length, so without this check a 44-byte input can force a
+// multi-gigabyte allocation. After this check, allocation is bounded by
+// len(bz).
+func (v gnarkVerifier) checkWitnessFrame(bz []byte) error {
+	if len(bz) < witnessHeaderLen {
+		return errors.New("public inputs too short")
+	}
+	nbPublic := binary.BigEndian.Uint32(bz[0:4])
+	nbSecret := binary.BigEndian.Uint32(bz[4:8])
+	vecLen := binary.BigEndian.Uint32(bz[8:12])
+
+	if nbSecret != 0 {
+		return errors.New("public inputs must not carry secret values")
+	}
+	if vecLen != nbPublic {
+		return errors.New("public inputs: header counts disagree")
+	}
+	if vecLen > maxWitnessElements {
+		return fmt.Errorf("public inputs: %d elements exceeds limit %d", vecLen, maxWitnessElements)
+	}
+	elem := uint64((v.curve.ScalarField().BitLen() + 7) / 8) // 32 for BN254 and BLS12-381
+	if uint64(len(bz)) != witnessHeaderLen+uint64(vecLen)*elem {
+		return errors.New("public inputs: length does not match declared element count")
+	}
+	return nil
+}
+
 // parseWitness decodes a public witness and requires its encoding to be
 // canonical (re-encoding yields the same bytes).
 func (v gnarkVerifier) parseWitness(publicInputs []byte) (witness.Witness, error) {
+	if err := v.checkWitnessFrame(publicInputs); err != nil {
+		return nil, err
+	}
 	w, err := witness.New(v.curve.ScalarField())
 	if err != nil {
 		return nil, fmt.Errorf("witness: %w", err)
