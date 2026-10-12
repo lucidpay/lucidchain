@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"cosmossdk.io/collections"
+	"cosmossdk.io/core/address"
 	"github.com/stretchr/testify/require"
 
 	"github.com/cosmos/cosmos-sdk/codec"
@@ -104,6 +105,16 @@ func (m *mockBank) SendCoinsFromAccountToModule(_ context.Context, from sdk.AccA
 	return nil
 }
 
+// BurnCoins and GetAllBalances are in the BankKeeper interface but unused by
+// the keeper.
+func (m *mockBank) BurnCoins(_ context.Context, _ string, _ sdk.Coins) error {
+	return nil
+}
+
+func (m *mockBank) GetAllBalances(_ context.Context, _ sdk.AccAddress) sdk.Coins {
+	return nil
+}
+
 // ---------------------------------------------------------------------------
 // fixture
 // ---------------------------------------------------------------------------
@@ -117,6 +128,8 @@ type fixture struct {
 	signers    []*ed25519.PrivKey
 	submitter  sdk.AccAddress
 	submitterS string
+
+	addressCodec address.Codec
 }
 
 // newFixture builds a keeper with one ACTIVE sidechain ("sc-1") that has
@@ -173,6 +186,8 @@ func newFixture(t *testing.T, threshold uint32, nSigners int) *fixture {
 		signers:    signers,
 		submitter:  submitter,
 		submitterS: submitterS,
+
+		addressCodec: addrCodec,
 	}
 }
 

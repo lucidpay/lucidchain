@@ -11,12 +11,12 @@ import (
 
 func TestMsgUpdateParams(t *testing.T) {
 	f := initFixture(t)
-	ms := keeper.NewMsgServerImpl(f.keeper)
+	ms := keeper.NewMsgServerImpl(f.k)
 
 	params := types.DefaultParams()
-	require.NoError(t, f.keeper.Params.Set(f.ctx, params))
+	require.NoError(t, f.k.Params.Set(f.ctx, params))
 
-	authorityStr, err := f.addressCodec.BytesToString(f.keeper.GetAuthority())
+	authorityStr, err := f.addressCodec.BytesToString(f.k.GetAuthority())
 	require.NoError(t, err)
 
 	// default params
@@ -36,12 +36,12 @@ func TestMsgUpdateParams(t *testing.T) {
 			expErrMsg: "invalid authority",
 		},
 		{
-			name: "send enabled param",
+			name: "empty params are rejected",
 			input: &types.MsgUpdateParams{
 				Authority: authorityStr,
 				Params:    types.Params{},
 			},
-			expErr: false,
+			expErr: true,
 		},
 		{
 			name: "all good",
