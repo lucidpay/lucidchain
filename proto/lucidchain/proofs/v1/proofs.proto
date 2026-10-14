@@ -14,6 +14,22 @@ enum VerifierStatus {
   VERIFIER_STATUS_DEPRECATED  = 2; // no longer accepting new proofs, existing ones still queryable
 }
 
+enum InputSource {
+  INPUT_SOURCE_UNSPECIFIED = 0;
+  INPUT_SOURCE_CHECKPOINT_RECORDS_ROOT = 1;  // checkpoint.zk_anchor.records_root
+  INPUT_SOURCE_CHECKPOINT_RECORD_COUNT = 2;  // checkpoint.record_count
+  INPUT_SOURCE_FIXED_VALUE = 3;              // a constant set at registration
+}
+
+message InputBinding {
+  option (gogoproto.equal) = true;
+
+  uint32 index = 1;       // position in the public inputs (0-based)
+  InputSource source = 2; // where the expected value comes from
+  bytes value = 3;        // only for FIXED_VALUE: canonical big-endian
+}
+
+
 // VerifierRegistration describes a pluggable proof-system verifier available
 // to sidechains at Tier 3. Concrete verification logic lives in Go code
 // (see keeper interface, section below) -- this record is the on-chain,
@@ -47,6 +63,11 @@ message VerifierRegistration {
 
   // NEW: set when the key, description or gas is updated.
   google.protobuf.Timestamp updated_at = 8 [(gogoproto.stdtime) = true, (gogoproto.nullable) = true];
+
+  string claim_id = 9;
+  uint32 num_public_inputs = 10;
+  repeated InputBinding input_layout = 11 [(gogoproto.nullable) = false];
+  
 }
 
 // ProofRecord is a finalized, on-chain-verified validity proof about a

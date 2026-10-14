@@ -21,5 +21,6 @@ var (
 	ErrInvalidRequest      = errorsmod.Register(ModuleName, 12, "invalid request")
 	ErrLimitExceeded       = errorsmod.Register(ModuleName, 13, "module limit exceeded")
 	ErrInvalidGenesis      = errorsmod.Register(ModuleName, 14, "invalid genesis state")
+	ErrInputMismatch       = errorsmod.Register(ModuleName, 15, "public input mismatch")
 	ErrInvalidSigner       = errorsmod.Register(ModuleName, 1100, "expected gov account as only signer for proposal message")
 )

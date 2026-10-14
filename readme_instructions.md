@@ -21,9 +21,11 @@ lucidchaind genesis collect-gentxs
 
 lucidchaind keys show validator --address
 
+lucidchaind start
+
 lucidchaind query bank balances <address>
 
-lucidchaind start
+
 
 
 **Open New Terminal and run these commands one by one**
@@ -516,7 +518,10 @@ go run main.go
 
 #now run 
 chmod +x add-verifier.sh
-./add-verifier.sh                       # defaults: ~/.lucidchain/config/genesis.json, ./vk.bin
+#./tools/gen-vk/add-verifier.sh                       # defaults: ~/.lucidchain/config/genesis.json, ./vk.bin
+
+./tools/gen-vk/add-verifier.sh ~/.lucidchain/config/genesis.json keys-geo/vk.bin plonk-bn254 500000
+
 
 ```
 
@@ -535,8 +540,12 @@ lucidchaind start
 Check if the verifiers
 
 ```bash
+lucidchaind q proofs list  -o json
+lucidchaind q proofs verifier --proof-system-id groth16-bn254 --claim-id geofence.v1 -o json
+lucidchaind q proofs verifier --proof-system-id plonk-bn254 --claim-id geofence.v1 -o json
 
-lucidchaind query proofs verifier --proof-system-id groth16-bn254
+lucidchaind q proofs verifiers -o json | jq '.verifiers[] | {proof_system_id, claim_id, version, num_public_inputs, input_layout}'
+
 
 #it should show something like this
 

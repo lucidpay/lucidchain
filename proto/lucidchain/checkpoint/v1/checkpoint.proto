@@ -56,6 +56,10 @@ message Checkpoint {
 
   // Reserved for Tier 2 (attestations) and Tier 3 (validity proofs).
   reserved 13 to 20;
+
+  // TODO: bump it up to 13-20 range after testing since these are reserved specifically for tier 2 and 3 
+  ZkAnchor zk_anchor = 21;
+
 }
 
 // Signature is one signer's signature over the checkpoint sign bytes.
@@ -77,4 +81,17 @@ message CheckpointSignDoc {
   uint64 record_count = 6;
   uint64 signer_set_version = 7;
   string data_pointer = 8;
+  ZkAnchor zk_anchor = 9;
+}
+
+enum ZkHashScheme {
+  ZK_HASH_SCHEME_UNSPECIFIED = 0;
+  ZK_HASH_SCHEME_MIMC_BN254  = 1;
+}
+message ZkAnchor {
+  option (gogoproto.equal) = true;
+
+  ZkHashScheme scheme = 1;
+  bytes records_root  = 2;   // 32-byte big-endian BN254 Fr element, MUST be canonical (< r)
+  uint32 records_tree_depth = 3;
 }

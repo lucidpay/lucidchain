@@ -3,6 +3,7 @@ package keeper
 import (
 	"context"
 
+	"cosmossdk.io/collections"
 	errorsmod "cosmossdk.io/errors"
 
 	"github.com/lucidpay/lucidchain/x/proofs/types"
@@ -24,7 +25,7 @@ func (k Keeper) InitGenesis(ctx context.Context, gs types.GenesisState) error {
 			return errorsmod.Wrapf(types.ErrVerifierUnavailable,
 				"genesis registers %q but this binary has no implementation for it", v.ProofSystemId)
 		}
-		if err := k.Verifiers.Set(ctx, v.ProofSystemId, v); err != nil {
+		if err := k.Verifiers.Set(ctx, collections.Join(v.ProofSystemId, v.ClaimId), v); err != nil {
 			return err
 		}
 	}
@@ -48,7 +49,7 @@ func (k Keeper) ExportGenesis(ctx context.Context) (*types.GenesisState, error) 
 	gs := types.DefaultGenesis()
 	gs.Params = params
 
-	err = k.Verifiers.Walk(ctx, nil, func(_ string, v types.VerifierRegistration) (bool, error) {
+	err = k.Verifiers.Walk(ctx, nil, func(_ collections.Pair[string, string], v types.VerifierRegistration) (bool, error) {
 		gs.Verifiers = append(gs.Verifiers, v)
 		return false, nil
 	})

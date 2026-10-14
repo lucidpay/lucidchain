@@ -39,16 +39,22 @@ func toStatusErr(err error, notFound error) error {
 
 // Verifier returns one verifier registration.
 func (q queryServer) Verifier(ctx context.Context, req *types.QueryVerifierRequest) (*types.QueryVerifierResponse, error) {
-	if req == nil || req.ProofSystemId == "" {
-		return nil, status.Error(codes.InvalidArgument, "proof_system_id is required")
+	if req == nil {
+		return nil, status.Error(codes.InvalidArgument, "empty request")
 	}
-	v, err := q.k.GetVerifier(ctx, req.ProofSystemId)
+	if req.ProofSystemId == "" || req.ClaimId == "" {
+		return nil, status.Error(codes.InvalidArgument, "proof_system_id and claim_id must not be empty")
+	}
+
+	v, err := q.k.GetVerifier(ctx, req.ProofSystemId, req.ClaimId)
 	if err != nil {
-		return nil, toStatusErr(err, types.ErrVerifierNotFound)
+		// keep whatever not-found handling you already have here
+		return nil, err
 	}
 	return &types.QueryVerifierResponse{Verifier: v}, nil
 }
 
+// Verifiers lists verifier registrations.
 // Verifiers lists verifier registrations.
 func (q queryServer) Verifiers(ctx context.Context, req *types.QueryVerifiersRequest) (*types.QueryVerifiersResponse, error) {
 	if req == nil {
@@ -59,7 +65,7 @@ func (q queryServer) Verifiers(ctx context.Context, req *types.QueryVerifiersReq
 		ctx,
 		q.k.Verifiers,
 		req.Pagination,
-		func(_ string, v types.VerifierRegistration) (types.VerifierRegistration, error) {
+		func(_ collections.Pair[string, string], v types.VerifierRegistration) (types.VerifierRegistration, error) {
 			return v, nil
 		},
 	)

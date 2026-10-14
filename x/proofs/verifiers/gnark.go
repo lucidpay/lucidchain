@@ -63,7 +63,7 @@ func (v gnarkVerifier) ValidateKey(vkBytes []byte) error {
 		if err := readExact(vk, vkBytes); err != nil {
 			return fmt.Errorf("groth16 verifying key: %w", err)
 		}
-		if n := vk.NbPublicWitness(); n < minPublicInputs {
+		if n := publicInputCount(vk, schemeGroth16); n < minPublicInputs {
 			return fmt.Errorf("verifying key has %d public inputs, need at least %d for the checkpoint binding", n, minPublicInputs)
 		}
 	case schemePlonk:
@@ -71,7 +71,7 @@ func (v gnarkVerifier) ValidateKey(vkBytes []byte) error {
 		if err := readExact(vk, vkBytes); err != nil {
 			return fmt.Errorf("plonk verifying key: %w", err)
 		}
-		if n := vk.NbPublicWitness(); n < minPublicInputs {
+		if n := publicInputCount(vk, schemePlonk); n < minPublicInputs {
 			return fmt.Errorf("verifying key has %d public inputs, need at least %d for the checkpoint binding", n, minPublicInputs)
 		}
 	default:
@@ -239,3 +239,74 @@ func readExact(r io.ReaderFrom, bz []byte) error {
 	}
 	return nil
 }
+
+// PublicInputCount implements types.ProofVerifier: the number of public inputs
+// the key expects, as counted in a public witness (the Groth16 constant-one
+// wire is already subtracted, so a registration of 7 means 7 for both schemes).
+func (v gnarkVerifier) PublicInputCount(vkBytes []byte) (int, error) {
+	switch v.scheme {
+	case schemeGroth16:
+		vk := groth16.NewVerifyingKey(v.curve)
+		if err := readExact(vk, vkBytes); err != nil {
+			return 0, fmt.Errorf("groth16 verifying key: %w", err)
+		}
+		return publicInputCount(vk, schemeGroth16), nil
+	case schemePlonk:
+		vk := plonk.NewVerifyingKey(v.curve)
+		if err := readExact(vk, vkBytes); err != nil {
+			return 0, fmt.Errorf("plonk verifying key: %w", err)
+		}
+		return publicInputCount(vk, schemePlonk), nil
+	}
+	return 0, errors.New("unknown proof scheme")
+}
+
+// publicInputCount returns how many public inputs a key expects, as counted
+// in a public witness. gnark's Groth16 key also counts the implicit constant-one
+// wire, PLONK's does not. TestPublicInputCountConvention pins this for the
+// gnark version in use: re-run it on every gnark upgrade.
+func publicInputCount(vk interface{ NbPublicWitness() int }, s scheme) int {
+	n := vk.NbPublicWitness()
+	if s == schemeGroth16 {
+		n--
+	}
+	return n
+}
+
+// CheckInputs implements types.ProofVerifier.
+func (v gnarkVerifier) CheckInputs(publicInputs []byte, expected []types.ExpectedInput) error {
+	w, err := v.parseWitness(publicInputs) // frame + canonical re-encode checks
+	if err != nil {
+		return err
+	}
+	for _, e := range expected {
+		got, err := elementAt(w, e.Index)
+		if err != nil {
+			return err
+		}
+		if got.Cmp(new(big.Int).SetBytes(e.Value)) != 0 {
+			return fmt.Errorf("public input %d does not match chain state", e.Index)
+		}
+	}
+	return nil
+}
+
+func elementAt(w witness.Witness, i uint32) (*big.Int, error) {
+	switch vec := w.Vector().(type) {
+	case frbn254.Vector:
+		if uint64(i) < uint64(len(vec)) {
+			return vec[i].BigInt(new(big.Int)), nil
+		}
+	case frbls12381.Vector:
+		if uint64(i) < uint64(len(vec)) {
+			return vec[i].BigInt(new(big.Int)), nil
+		}
+	default:
+		return nil, fmt.Errorf("unsupported witness vector type %T", vec)
+	}
+	return nil, fmt.Errorf("public input %d out of range", i)
+}
+
+// BindingWidth implements types.ProofVerifier: the checkpoint binding occupies
+// the first two public inputs (hi and lo).
+func (v gnarkVerifier) BindingWidth() int { return minPublicInputs }

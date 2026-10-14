@@ -55,6 +55,17 @@ func request_Query_Verifier_0(ctx context.Context, marshaler runtime.Marshaler, 
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "proof_system_id", err)
 	}
 
+	val, ok = pathParams["claim_id"]
+	if !ok {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "claim_id")
+	}
+
+	protoReq.ClaimId, err = runtime.String(val)
+
+	if err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "claim_id", err)
+	}
+
 	msg, err := client.Verifier(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 
@@ -80,6 +91,17 @@ func local_request_Query_Verifier_0(ctx context.Context, marshaler runtime.Marsh
 
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "proof_system_id", err)
+	}
+
+	val, ok = pathParams["claim_id"]
+	if !ok {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "claim_id")
+	}
+
+	protoReq.ClaimId, err = runtime.String(val)
+
+	if err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "claim_id", err)
 	}
 
 	msg, err := server.Verifier(ctx, &protoReq)
@@ -775,7 +797,7 @@ func RegisterQueryHandlerClient(ctx context.Context, mux *runtime.ServeMux, clie
 }
 
 var (
-	pattern_Query_Verifier_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"lucidchain", "proofs", "v1", "verifiers", "proof_system_id"}, "", runtime.AssumeColonVerbOpt(false)))
+	pattern_Query_Verifier_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 1, 0, 4, 1, 5, 4, 1, 0, 4, 1, 5, 5}, []string{"lucidchain", "proofs", "v1", "verifiers", "proof_system_id", "claim_id"}, "", runtime.AssumeColonVerbOpt(false)))
 
 	pattern_Query_Verifiers_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"lucidchain", "proofs", "v1", "verifiers"}, "", runtime.AssumeColonVerbOpt(false)))
 

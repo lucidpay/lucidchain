@@ -13,9 +13,10 @@ option go_package = "github.com/lucidpay/lucidchain/x/proofs/types";
 
 // Query defines the gRPC querier service.
 service Query {
-  rpc Verifier(QueryVerifierRequest) returns (QueryVerifierResponse) {
-    option (google.api.http).get = "/lucidchain/proofs/v1/verifiers/{proof_system_id}";
+ rpc Verifier(QueryVerifierRequest) returns (QueryVerifierResponse) {
+  option (google.api.http).get = "/lucidchain/proofs/v1/verifiers/{proof_system_id}/{claim_id}";
   }
+  
   rpc Verifiers(QueryVerifiersRequest) returns (QueryVerifiersResponse) {
     option (google.api.http).get = "/lucidchain/proofs/v1/verifiers";
   }
@@ -39,9 +40,14 @@ service Query {
   rpc Params(QueryParamsRequest) returns (QueryParamsResponse) {
     option (google.api.http).get = "/lucidchain/proofs/v1/params";
   }
+
+  
 }
 
-message QueryVerifierRequest { string proof_system_id = 1; }
+message QueryVerifierRequest { 
+  string proof_system_id = 1; 
+  string claim_id = 2;
+}
 message QueryVerifierResponse { VerifierRegistration verifier = 1 [(gogoproto.nullable) = false]; }
 
 message QueryVerifiersRequest {

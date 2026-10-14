@@ -170,6 +170,42 @@ func (v pqVerifier) CheckBinding(publicInputs []byte, binding types.Binding) err
 	return nil
 }
 
+// CheckInputs implements types.ProofVerifier. Each expected value is compared
+// with one BabyBear public value. A value that is not a canonical field
+// element can never match, so it is rejected.
+func (v pqVerifier) CheckInputs(publicInputs []byte, expected []types.ExpectedInput) error {
+	vals, err := parsePQPublicInputs(publicInputs)
+	if err != nil {
+		return err
+	}
+	for _, e := range expected {
+		if uint64(e.Index) >= uint64(len(vals)) {
+			return fmt.Errorf("public input %d out of range", e.Index)
+		}
+		want := new(big.Int).SetBytes(e.Value)
+		if want.BitLen() > 31 || want.Uint64() >= uint64(babyBearModulus) {
+			return fmt.Errorf("public input %d: expected value does not fit one BabyBear element", e.Index)
+		}
+		if uint64(vals[e.Index]) != want.Uint64() {
+			return fmt.Errorf("public input %d does not match chain state", e.Index)
+		}
+	}
+	return nil
+}
+
+// pqNumPublic is the number of public values of the statement this binary's
+// vk_ids prove: the 16 binding limbs plus any extra values. SET THIS to match
+// your circuit. It is a stopgap until the count lives per vk_id in the allowlist.
+const pqNumPublic = 16
+
+// PublicInputCount implements types.ProofVerifier.
+func (v pqVerifier) PublicInputCount(vkBytes []byte) (int, error) {
+	if _, err := v.parseKey(vkBytes); err != nil {
+		return 0, err
+	}
+	return pqNumPublic, nil
+}
+
 // Verify implements types.ProofVerifier. Errors wrapping types.ErrVerifierFault
 // are infrastructure failures and must halt the node; all other errors are
 // deterministic rejections.
@@ -285,3 +321,7 @@ func bindingToLimbs(b types.Binding) ([]uint32, error) {
 	}
 	return out, nil
 }
+
+// BindingWidth implements types.ProofVerifier: the checkpoint binding occupies
+// the first bindingLimbs public values.
+func (v pqVerifier) BindingWidth() int { return bindingLimbs }

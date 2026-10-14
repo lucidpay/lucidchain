@@ -7,7 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"math/big"
 	"strconv"
+	"strings"
 
 	"cosmossdk.io/collections"
 	"cosmossdk.io/core/address"
@@ -47,7 +49,8 @@ type Keeper struct {
 	impls map[string]types.ProofVerifier
 
 	// Verifiers maps proof_system_id -> registration.
-	Verifiers collections.Map[string, types.VerifierRegistration]
+	//Verifiers collections.Map[string, types.VerifierRegistration]
+	Verifiers collections.Map[collections.Pair[string, string], types.VerifierRegistration]
 
 	// Proofs maps proof id -> verified proof record.
 	Proofs collections.Map[string, types.ProofRecord]
@@ -83,7 +86,7 @@ func NewKeeper(
 		Params:           collections.NewItem(sb, types.ParamsKey, "params", codec.CollValue[types.Params](cdc)),
 		Verifiers: collections.NewMap(
 			sb, types.VerifierKey, "verifiers",
-			collections.StringKey,
+			collections.PairKeyCodec(collections.StringKey, collections.StringKey),
 			codec.CollValue[types.VerifierRegistration](cdc),
 		),
 		Proofs: collections.NewMap(
@@ -148,21 +151,29 @@ func (k Keeper) SetParams(ctx context.Context, p types.Params) error {
 // typed getters and state helpers
 // ---------------------------------------------------------------------------
 
-func getOrWrap[V any](ctx context.Context, m collections.Map[string, V], id string, notFound *errorsmod.Error) (V, error) {
+func getOrWrap[K, V any](ctx context.Context, m collections.Map[K, V], id K, notFound *errorsmod.Error) (V, error) {
 	v, err := m.Get(ctx, id)
 	if err != nil {
 		var zero V
 		if errors.Is(err, collections.ErrNotFound) {
-			return zero, errorsmod.Wrapf(notFound, "%q", id)
+			return zero, errorsmod.Wrapf(notFound, "%v", id)
 		}
 		return zero, err
 	}
 	return v, nil
 }
 
-// GetVerifier returns a registration or types.ErrVerifierNotFound.
-func (k Keeper) GetVerifier(ctx context.Context, proofSystemID string) (types.VerifierRegistration, error) {
-	return getOrWrap(ctx, k.Verifiers, proofSystemID, types.ErrVerifierNotFound)
+// GetVerifier returns the registration for (proofSystemID, claimID) or
+// types.ErrVerifierNotFound.
+func (k Keeper) GetVerifier(ctx context.Context, proofSystemID, claimID string) (types.VerifierRegistration, error) {
+	reg, err := k.Verifiers.Get(ctx, collections.Join(proofSystemID, claimID))
+	if err != nil {
+		if errors.Is(err, collections.ErrNotFound) {
+			return reg, errorsmod.Wrapf(types.ErrVerifierNotFound, "%q/%q", proofSystemID, claimID)
+		}
+		return reg, err
+	}
+	return reg, nil
 }
 
 // GetProof returns a proof record or types.ErrProofNotFound.
@@ -301,7 +312,7 @@ func (k Keeper) SubmitProof(ctx context.Context, msg *types.MsgSubmitProof) (*ty
 		return nil, err
 	}
 
-	reg, err := k.GetVerifier(ctx, msg.ProofSystemId)
+	reg, err := k.GetVerifier(ctx, msg.ProofSystemId, msg.ClaimId)
 	if err != nil {
 		return nil, err
 	}
@@ -332,6 +343,18 @@ func (k Keeper) SubmitProof(ctx context.Context, msg *types.MsgSubmitProof) (*ty
 	}); err != nil {
 		return nil, rejection(types.ErrBindingMismatch, err)
 	}
+
+	// NEW
+	expected, err := k.expectedInputs(reg.InputLayout, cp)
+	if err != nil {
+		return nil, err
+	}
+	if err := k.callVerifier(ctx, "input check", func() error {
+		return impl.CheckInputs(msg.PublicInputs, expected)
+	}); err != nil {
+		return nil, rejection(types.ErrInputMismatch, err)
+	}
+
 	if err := k.chargeFee(ctx, submitter, params); err != nil {
 		return nil, err
 	}
@@ -375,6 +398,26 @@ func (k Keeper) SubmitProof(ctx context.Context, msg *types.MsgSubmitProof) (*ty
 	))
 
 	return &types.MsgSubmitProofResponse{ProofRecordId: id}, nil
+}
+
+func (k Keeper) expectedInputs(layout []types.InputBinding, cp checkpointtypes.Checkpoint) ([]types.ExpectedInput, error) {
+	out := make([]types.ExpectedInput, 0, len(layout))
+	for _, b := range layout {
+		var v *big.Int
+		switch b.Source {
+		case types.InputSource_INPUT_SOURCE_CHECKPOINT_RECORDS_ROOT:
+			if cp.ZkAnchor == nil || len(cp.ZkAnchor.RecordsRoot) != 32 {
+				return nil, errorsmod.Wrap(types.ErrCheckpointNotFound, "checkpoint has no zk anchor")
+			}
+			v = new(big.Int).SetBytes(cp.ZkAnchor.RecordsRoot)
+		case types.InputSource_INPUT_SOURCE_CHECKPOINT_RECORD_COUNT:
+			v = new(big.Int).SetUint64(cp.RecordCount)
+		default:
+			return nil, errorsmod.Wrap(types.ErrInvalidRequest, "unknown input source")
+		}
+		out = append(out, types.ExpectedInput{Index: b.Index, Value: v.Bytes()})
+	}
+	return out, nil
 }
 
 // validateSubmission applies the stateless format and size limits.
@@ -432,6 +475,9 @@ func (k Keeper) RegisterVerifier(ctx context.Context, msg *types.MsgRegisterVeri
 	if err := types.ValidateID("proof_system_id", msg.ProofSystemId); err != nil {
 		return nil, err
 	}
+	if err := types.ValidateID("claim_id", msg.ClaimId); err != nil {
+		return nil, err
+	}
 	if msg.Description == "" || len(msg.Description) > types.MaxDescriptionBytes {
 		return nil, errorsmod.Wrapf(types.ErrInvalidRequest,
 			"description is required and at most %d bytes", types.MaxDescriptionBytes)
@@ -456,14 +502,32 @@ func (k Keeper) RegisterVerifier(ctx context.Context, msg *types.MsgRegisterVeri
 		return nil, rejection(types.ErrInvalidVerifierKey, err)
 	}
 
+	// The key decides how many public inputs the statement has; the layout is
+	// validated against that count, never against a number the submitter claims.
+	var numPublic int
+	if err := k.callVerifier(ctx, "public input count", func() error {
+		n, err := impl.PublicInputCount(msg.VerificationKey)
+		numPublic = n
+		return err
+	}); err != nil {
+		return nil, rejection(types.ErrInvalidVerifierKey, err)
+	}
+
+	if err := validateLayout(msg.ProofSystemId, msg.InputLayout, impl.BindingWidth(), numPublic); err != nil {
+		return nil, err
+	}
+
 	now := sdkCtx.BlockTime()
-	reg, err := k.Verifiers.Get(ctx, msg.ProofSystemId)
+	reg, err := k.Verifiers.Get(ctx, collections.Join(msg.ProofSystemId, msg.ClaimId))
 	switch {
 	case errors.Is(err, collections.ErrNotFound):
 		reg = types.VerifierRegistration{
 			ProofSystemId:   msg.ProofSystemId,
+			ClaimId:         msg.ClaimId,
 			Description:     msg.Description,
 			VerificationKey: msg.VerificationKey,
+			NumPublicInputs: uint32(numPublic),
+			InputLayout:     msg.InputLayout,
 			Status:          types.VerifierStatus_VERIFIER_STATUS_ACTIVE,
 			Version:         1,
 			RegisteredAt:    now,
@@ -473,10 +537,13 @@ func (k Keeper) RegisterVerifier(ctx context.Context, msg *types.MsgRegisterVeri
 		return nil, err
 	case reg.Status != types.VerifierStatus_VERIFIER_STATUS_ACTIVE:
 		return nil, errorsmod.Wrapf(types.ErrVerifierDeprecated,
-			"%q is deprecated; register a new proof_system_id instead", reg.ProofSystemId)
+			"%q/%q is deprecated; register a new claim_id instead", reg.ProofSystemId, reg.ClaimId)
 	default:
-		if !bytes.Equal(reg.VerificationKey, msg.VerificationKey) {
+		// A new key or a new layout changes what a proof means, so both bump the version.
+		if !bytes.Equal(reg.VerificationKey, msg.VerificationKey) || !sameLayout(reg.InputLayout, msg.InputLayout) {
 			reg.VerificationKey = msg.VerificationKey
+			reg.NumPublicInputs = uint32(numPublic)
+			reg.InputLayout = msg.InputLayout
 			reg.Version++
 		}
 		reg.Description = msg.Description
@@ -484,16 +551,75 @@ func (k Keeper) RegisterVerifier(ctx context.Context, msg *types.MsgRegisterVeri
 		reg.UpdatedAt = &now
 	}
 
-	if err := k.Verifiers.Set(ctx, reg.ProofSystemId, reg); err != nil {
+	if err := k.Verifiers.Set(ctx, collections.Join(reg.ProofSystemId, reg.ClaimId), reg); err != nil {
 		return nil, err
 	}
 
 	sdkCtx.EventManager().EmitEvent(sdk.NewEvent(
 		"verifier_registered",
 		sdk.NewAttribute("proof_system_id", reg.ProofSystemId),
+		sdk.NewAttribute("claim_id", reg.ClaimId),
 		sdk.NewAttribute("version", strconv.FormatUint(uint64(reg.Version), 10)),
 	))
 	return &types.MsgRegisterVerifierResponse{Version: reg.Version}, nil
+}
+
+// minLayoutIndex: public inputs 0 and 1 are the binding limbs, checked by CheckBinding.
+const minLayoutIndex = 2
+
+func validateLayout(system string, layout []types.InputBinding, width, numPublic int) error {
+	if len(layout) > numPublic-width {
+		return errorsmod.Wrapf(types.ErrInvalidRequest,
+			"input_layout has %d entries, at most %d fit", len(layout), numPublic-width)
+	}
+	seen := make(map[uint32]struct{}, len(layout))
+	for _, b := range layout {
+
+		if b.Index < uint32(width) || uint64(b.Index) >= uint64(numPublic) {
+			return errorsmod.Wrapf(types.ErrInvalidRequest,
+				"input_layout index %d must be in [%d, %d)", b.Index, width, numPublic)
+		}
+
+		if _, dup := seen[b.Index]; dup {
+			return errorsmod.Wrapf(types.ErrInvalidRequest, "input_layout index %d listed twice", b.Index)
+		}
+		seen[b.Index] = struct{}{}
+
+		switch b.Source {
+		case types.InputSource_INPUT_SOURCE_CHECKPOINT_RECORDS_ROOT:
+			// MiMC-BN254 root: only meaningful for BN254 proof systems.
+			if !strings.HasSuffix(system, "-bn254") {
+				return errorsmod.Wrapf(types.ErrInvalidRequest,
+					"records root source requires a bn254 proof system, got %q", system)
+			}
+			if len(b.Value) != 0 {
+				return errorsmod.Wrap(types.ErrInvalidRequest, "value is only allowed for FIXED_VALUE")
+			}
+		case types.InputSource_INPUT_SOURCE_CHECKPOINT_RECORD_COUNT:
+			if len(b.Value) != 0 {
+				return errorsmod.Wrap(types.ErrInvalidRequest, "value is only allowed for FIXED_VALUE")
+			}
+		case types.InputSource_INPUT_SOURCE_FIXED_VALUE:
+			if len(b.Value) == 0 || len(b.Value) > 32 {
+				return errorsmod.Wrap(types.ErrInvalidRequest, "fixed value must be 1 to 32 bytes")
+			}
+		default:
+			return errorsmod.Wrapf(types.ErrInvalidRequest, "input_layout index %d has an unknown source", b.Index)
+		}
+	}
+	return nil
+}
+
+func sameLayout(a, b []types.InputBinding) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i].Index != b[i].Index || a[i].Source != b[i].Source || !bytes.Equal(a[i].Value, b[i].Value) {
+			return false
+		}
+	}
+	return true
 }
 
 // DeprecateVerifier stops a verifier from accepting new proofs. Existing
@@ -502,25 +628,29 @@ func (k Keeper) DeprecateVerifier(ctx context.Context, msg *types.MsgDeprecateVe
 	if err := k.checkAuthority(k.authority, msg.Authority); err != nil {
 		return nil, err
 	}
+	if msg.ClaimId == "" {
+		return nil, errorsmod.Wrap(types.ErrInvalidRequest, "claim_id must not be empty")
+	}
 
-	reg, err := k.GetVerifier(ctx, msg.ProofSystemId)
+	reg, err := k.GetVerifier(ctx, msg.ProofSystemId, msg.ClaimId)
 	if err != nil {
 		return nil, err
 	}
 	if reg.Status != types.VerifierStatus_VERIFIER_STATUS_ACTIVE {
-		return nil, errorsmod.Wrapf(types.ErrVerifierDeprecated, "%q is already deprecated", reg.ProofSystemId)
+		return nil, errorsmod.Wrapf(types.ErrVerifierDeprecated, "%q/%q is already deprecated", reg.ProofSystemId, reg.ClaimId)
 	}
 
-	now := sdk.UnwrapSDKContext(ctx).BlockTime()
+	sdkCtx := sdk.UnwrapSDKContext(ctx)
+	now := sdkCtx.BlockTime()
 	reg.Status = types.VerifierStatus_VERIFIER_STATUS_DEPRECATED
 	reg.UpdatedAt = &now
-	if err := k.Verifiers.Set(ctx, reg.ProofSystemId, reg); err != nil {
+	if err := k.Verifiers.Set(ctx, collections.Join(reg.ProofSystemId, reg.ClaimId), reg); err != nil {
 		return nil, err
 	}
-
-	sdk.UnwrapSDKContext(ctx).EventManager().EmitEvent(sdk.NewEvent(
+	sdkCtx.EventManager().EmitEvent(sdk.NewEvent(
 		"verifier_deprecated",
 		sdk.NewAttribute("proof_system_id", reg.ProofSystemId),
+		sdk.NewAttribute("claim_id", reg.ClaimId),
 	))
 	return &types.MsgDeprecateVerifierResponse{}, nil
 }

@@ -9,4 +9,5 @@ release/
 *.ign
 tools/gen-vk/pk.bin
 tools/gen-vk/vk.bin
-
+keys-geo/pk.bin
+keys-geo/vk.bin
