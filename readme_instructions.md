@@ -10,6 +10,7 @@ minimum-gas-prices = "0ucheck"
 
 **Ctrl+x and y to save**
 
+```bash
 
 lucidchaind keys add validator
 
@@ -19,17 +20,67 @@ lucidchaind genesis gentx validator 1000000stake --chain-id my-testnet-1
 
 lucidchaind genesis collect-gentxs
 
-lucidchaind keys show validator --address
+```
 
+**Seting up the genesis**
+
+
+Enable secp256k1 in dev, for both sidechains and attestors. Do not do this for production, to keep the node quantum-resistant.
+
+A fresh `lucidchaind init` also sets `auto_activate` to `false`, which leaves a new sidechain `PENDING` so every checkpoint is rejected. Set it to `true` for dev.
+
+```bash
+
+#make sure you are in your home directory
+G=~/.lucidchain/config/genesis.json
+jq '.app_state.sidechain.params.allowed_pubkey_type_urls += ["/cosmos.crypto.secp256k1.PubKey"]
+  | .app_state.attestor.params.allowed_pubkey_type_urls += ["/cosmos.crypto.secp256k1.PubKey"]
+  | .app_state.sidechain.params.auto_activate = true' "$G" > /tmp/g.json && mv /tmp/g.json "$G"
+
+
+#now run 
+chmod +x add-verifier.sh
+#./tools/gen-vk/add-verifier.sh                       # defaults: ~/.lucidchain/config/genesis.json, ./vk.bin
+#run from root of code <insude lucidchain> folder
+./tools/gen-vk/add-verifier.sh ~/.lucidchain/config/genesis.json keys-geo/vk.bin plonk-bn254 500000
+
+cd ~/go/src/github.com/lucidpay/lucidchain
+go run ./cmd/zkgeo setup -scheme groth16 \
+  -capacity 8 -records-depth 5 -area-depth 4 \
+  -out keys-geo-groth16
+
+ls -l keys-geo-groth16     # expect pk.bin and vk.bin
+
+./tools/gen-vk/add-verifier.sh ~/.lucidchain/config/genesis.json keys-geo-groth16/vk.bin groth16-bn254 500000
+
+#Note: with the default genesis the governance voting period is 48 hours, so each proposal below takes two days to pass. For a dev chain, shorten it before the first start:
+
+`jq '.app_state.gov.params.voting_period = "60s" | .app_state.gov.params.expedited_voting_period = "30s"' "$G" > /tmp/g.json && mv /tmp/g.json "$G"`
+
+
+lucidchaind genesis validate
+lucidchaind comet unsafe-reset-all
 lucidchaind start
 
-lucidchaind query bank balances <address>
+lucidchaind q proofs verifiers
 
-
-
+```
 
 **Open New Terminal and run these commands one by one**
 
+```bash
+
+lucidchaind keys show validator --address
+
+```
+
+```bash
+
+lucidchaind query bank balances <address>
+
+```
+
+```bash
 
 lucidchaind version
 
@@ -47,51 +98,12 @@ lucidchaind tx sidechain -h
 
 lucidchaind tx sidechain register-sidechain -h
 
+
+```
+
+
 **How to register a chain**
 
-First enable secp256k1 in dev, for both sidechains and attestors. Do not do this for production, to keep the node quantum-resistant.
-
-A fresh `lucidchaind init` also sets `auto_activate` to `false`, which leaves a new sidechain `PENDING` so every checkpoint is rejected. Set it to `true` for dev.
-
-```bash
-
-#make sure you are in your home directory
-G=~/.lucidchain/config/genesis.json
-jq '.app_state.sidechain.params.allowed_pubkey_type_urls += ["/cosmos.crypto.secp256k1.PubKey"]
-  | .app_state.attestor.params.allowed_pubkey_type_urls += ["/cosmos.crypto.secp256k1.PubKey"]
-  | .app_state.sidechain.params.auto_activate = true' "$G" > /tmp/g.json && mv /tmp/g.json "$G"
-
-lucidchaind genesis validate
-lucidchaind comet unsafe-reset-all
-lucidchaind start
-
-
-```
-
-If you have initialised the node with old code you will need to fix the genesis file
-
-```bash
-
-#make sure you are in your home directory
-G=~/.lucidchain/config/genesis.json   # adjust to your home dir
-jq '.app_state.sidechain.params = {
-  "min_bond_by_tier": [
-    {"tier":"ASSURANCE_TIER_NOTARIZED","min_bond":{"denom":"stake","amount":"1000000"}},
-    {"tier":"ASSURANCE_TIER_ATTESTED","min_bond":{"denom":"stake","amount":"5000000"}},
-    {"tier":"ASSURANCE_TIER_PROVEN","min_bond":{"denom":"stake","amount":"10000000"}}
-  ],
-  "missed_checkpoint_grace_seconds":"3600",
-  "exit_cooldown_seconds":"1209600",
-  "max_signer_keys":7,
-  "allowed_pubkey_type_urls":["/cosmos.crypto.mldsa65.PubKey"],
-  "auto_activate": true
-}' "$G" > /tmp/g.json && mv /tmp/g.json "$G"
-
-lucidchaind genesis validate
-lucidchaind comet unsafe-reset-all
-lucidchaind start
-
-```
 
 **create signer keys**
 
@@ -326,17 +338,8 @@ lucidchaind query checkpoint -h
 
 `submit-attestation.sh` expects schema `kyc-v1` and an ACTIVE attestor `acme` whose signer key is the `validator` key. Creating the schema and activating the attestor are governance-only, so set them up first.
 
-Note: with the default genesis the governance voting period is 48 hours, so each proposal below takes two days to pass. For a dev chain, shorten it before the first start:
-
-```bash
-
-`jq '.app_state.gov.params.voting_period = "60s" | .app_state.gov.params.expedited_voting_period = "30s"' "$G" > /tmp/g.json && mv /tmp/g.json "$G"`
-
-```
-
-```bash
-
 # 1. create the schema (governance)
+```bash
 cat > schema.json <<'EOF'
 {
   "messages": [{
@@ -363,9 +366,15 @@ EOF
 lucidchaind tx gov submit-proposal schema.json --from validator \
     --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
 lucidchaind tx gov vote <proposal-id> yes --from validator --chain-id my-testnet-1 --gas-prices 0stake --yes
-lucidchaind query attestor schemas   # after the voting period
+
+# after the voting period
+lucidchaind query attestor schemas 
+
+```
 
 # 2. register the attestor, with the validator key as its signer
+
+```bash
 lucidchaind tx attestor register-attestor \
   --id acme --name Acme --authorized-schema-ids kyc-v1 \
   --signer-keys "$(lucidchaind keys show validator --pubkey)" \
@@ -515,12 +524,6 @@ go run main.go
 
 #plus it will generate two new files vk.bin (the raw key) and pk.bin (the proving key) into the directory you run it from. 
 #Note that you’ll need pk.bin later to build proofs, so keep it.
-
-#now run 
-chmod +x add-verifier.sh
-#./tools/gen-vk/add-verifier.sh                       # defaults: ~/.lucidchain/config/genesis.json, ./vk.bin
-
-./tools/gen-vk/add-verifier.sh ~/.lucidchain/config/genesis.json keys-geo/vk.bin plonk-bn254 500000
 
 
 ```
