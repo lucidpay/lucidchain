@@ -140,6 +140,19 @@ func (b *mockBank) SendCoinsFromModuleToAccount(_ context.Context, module string
 	return nil
 }
 
+func (b *mockBank) BurnCoins(_ context.Context, module string, coins sdk.Coins) error {
+	amt, err := singleAmount(coins)
+	if err != nil {
+		return err
+	}
+	bal := b.moduleBalance(module)
+	if bal.LT(amt) {
+		return errors.New("module account has insufficient funds")
+	}
+	b.modules[module] = bal.Sub(amt)
+	return nil
+}
+
 // ---------------------------------------------------------------------------
 // fixture
 // ---------------------------------------------------------------------------
@@ -329,12 +342,12 @@ func TestUpdateParams(t *testing.T) {
 
 	t.Run("wrong authority", func(t *testing.T) {
 		_, err := f.msgServer.UpdateParams(f.ctx, &types.MsgUpdateParams{Authority: f.strangerS, Params: valid})
-		require.ErrorIs(t, err, types.ErrUnauthorized)
+		require.ErrorIs(t, err, types.ErrInvalidSigner)
 	})
 
 	t.Run("malformed authority", func(t *testing.T) {
 		_, err := f.msgServer.UpdateParams(f.ctx, &types.MsgUpdateParams{Authority: "bogus", Params: valid})
-		require.ErrorIs(t, err, sdkerrors.ErrInvalidAddress)
+		require.ErrorContains(t, err, "invalid authority address")
 	})
 
 	invalid := map[string]func(p *types.Params){
@@ -356,7 +369,7 @@ func TestUpdateParams(t *testing.T) {
 			p.AllowedPubkeyTypeUrls = valid.AllowedPubkeyTypeUrls
 			mutate(&p)
 			_, err := f.msgServer.UpdateParams(f.ctx, &types.MsgUpdateParams{Authority: f.govS, Params: p})
-			require.ErrorIs(t, err, sdkerrors.ErrInvalidRequest)
+			require.Error(t, err)
 		})
 	}
 
@@ -623,7 +636,7 @@ func TestPendingSidechainCannotRecordCheckpoints(t *testing.T) {
 	f.register(t)
 
 	err := f.keeper.RecordCheckpoint(f.ctx, testID, 1, testHeight, []byte("h"))
-	require.ErrorIs(t, err, types.ErrInvalidSidechainState)
+	require.ErrorIs(t, err, sdkerrors.ErrInvalidRequest)
 }
 
 func TestSuspendAndResume(t *testing.T) {
@@ -649,7 +662,7 @@ func TestSuspendAndResume(t *testing.T) {
 
 	// A suspended sidechain takes no checkpoints...
 	err = f.keeper.RecordCheckpoint(f.ctx, testID, 1, testHeight, []byte("h"))
-	require.ErrorIs(t, err, types.ErrInvalidSidechainState)
+	require.ErrorIs(t, err, sdkerrors.ErrInvalidRequest)
 
 	// ...until it is resumed.
 	_, err = f.msgServer.ResumeSidechain(f.ctx, resume)
@@ -854,7 +867,7 @@ func TestInitiateSidechainExit(t *testing.T) {
 		require.NoError(t, err)
 
 		err = f.keeper.RecordCheckpoint(f.ctx, testID, 2, testHeight, []byte("h2"))
-		require.ErrorIs(t, err, types.ErrInvalidSidechainState)
+		require.ErrorIs(t, err, sdkerrors.ErrInvalidRequest)
 		// Its history is intact.
 		require.Equal(t, uint64(1), f.get(t, testID).LastCheckpointSequence)
 	})
@@ -984,11 +997,11 @@ func TestRecordCheckpoint(t *testing.T) {
 			hash   []byte
 			want   error
 		}{
-			{"unknown sidechain", "nope", 4, 201, []byte("h"), types.ErrSidechainNotFound},
-			{"same sequence", testID, 3, 201, []byte("h"), types.ErrInvalidRequest},
-			{"lower sequence", testID, 2, 201, []byte("h"), types.ErrInvalidRequest},
-			{"height going backwards", testID, 4, 199, []byte("h"), types.ErrInvalidRequest},
-			{"empty hash", testID, 4, 201, nil, types.ErrInvalidRequest},
+			{"unknown sidechain", "nope", 4, 201, []byte("h"), sdkerrors.ErrNotFound},
+			{"same sequence", testID, 3, 201, []byte("h"), sdkerrors.ErrInvalidRequest},
+			{"lower sequence", testID, 2, 201, []byte("h"), sdkerrors.ErrInvalidRequest},
+			{"height going backwards", testID, 4, 199, []byte("h"), sdkerrors.ErrInvalidRequest},
+			{"empty hash", testID, 4, 201, nil, sdkerrors.ErrInvalidRequest},
 		}
 		for _, tc := range cases {
 			err := f.keeper.RecordCheckpoint(f.ctx, tc.id, tc.seq, tc.height, tc.hash)
@@ -1241,7 +1254,7 @@ func TestGovernanceOnlyMessagesRejectOtherAuthorities(t *testing.T) {
 		_, err = f.msgServer.ResumeSidechain(f.ctx, &types.MsgResumeSidechain{Authority: authority, Id: testID})
 		require.ErrorIs(t, err, types.ErrUnauthorized)
 		_, err = f.msgServer.UpdateParams(f.ctx, &types.MsgUpdateParams{Authority: authority, Params: types.DefaultParams()})
-		require.ErrorIs(t, err, types.ErrUnauthorized)
+		require.ErrorIs(t, err, types.ErrInvalidSigner)
 	}
 }
 

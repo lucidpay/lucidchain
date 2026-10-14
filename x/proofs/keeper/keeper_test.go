@@ -41,7 +41,9 @@ func initFixture(t *testing.T) *fixture {
 		encCfg.Codec,
 		addressCodec,
 		authority,
-		nil,
+		nil, // checkpoint keeper: not used by these tests
+		nil, // bank keeper: not used by these tests
+		nil, // no verifier implementations
 	)
 
 	// Initialize params
