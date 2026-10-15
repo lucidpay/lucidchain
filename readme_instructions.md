@@ -108,7 +108,7 @@ Check the validator's balance
 lucidchaind query bank balances <address>
 
 ```
-Get to know the chaind
+Get to know the chain
 
 ```bash
 
@@ -132,7 +132,7 @@ lucidchaind tx sidechain register-sidechain -h
 ```
 
 
-**How to register a chain**
+**How to register a sidechain**
 
 
 **create signer keys**
@@ -175,7 +175,8 @@ lucidchaind tx sidechain register-sidechain \
   --from validator --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5
 ```
 
-EXAMPLE
+EXAMPLE  
+  
 lucidchaind tx sidechain register-sidechain \
   hospitality-platform-01 "Hospitality Platform" notarized 1000000stake \
   --signer-keys '{"@type":"/cosmos.crypto.secp256k1.PubKey","key":"Aj3S0dAItEDqOpHm7lw2eU79vgigg29etjNMO0i+BgZF"}' \
@@ -186,98 +187,104 @@ lucidchaind tx sidechain register-sidechain \
   --metadata-uri https://example.org/meta.json \
   --from validator --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5
 
-you should see something similar to this
-gas estimate: 121149
-auth_info:
-  fee:
-    amount: []
-    gas_limit: "121149"
-    granter: ""
-    payer: ""
-  signer_infos: []
-  tip: null
-body:
-  extension_options: []
-  memo: ""
-  messages:
-  - '@type': /lucidchain.sidechain.v1.MsgRegisterSidechain
-    bond:
-      amount: "1000000"
-      denom: stake
-    checkpoint_interval_seconds: "300"
-    id: hospitality-platform-01
-    metadata_uri: https://example.org/meta.json
-    name: Hospitality Platform
-    operator: cosmos18yem5p78w8efrx6dvc45dufjntvq0j6kng2ce0
-    signature_threshold: 2
-    signer_keys:
-    - '@type': /cosmos.crypto.secp256k1.PubKey
-      key: Aj3S0dAItEDqOpHm7lw2eU79vgigg29etjNMO0i+BgZF
-    - '@type': /cosmos.crypto.secp256k1.PubKey
-      key: AsxltdpDXisuwLfiuSC0S5MzJ/EN1ATdzULinSEZZKjM
-    - '@type': /cosmos.crypto.secp256k1.PubKey
-      key: Am9As0veC6DyLha69fjDFbeO7eUU78GQ7La0d474+T0Q
-    tier: ASSURANCE_TIER_NOTARIZED
-  non_critical_extension_options: []
-  timeout_height: "0"
-  timeout_timestamp: null
-  unordered: false
-signatures: []
-confirm transaction before signing and broadcasting [y/N]: y
-code: 0
-codespace: ""
-data: ""
-events: []
-gas_used: "0"
-gas_wanted: "0"
-height: "0"
-info: ""
-logs: []
-raw_log: ""
-timestamp: ""
-tx: null
-txhash: 3AA09EE67BCF0960D6F30FDEA10BE40365EE5C2B076FA427CB690ED2245320FA
+you should see something similar to this  
 
-Run 
+gas estimate: 121149  
+auth_info:  
+  fee:  
+    amount: []  
+    gas_limit: "121149"  
+    granter: ""  
+    payer: ""  
+  signer_infos: []  
+  tip: null  
+body:  
+  extension_options: []  
+  memo: ""  
+  messages:  
+  - '@type': /lucidchain.sidechain.v1.MsgRegisterSidechain  
+    bond:  
+      amount: "1000000"  
+      denom: stake  
+    checkpoint_interval_seconds: "300"  
+    id: hospitality-platform-01  
+    metadata_uri: https://example.org/meta.json  
+    name: Hospitality Platform  
+    operator: cosmos18yem5p78w8efrx6dvc45dufjntvq0j6kng2ce0  
+    signature_threshold: 2  
+    signer_keys:  
+    - '@type': /cosmos.crypto.secp256k1.PubKey  
+      key: Aj3S0dAItEDqOpHm7lw2eU79vgigg29etjNMO0i+BgZF  
+    - '@type': /cosmos.crypto.secp256k1.PubKey  
+      key: AsxltdpDXisuwLfiuSC0S5MzJ/EN1ATdzULinSEZZKjM  
+    - '@type': /cosmos.crypto.secp256k1.PubKey  
+      key: Am9As0veC6DyLha69fjDFbeO7eUU78GQ7La0d474+T0Q  
+    tier: ASSURANCE_TIER_NOTARIZED  
+  non_critical_extension_options: []  
+  timeout_height: "0"  
+  timeout_timestamp: null  
+  unordered: false  
+signatures: []  
+  
+confirm transaction before signing and broadcasting [y/N]: y  
+  
+code: 0  
+codespace: ""  
+data: ""  
+events: []  
+gas_used: "0"  
+gas_wanted: "0"  
+height: "0"  
+info: ""  
+logs: []  
+raw_log: ""  
+timestamp: ""  
+tx: null  
+txhash: 3AA09EE67BCF0960D6F30FDEA10BE40365EE5C2B076FA427CB690ED2245320FA  
+  
+Run  
+  
 ```bash
 lucidchaind q tx 3AA09EE67BCF0960D6F30FDEA10BE40365EE5C2B076FA427CB690ED2245320FA # will show information about the registration
 
 lucidchaind query sidechain sidechains
 
 ```
-will show something similar to this
-pagination:
-  total: "1"
-sidechains:
-- activated_at: "2026-10-09T10:39:29.496697798Z"
-  bond:
-    amount: "1000000"
-    denom: stake
-  checkpoint_interval_seconds: "300"
-  id: hospitality-platform-01
-  metadata_uri: https://example.org/meta.json
-  name: Hospitality Platform
-  operator: cosmos18yem5p78w8efrx6dvc45dufjntvq0j6kng2ce0
-  registered_at: "2026-10-09T10:39:29.496697798Z"
-  signature_threshold: 2
-  signer_keys:
-  - type: /cosmos.crypto.secp256k1.PubKey
-    value: Aj3S0dAItEDqOpHm7lw2eU79vgigg29etjNMO0i+BgZF
-  - type: /cosmos.crypto.secp256k1.PubKey
-    value: AsxltdpDXisuwLfiuSC0S5MzJ/EN1ATdzULinSEZZKjM
-  - type: /cosmos.crypto.secp256k1.PubKey
-    value: Am9As0veC6DyLha69fjDFbeO7eUU78GQ7La0d474+T0Q
-  signer_set_version: "1"
-  status: SIDECHAIN_STATUS_ACTIVE
-  tier: ASSURANCE_TIER_NOTARIZED
+
+will show something similar to this  
+  
+pagination:  
+  total: "1"  
+sidechains:  
+- activated_at: "2026-10-09T10:39:29.496697798Z"  
+  bond:  
+    amount: "1000000"  
+    denom: stake  
+  checkpoint_interval_seconds: "300"  
+  id: hospitality-platform-01  
+  metadata_uri: https://example.org/meta.json  
+  name: Hospitality Platform  
+  operator: cosmos18yem5p78w8efrx6dvc45dufjntvq0j6kng2ce0  
+  registered_at: "2026-10-09T10:39:29.496697798Z"  
+  signature_threshold: 2  
+  signer_keys:  
+  - type: /cosmos.crypto.secp256k1.PubKey  
+    value: Aj3S0dAItEDqOpHm7lw2eU79vgigg29etjNMO0i+BgZF  
+  - type: /cosmos.crypto.secp256k1.PubKey  
+    value: AsxltdpDXisuwLfiuSC0S5MzJ/EN1ATdzULinSEZZKjM  
+  - type: /cosmos.crypto.secp256k1.PubKey  
+    value: Am9As0veC6DyLha69fjDFbeO7eUU78GQ7La0d474+T0Q  
+  signer_set_version: "1"  
+  status: SIDECHAIN_STATUS_ACTIVE  
+  tier: ASSURANCE_TIER_NOTARIZED  
 
 
 **How to work with checkpoints**
 
-Syntax:
+Syntax:  
+
 lucidchaind tx checkpoint submit-checkpoint [sidechain-id] [lc-sequence] [state-root] [previous-checkpoint-hash] [record-count] [data-pointer] [signer-set-version] [flags]
-
-
+  
 ```bash
 
 lucidchaind tx checkpoint submit-checkpoint \
@@ -298,13 +305,14 @@ lucidchaind tx checkpoint submit-checkpoint \
 
 ```
 
-Steps needed 
+Steps needed  
  first build a signature. make sure you have the following folder structure in your home directory ./tools/signcheckpoint/
  and the binary signcheckpoint is in it "chmod +x signcheckpoint" then run the code bellow
  to build the binary, run this from the repository folder:
-   go build -o ~/tools/signcheckpoint/signcheckpoint ./tools/signcheckpoint
-
+  
 ```bash
+
+go build -o ~/tools/signcheckpoint/signcheckpoint ./tools/signcheckpoint
 
 export STATE_ROOT=d841f966f8bf17d49335f4b134c2178fd5aca8244d46b8d5f9a5470338095b7b
 export STATE_ROOT_B64=$(echo $STATE_ROOT | xxd -r -p | base64 -w0)
@@ -336,24 +344,24 @@ lucidchaind tx checkpoint submit-checkpoint \
 ```
 
 you should get an output similar to this
+  
+gas estimate: 258096  
+code: 0  
+codespace: ""  
+data: ""  
+events: []  
+gas_used: "0"  
+gas_wanted: "0"  
+height: "0"  
+info: ""  
+logs: []  
+raw_log: ""  
+timestamp: ""  
+tx: null  
+txhash: 058043461378E698B4168564CFBB30963EABB252FE1A2D2B81F3097D9D2F310F  
 
-gas estimate: 258096
-code: 0
-codespace: ""
-data: ""
-events: []
-gas_used: "0"
-gas_wanted: "0"
-height: "0"
-info: ""
-logs: []
-raw_log: ""
-timestamp: ""
-tx: null
-txhash: 058043461378E698B4168564CFBB30963EABB252FE1A2D2B81F3097D9D2F310F
 
-
-Queries
+Queries  
 
 ```bash
 
@@ -365,20 +373,21 @@ lucidchaind q checkpoint latest-checkpoint hospitality-platform-01
 
 ```
 
-this should output something similar to this
-checkpoint:
-  checkpoint_hash: 0VvDymCJ4DU02QeRm3Z423D1g2ICxKetgCLr1xq1zhs=
-  data_pointer: ipfs://test-checkpoint-1
-  finalized_at: "2026-10-09T06:17:54.235499177Z"
-  finalized_height: "1239"
-  lc_sequence: "2"
-  previous_checkpoint_hash: KMsdoqcJeJIMp64OmPh8j7Ia5shHYU0rhfFmN3cTTBk=
-  record_count: "50"
-  sidechain_id: hospitality-platform-01
-  signatures_digest: pd1NgFzaJxzI6l+FtZ54OYWAHP0WzQvXHdtzfx1xqG8=
-  signer_bitmap: Aw==
-  signer_set_version: "1"
-  state_root: TDlx18fsUYPdjmEg7o1UKP2otukHED7xLvYB6ya1D1w=
+this should output something similar to this  
+
+checkpoint:  
+  checkpoint_hash: 0VvDymCJ4DU02QeRm3Z423D1g2ICxKetgCLr1xq1zhs=  
+  data_pointer: ipfs://test-checkpoint-1  
+  finalized_at: "2026-10-09T06:17:54.235499177Z"  
+  finalized_height: "1239"  
+  lc_sequence: "2"  
+  previous_checkpoint_hash: KMsdoqcJeJIMp64OmPh8j7Ia5shHYU0rhfFmN3cTTBk=  
+  record_count: "50"  
+  sidechain_id: hospitality-platform-01  
+  signatures_digest: pd1NgFzaJxzI6l+FtZ54OYWAHP0WzQvXHdtzfx1xqG8=  
+  signer_bitmap: Aw==  
+  signer_set_version: "1"  
+  state_root: TDlx18fsUYPdjmEg7o1UKP2otukHED7xLvYB6ya1D1w=  
 
 ```bash
 
@@ -389,7 +398,7 @@ lucidchaind query checkpoint -h
   ```
 
 **How to work with attestor**
-
+  
 `submit-attestation.sh` expects schema `kyc-v1` and an ACTIVE attestor `acme` whose signer key is the `validator` key. Creating the schema and activating the attestor are governance-only, so set them up first.
 
 # 1. create the schema (governance)
@@ -445,8 +454,8 @@ lucidchaind query attestor attestor acme   # status should be ATTESTOR_STATUS_AC
 ```
 
 The script is `tools/signbytes/submit-attestation.sh`. Copy it to the folder you work in and make it executable with `chmod +x submit-attestation.sh`.
-
-First step is to create a claim
+  
+First step is to create a claim  
 
 ```bash
 
@@ -456,51 +465,56 @@ printf '%s' '{"revenue":"1250000","period":"2026-09"}' > claim.json
 
 ./submit-attestation.sh
 
-# you should get something like this
-#Checkpoint: sidechain=hospitality-platform-01 seq=1 hash=51e2aa1150901af2f76b4469c4c1ce4db21053c4cceeaecc49c49ed183dbd704
-#Signer key matches the attestor's registered key.
-#Wrote sigs.json
-#gas estimate: 174748
-#code: 0
-#codespace: ""
-#data: ""
-#events: []
-#gas_used: "0"
-#gas_wanted: "0"
-#height: "0"
-#nfo: ""
-#logs: []
-#raw_log: ""
-#timestamp: ""
-#tx: null
-#txhash: 5D1C540C4E110B77D05FDE3E74EAC2FE9D2685B522C77AB7BBE6993E52928AEB
+```
+you should get something like this  
+
+Checkpoint: sidechain=hospitality-platform-01 seq=1 hash=51e2aa1150901af2f76b4469c4c1ce4db21053c4cceeaecc49c49ed183dbd704  
+Signer key matches the attestor's registered key.  
+Wrote sigs.json  
+gas estimate: 174748  
+code: 0  
+codespace: ""  
+data: ""  
+events: []  
+gas_used: "0"  
+gas_wanted: "0"  
+height: "0"  
+nfo: ""  
+logs: []  
+raw_log: ""  
+timestamp: ""  
+tx: null  
+txhash: 5D1C540C4E110B77D05FDE3E74EAC2FE9D2685B522C77AB7BBE6993E52928AEB  
+
 
 # now run 
 
+```bash
+
 lucidchaind query attestor checkpoint-attestations hospitality-platform-01 1
 
-#you should get something similar to this
-#attestations:
-#- attestor_id: acme
-#  checkpoint_hash: UeKqEVCQGvL3a0RpxMHOTbIQU8TM7q7MScSe0YPb1wQ=
-#  checkpoint_sequence: "1"
-#  claim_payload: eyJyZXZlbnVlIjoiMTI1MDAwMCIsInBlcmlvZCI6IjIwMjYtMDkifQ==
-#  expires_at: "2027-10-09T15:20:14.54848753Z"
-#  id: 30dd87b708f6bbd7a6e6c6527aceec4340cce248ee583fdff0b8455eb03aaafc
-#  issued_at: "2026-10-09T15:20:14.54848753Z"
-#  issued_height: "383"
-#  schema_id: kyc-v1
-#  sidechain_id: hospitality-platform-01
-#  signatures_digest: XQLZ1BN9olL0dEc6OG8k1PCnciJyFtt/Txfs4b4Y/GU=
-#  signer_bitmap: AQ==
-#  signer_set_version: "1"
-#  status: ATTESTATION_STATUS_ACTIVE
-#pagination:
-#  total: "1"
-
-
-
 ```
+
+you should get something similar to this  
+
+attestations:  
+- attestor_id: acme  
+  checkpoint_hash: UeKqEVCQGvL3a0RpxMHOTbIQU8TM7q7MScSe0YPb1wQ=  
+  checkpoint_sequence: "1"  
+  claim_payload: eyJyZXZlbnVlIjoiMTI1MDAwMCIsInBlcmlvZCI6IjIwMjYtMDkifQ==  
+  expires_at: "2027-10-09T15:20:14.54848753Z"  
+  id: 30dd87b708f6bbd7a6e6c6527aceec4340cce248ee583fdff0b8455eb03aaafc  
+  issued_at: "2026-10-09T15:20:14.54848753Z"  
+  issued_height: "383"  
+  schema_id: kyc-v1  
+  sidechain_id: hospitality-platform-01  
+  signatures_digest: XQLZ1BN9olL0dEc6OG8k1PCnciJyFtt/Txfs4b4Y/GU=  
+  signer_bitmap: AQ==  
+  signer_set_version: "1"  
+  status: ATTESTATION_STATUS_ACTIVE  
+pagination:  
+  total: "1"  
+
 
 **dispute and attestation**
 
@@ -526,7 +540,7 @@ lucidchaind tx attestor raise-dispute \
 **resolve it**
 
 
-create proposal.json with the json data bellow. Get dispute_id from the raise dispute tx
+create proposal.json with the json data bellow. Get dispute_id from the raise dispute tx  
 
 ```json
   {
@@ -564,59 +578,14 @@ lucidchaind query attestor -h
 
 **working with proofs**
 
-Start by running a utility to generate a verification key
+
+Check if the verifiers are already registered  
 
 ```bash
-cd ./tools/gen-vk/
-go run main.go
-
-#you should get an output similar to this
-
-#13:21:33 INF compiling circuit
-#13:21:33 INF parsed circuit inputs nbPublic=2 nbSecret=1
-#13:21:33 INF building constraint builder nbConstraints=1
-#o1mPh5apdmZicSlFiDjzEmmfa4896anU+OxjyTcF0qid7K+Rw67mm8dBbyul4k3UZFHpHtCyhZp+4akM0Qzbo6oR/j7/owFfkZXsdxkPL/owezscYgNc1EsDBUZZIYE/IpEB4kE4xqN4JgQ5TZN8UMmxuYHMVoxyVhPdoZM+sufA7WltWYJ5bMCWPhgBYYQBzJlDwYZ3mmBcVgIB97qiViY36RSWkGU1fEqMrRdTjGENY2HcRugl4uoL1Z76FFfeiuQMCu/uKN+mwxTIRMEbBwQGNbMHsYXXKuJuEYs+u0OwSzyKOOYZ+J8UfV+SGsBJ0HQbywsODYm8QpH9MqV3DSj6JFzR9qGicDDY2qdujfmnwa8wN6C0SSv0Uxf0O7qoAAAAA89WSrKOhyF/BQjIXmMSAQQq/I7F1hIrcNMXRU16FIv0kdLeNy9O6rtJRep5PXy7IKFlyGltfXYq94B1QBNexdiR0t43L07qu0lF6nk9fLsgoWXIaW19dir3gHVAE17F2AAAAAAAAAAA
-
-#plus it will generate two new files vk.bin (the raw key) and pk.bin (the proving key) into the directory you run it from. 
-#Note that you’ll need pk.bin later to build proofs, so keep it.
-
-
-```
-
-```bash
-#this will add the verifier to the genesis.json file.
-#now the usual
-lucidchaind genesis validate
-lucidchaind comet unsafe-reset-all
-lucidchaind start
-
-
-```
-
-`unsafe-reset-all` deletes all chain data, including the sidechain and checkpoints created earlier. Before building a proof, register `hospitality-platform-01` again and submit checkpoint 1 (see "How to register a chain" and "How to work with checkpoints" above). Otherwise `prove-and-submit.sh` fails with `checkpoint not found`.
-
-Check if the verifiers
-
-```bash
-lucidchaind q proofs list  -o json
 lucidchaind q proofs verifier --proof-system-id groth16-bn254 --claim-id geofence.v1 -o json
 lucidchaind q proofs verifier --proof-system-id plonk-bn254 --claim-id geofence.v1 -o json
 
-lucidchaind q proofs verifiers -o json | jq '.verifiers[] | {proof_system_id, claim_id, version, num_public_inputs, input_layout}'
-
-
-#it should show something like this
-
-#verifier:
-#  proof_system_id: groth16-bn254
-#  registered_at: "0001-01-01T00:00:00Z"
-#  verification_gas: "200000"
-#  verification_key: mqhmq1eRiM1jnHvR6A69eK+A07NREEhHpknEt2bxmbfYvUSzdVABv2DcKEru/lSko6VK6zqNgqOOQIUo4JjN2MUxicIzzQ0uIeTY275hgCcbnYm4Wrhxn3YkcoaXYBg0A3GF9v7JYZK9SGHmRuryAfho9Zpu9IFhB8mauKqF3bqOH6aYKR5Q+LhToCvGIzsntsgNZw9+Z4gPX0/lNbcs0CCib2jTjPON60LDy961Edrb1cFDx9VvQ5T27yBW0OD06I/nuXedqPSeaLwZYSyoPJhj7b7gM5IAjF4U2nv/zROBm0/c12BS0fdU+WuQamJCXKz7LplXGX+y/CfE58jUzQpZm+XLWHDv6+aNxjsaPbQ1Q6vXehEjQ53dxvS6dcORAAAAA5nWxLQjOn1gj4kltpcGCcyJhBC7fefVo3TRYkfi5O6Ez4Z1O+CcHYKxg8wOCKvJWUyQTBwgMdOYdO/bNQ3rRmLPhnU74JwdgrGDzA4Iq8lZTJBMHCAx05h079s1DetGYgAAAAAAAAAA
-
-
 ```
-lucidchaind query proofs verifiers
-
 
 **build a proof system**
 
@@ -628,62 +597,63 @@ chmod +x prove-and-submit.sh
 
 ./prove-and-submit.sh 
 
-#you should see something similar to this
-
-#binding hi=lY3I4mLg8f3O1lyYbB0f4Q== lo=lgIZtZypaOPDIJGMYI9iUg==
-#17:59:27 INF compiling circuit
-#17:59:27 INF parsed circuit inputs nbPublic=2 nbSecret=1
-#17:59:27 INF building constraint builder nbConstraints=1
-#17:59:27 DBG constraint system solver done nbConstraints=1 took=0.021333
-#17:59:27 DBG prover done acceleration=none backend=groth16 curve=bn254 nbConstraints=1 took=1.444299
-#17:59:27 DBG verifier done backend=groth16 curve=bn254 took=1.029061
-#proof 164 bytes, public inputs 76 bytes, local verify ok
-#gas estimate: 399475
-#code: 0
-#codespace: ""
-#data: ""
-#events: []
-#gas_used: "0"
-#gas_wanted: "0"
-#height: "0"
-#info: ""
-#logs: []
-#raw_log: ""
-#timestamp: ""
-#tx: null
-#txhash: AD31674DD9608B4DDB37A361966F47706888686159381DDC28A76EDD8FB43306
-
-
 ```
 
-To validate 
+you should see something similar to this  
+
+binding hi=lY3I4mLg8f3O1lyYbB0f4Q== lo=lgIZtZypaOPDIJGMYI9iUg==  
+17:59:27 INF compiling circuit  
+17:59:27 INF parsed circuit inputs nbPublic=2 nbSecret=1  
+17:59:27 INF building constraint builder nbConstraints=1  
+17:59:27 DBG constraint system solver done nbConstraints=1 took=0.021333  
+17:59:27 DBG prover done acceleration=none backend=groth16 curve=bn254 nbConstraints=1 took=1.444299  
+17:59:27 DBG verifier done backend=groth16 curve=bn254 took=1.029061  
+proof 164 bytes, public inputs 76 bytes, local verify ok  
+gas estimate: 399475  
+code: 0  
+codespace: ""  
+data: ""  
+events: []  
+gas_used: "0"  
+gas_wanted: "0"  
+height: "0"  
+info: ""  
+logs: []  
+raw_log: ""  
+timestamp: ""  
+tx: null  
+txhash: AD31674DD9608B4DDB37A361966F47706888686159381DDC28A76EDD8FB43306  
+
+
+
+**To validate** 
 
 ```bash
 
 lucidchaind q proofs proofs-for-checkpoint --sidechain-id hospitality-platform-01 --checkpoint-sequence 1
 
-#you should see something like this
-
-#pagination:
-#  total: "1"
-#proofs:
-#- binding: lY3I4mLg8f3O1lyYbB0f4ZYCGbWcqWjjwyCRjGCPYlI=
-#  checkpoint_hash: UeKqEVCQGvL3a0RpxMHOTbIQU8TM7q7MScSe0YPb1wQ=
-#  checkpoint_sequence: "1"
-#  claim_id: geofence.v1
-#  id: d3ccd1dc31e6accd20028e460b95680483523c9ecc6e088592ba8bd2ed7f71fe
-#  proof: 7m4d5SPE9s2PD8P0HimpK7zVc4EV96gthWfqCfh7Z8uXwT2aLmNO3Dhgd0xVRibr5ZFCChmG/4nKyCRNwcPNdA5OLn6jEfNu7JaQoIdZbUkE6CABTKaVE6xJoKX1jxVcyic1dIK3MLv8JsVp5FQwtgFoTAMDTCaueMBZ3EtfSg0AAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
-#  proof_system_id: groth16-bn254
-#  public_inputs: AAAAAgAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAJWNyOJi4PH9ztZcmGwdH+EAAAAAAAAAAAAAAAAAAAAAlgIZtZypaOPDIJGMYI9iUg==
-#  sidechain_id: hospitality-platform-01
-#  submitter: cosmos18yem5p78w8efrx6dvc45dufjntvq0j6kng2ce0
-#  verified: true
-#  verified_at: "2026-10-10T13:59:27.012497883Z"
-#  verified_height: "319"
-#  verifier_version: 1
-
-
 ```
+
+you should see something like this  
+
+pagination:  
+  total: "1"  
+proofs:  
+- binding: lY3I4mLg8f3O1lyYbB0f4ZYCGbWcqWjjwyCRjGCPYlI=  
+  checkpoint_hash: UeKqEVCQGvL3a0RpxMHOTbIQU8TM7q7MScSe0YPb1wQ=  
+  checkpoint_sequence: "1"  
+  claim_id: geofence.v1  
+  id: d3ccd1dc31e6accd20028e460b95680483523c9ecc6e088592ba8bd2ed7f71fe  
+  proof: 7m4d5SPE9s2PD8P0HimpK7zVc4EV96gthWfqCfh7Z8uXwT2aLmNO3Dhgd0xVRibr5ZFCChmG/4nKyCRNwcPNdA5OLn6jEfNu7JaQoIdZbUkE6CABTKaVE6xJoKX1jxVcyic1dIK3MLv8JsVp5FQwtgFoTAMDTCaueMBZ3EtfSg0AAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=  
+  proof_system_id: groth16-bn254  
+  public_inputs: AAAAAgAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAJWNyOJi4PH9ztZcmGwdH+EAAAAAAAAAAAAAAAAAAAAAlgIZtZypaOPDIJGMYI9iUg==  
+  sidechain_id: hospitality-platform-01  
+  submitter: cosmos18yem5p78w8efrx6dvc45dufjntvq0j6kng2ce0  
+  verified: true  
+  verified_at: "2026-10-10T13:59:27.012497883Z"  
+  verified_height: "319"  
+  verifier_version: 1  
+
 
 **How to suspend a sidechain**
 
