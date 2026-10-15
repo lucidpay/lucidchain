@@ -35,6 +35,8 @@ func main() {
 	records := flag.Uint64("record-count", 0, "record count")
 	pointer := flag.String("data-pointer", "", "data pointer")
 	version := flag.Uint64("signer-set-version", 1, "signer set version")
+	zkRoot := flag.String("zk-records-root", "", "records root, 32-byte hex (optional)")
+	zkDepth := flag.Uint("zk-tree-depth", 0, "records tree depth (required with -zk-records-root)")
 	var keys keyList
 	flag.Var(&keys, "key", "signer as <index>=<private key hex>; repeat per signer")
 	flag.Parse()
@@ -43,6 +45,18 @@ func main() {
 	must(err)
 	ph, err := hex.DecodeString(*prevHash)
 	must(err)
+
+	var anchor *types.ZkAnchor
+	if *zkRoot != "" {
+		rr, err := hex.DecodeString(*zkRoot)
+		must(err)
+		anchor = &types.ZkAnchor{
+			Scheme:           types.ZkHashScheme_ZK_HASH_SCHEME_MIMC_BN254,
+			RecordsRoot:      rr,
+			RecordsTreeDepth: uint32(*zkDepth),
+		}
+		must(types.ValidateZkAnchor(anchor)) // fail early, off-chain
+	}
 
 	signBytes, err := types.CheckpointSignBytes(&types.CheckpointSignDoc{
 		ChainId:                *chainID,
@@ -53,6 +67,7 @@ func main() {
 		RecordCount:            *records,
 		SignerSetVersion:       *version,
 		DataPointer:            *pointer,
+		ZkAnchor:               anchor, // NEW
 	})
 
 	fmt.Fprintf(os.Stderr, "chain=%s sc=%s seq=%d root=%x prev=%x rec=%d ver=%d ptr=%q\nsignbytes=%x\n",
@@ -82,4 +97,15 @@ func main() {
 		})
 		fmt.Printf("--signatures '%s' \\\n", js)
 	}
+
+	// NEW: add the snippet here, after the loop
+	if anchor != nil {
+		js, _ := json.Marshal(map[string]any{
+			"scheme":             "ZK_HASH_SCHEME_MIMC_BN254",
+			"records_root":       base64.StdEncoding.EncodeToString(anchor.RecordsRoot),
+			"records_tree_depth": anchor.RecordsTreeDepth,
+		})
+		fmt.Printf("--zk-anchor '%s' \\\n", js)
+	}
+
 }

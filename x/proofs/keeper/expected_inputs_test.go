@@ -15,7 +15,11 @@ func TestExpectedInputs(t *testing.T) {
 	root[31] = 7
 	cp := checkpointtypes.Checkpoint{
 		RecordCount: 5,
-		ZkAnchor:    &checkpointtypes.ZkAnchor{RecordsRoot: root},
+		ZkAnchor: &checkpointtypes.ZkAnchor{
+			Scheme:           checkpointtypes.ZkHashScheme_ZK_HASH_SCHEME_MIMC_BN254,
+			RecordsRoot:      root,
+			RecordsTreeDepth: 20,
+		},
 	}
 
 	t.Run("every source accepted at registration yields a value", func(t *testing.T) {
@@ -46,4 +50,53 @@ func TestExpectedInputs(t *testing.T) {
 		_, err := Keeper{}.expectedInputs(layout, cp)
 		require.ErrorIs(t, err, types.ErrInvalidRequest)
 	})
+
+	t.Run("fixed value must be below the field modulus", func(t *testing.T) {
+		over := checkpointtypes.Bn254Fr.FillBytes(make([]byte, 32)) // == r
+		layout := []types.InputBinding{{Index: 2, Source: types.InputSource_INPUT_SOURCE_FIXED_VALUE, Value: over}}
+		require.ErrorIs(t, validateLayout("plonk-bn254", layout, 2, 7), types.ErrInvalidRequest)
+
+		layout[0].Value = new(big.Int).Sub(checkpointtypes.Bn254Fr, big.NewInt(1)).FillBytes(make([]byte, 32))
+		require.NoError(t, validateLayout("plonk-bn254", layout, 2, 7))
+	})
+
+	t.Run("rejects non-canonical root and wrong scheme", func(t *testing.T) {
+		layout := []types.InputBinding{{Index: 2, Source: types.InputSource_INPUT_SOURCE_CHECKPOINT_RECORDS_ROOT}}
+
+		bad := checkpointtypes.Checkpoint{ZkAnchor: &checkpointtypes.ZkAnchor{
+			Scheme:      checkpointtypes.ZkHashScheme_ZK_HASH_SCHEME_MIMC_BN254,
+			RecordsRoot: checkpointtypes.Bn254Fr.FillBytes(make([]byte, 32)),
+		}}
+		_, err := Keeper{}.expectedInputs(layout, bad)
+		require.ErrorContains(t, err, "not a canonical field element")
+
+		bad.ZkAnchor = &checkpointtypes.ZkAnchor{RecordsRoot: root} // scheme unspecified
+		_, err = Keeper{}.expectedInputs(layout, bad)
+		require.ErrorContains(t, err, "is not MiMC-BN254")
+	})
+
+	t.Run("fixed value must be below the field modulus", func(t *testing.T) {
+		over := checkpointtypes.Bn254Fr.FillBytes(make([]byte, 32)) // == r
+		layout := []types.InputBinding{{Index: 2, Source: types.InputSource_INPUT_SOURCE_FIXED_VALUE, Value: over}}
+		require.ErrorIs(t, validateLayout("plonk-bn254", layout, 2, 7), types.ErrInvalidRequest)
+
+		layout[0].Value = new(big.Int).Sub(checkpointtypes.Bn254Fr, big.NewInt(1)).FillBytes(make([]byte, 32))
+		require.NoError(t, validateLayout("plonk-bn254", layout, 2, 7))
+	})
+
+	t.Run("rejects non-canonical root and wrong scheme", func(t *testing.T) {
+		layout := []types.InputBinding{{Index: 2, Source: types.InputSource_INPUT_SOURCE_CHECKPOINT_RECORDS_ROOT}}
+
+		bad := checkpointtypes.Checkpoint{ZkAnchor: &checkpointtypes.ZkAnchor{
+			Scheme:      checkpointtypes.ZkHashScheme_ZK_HASH_SCHEME_MIMC_BN254,
+			RecordsRoot: checkpointtypes.Bn254Fr.FillBytes(make([]byte, 32)),
+		}}
+		_, err := Keeper{}.expectedInputs(layout, bad)
+		require.ErrorContains(t, err, "not a canonical field element")
+
+		bad.ZkAnchor = &checkpointtypes.ZkAnchor{RecordsRoot: root} // scheme unspecified
+		_, err = Keeper{}.expectedInputs(layout, bad)
+		require.ErrorContains(t, err, "is not MiMC-BN254")
+	})
+
 }

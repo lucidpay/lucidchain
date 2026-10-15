@@ -406,10 +406,19 @@ func (k Keeper) expectedInputs(layout []types.InputBinding, cp checkpointtypes.C
 		var v *big.Int
 		switch b.Source {
 		case types.InputSource_INPUT_SOURCE_CHECKPOINT_RECORDS_ROOT:
-			if cp.ZkAnchor == nil || len(cp.ZkAnchor.RecordsRoot) != 32 {
+			a := cp.ZkAnchor
+			if a == nil || len(a.RecordsRoot) != 32 {
 				return nil, errorsmod.Wrap(types.ErrCheckpointNotFound, "checkpoint has no zk anchor")
 			}
-			v = new(big.Int).SetBytes(cp.ZkAnchor.RecordsRoot)
+			if a.Scheme != checkpointtypes.ZkHashScheme_ZK_HASH_SCHEME_MIMC_BN254 {
+				return nil, errorsmod.Wrapf(types.ErrInvalidRequest,
+					"checkpoint zk anchor scheme %s is not MiMC-BN254", a.Scheme)
+			}
+			v = new(big.Int).SetBytes(a.RecordsRoot)
+			if v.Cmp(checkpointtypes.Bn254Fr) >= 0 {
+				return nil, errorsmod.Wrap(types.ErrInvalidRequest,
+					"checkpoint zk anchor root is not a canonical field element")
+			}
 		case types.InputSource_INPUT_SOURCE_CHECKPOINT_RECORD_COUNT:
 			v = new(big.Int).SetUint64(cp.RecordCount)
 		case types.InputSource_INPUT_SOURCE_FIXED_VALUE:
@@ -420,6 +429,15 @@ func (k Keeper) expectedInputs(layout []types.InputBinding, cp checkpointtypes.C
 		out = append(out, types.ExpectedInput{Index: b.Index, Value: v.Bytes()})
 	}
 	return out, nil
+}
+
+// scalarField returns the proof system's scalar field modulus.
+// Add other curves here before registering verifiers for them.
+func scalarField(system string) (*big.Int, bool) {
+	if strings.HasSuffix(system, "-bn254") {
+		return checkpointtypes.Bn254Fr, true
+	}
+	return nil, false
 }
 
 // validateSubmission applies the stateless format and size limits.
@@ -566,9 +584,6 @@ func (k Keeper) RegisterVerifier(ctx context.Context, msg *types.MsgRegisterVeri
 	return &types.MsgRegisterVerifierResponse{Version: reg.Version}, nil
 }
 
-// minLayoutIndex: public inputs 0 and 1 are the binding limbs, checked by CheckBinding.
-const minLayoutIndex = 2
-
 func validateLayout(system string, layout []types.InputBinding, width, numPublic int) error {
 	if len(layout) > numPublic-width {
 		return errorsmod.Wrapf(types.ErrInvalidRequest,
@@ -604,6 +619,15 @@ func validateLayout(system string, layout []types.InputBinding, width, numPublic
 		case types.InputSource_INPUT_SOURCE_FIXED_VALUE:
 			if len(b.Value) == 0 || len(b.Value) > 32 {
 				return errorsmod.Wrap(types.ErrInvalidRequest, "fixed value must be 1 to 32 bytes")
+			}
+			r, ok := scalarField(system)
+			if !ok {
+				return errorsmod.Wrapf(types.ErrInvalidRequest,
+					"no known scalar field for proof system %q", system)
+			}
+			if new(big.Int).SetBytes(b.Value).Cmp(r) >= 0 {
+				return errorsmod.Wrapf(types.ErrInvalidRequest,
+					"input_layout index %d: fixed value is not below the field modulus", b.Index)
 			}
 		default:
 			return errorsmod.Wrapf(types.ErrInvalidRequest, "input_layout index %d has an unknown source", b.Index)

@@ -45,6 +45,12 @@ func (gs GenesisState) Validate() error {
 				"sidechain %q seq %d: checkpoint_hash must be %d bytes", cp.SidechainId, cp.LcSequence, sha256.Size)
 		}
 
+		// NEW: runs for every checkpoint, including the first of each chain.
+		if err := ValidateZkAnchor(cp.ZkAnchor); err != nil {
+			return errorsmod.Wrapf(ErrInvalidGenesis, "sidechain %q seq %d: %s",
+				cp.SidechainId, cp.LcSequence, err)
+		}
+
 		startsChain := i == 0 || cps[i-1].SidechainId != cp.SidechainId
 		if startsChain {
 			if cp.LcSequence != 1 {

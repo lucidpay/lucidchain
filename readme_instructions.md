@@ -287,21 +287,13 @@ lucidchaind tx checkpoint submit-checkpoint [sidechain-id] [lc-sequence] [state-
   
 ```bash
 
+#Syntax
 lucidchaind tx checkpoint submit-checkpoint \
-  hospitality-platform-01 \
-  1 \
-  d841f966f8bf17d49335f4b134c2178fd5aca8244d46b8d5f9a5470338095b7b \
-  "" \
-  100 \
-  "ipfs://test-checkpoint-1" \
-  1 \
-  --signatures '{"signer_index":0,"signature":"<base64>"}' \
-  --signatures '{"signer_index":1,"signature":"<base64>"}' \
-  --from <key> \
-  --chain-id <id> \
-  --gas auto --gas-adjustment 1.5 \
-  --gas-prices 0.025stake \
-  -y
+  <sidechain-id> <lc-sequence> <state-root> ... \
+  --signatures '{"signer_index":0,"signature":"..."}' \
+  --zk-anchor '{"scheme":"ZK_HASH_SCHEME_MIMC_BN254","records_root":"...","records_tree_depth":20}' \
+  --from <submitter> --chain-id <chain-id>
+
 
 ```
 
@@ -316,6 +308,8 @@ go build -o ~/tools/signcheckpoint/signcheckpoint ./tools/signcheckpoint
 
 export STATE_ROOT=d841f966f8bf17d49335f4b134c2178fd5aca8244d46b8d5f9a5470338095b7b
 export STATE_ROOT_B64=$(echo $STATE_ROOT | xxd -r -p | base64 -w0)
+export ZK_ROOT=$(printf '%064x' 7)   # test value; use your real MiMC root for real proofs
+
 K1=$(lucidchaind keys export sidechainkey1 --unarmored-hex --unsafe)
 K2=$(lucidchaind keys export sidechainkey2 --unarmored-hex --unsafe)
 
@@ -323,23 +317,28 @@ $HOME/tools/signcheckpoint/signcheckpoint \
   --chain-id my-testnet-1 \
   --sidechain-id hospitality-platform-01 \
   --lc-sequence 1 \
-  --state-root $STATE_ROOT \
+  --state-root "$STATE_ROOT" \
   --previous-hash "" \
   --record-count 100 \
   --data-pointer "ipfs://test-checkpoint-1" \
   --signer-set-version 1 \
-  --key 0=$K1 --key 1=$K2
+  --zk-records-root "$ZK_ROOT" \
+  --zk-tree-depth 20 \
+  --key 0="$K1" --key 1="$K2"
+
 
 # take the signatures and add them to submit-checkpoint
 export STATE_ROOT=d841f966f8bf17d49335f4b134c2178fd5aca8244d46b8d5f9a5470338095b7b
 export STATE_ROOT_B64=$(echo $STATE_ROOT | xxd -r -p | base64 -w0)
 
+#NOTE: --zk-anchor is optional and nullable. But here it demonstrates how to use it
 lucidchaind tx checkpoint submit-checkpoint \
   hospitality-platform-01 1 $STATE_ROOT_B64 "" 100 "ipfs://test-checkpoint-1" 1 \
-  --signatures '{"signature":"baV//6Hw/F37LTggzIV3mUyx0h1GoX20KF7H3IAf2W867R0cIaEDETtRCs2LdpSnz89ijDPVSb11L3Tm5RbHgg==","signer_index":0}' \
-  --signatures '{"signature":"QWFPMHbhGTXrwgKmMAYrnSuCbpV3MXNa8MBRqzb4mhEoGoxwqlkUS8iTikGZfURbtBZ9HaRBiYS/j/abAxe68w==","signer_index":1}' \
+  --signatures '{"signature":"xWbozMDCDKXRAYugCVQXuWXlxeNdX4Gj814Nax4meeN1KURU1gxGTOflrIyX1Y/FI5sXvncru8ZlS3mxQmBQIQ==","signer_index":0}' \
+  --signatures '{"signature":"+hXNHk0IKTP/4X/30iAv8VZjErcp4nlUJ1AZaxnI509SMeNFr7P64vRJTLMxABkkrwFXAc1c9nf8IdPOfBwAoA==","signer_index":1}' \
+  --zk-anchor '{"records_root":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAc=","records_tree_depth":20,"scheme":"ZK_HASH_SCHEME_MIMC_BN254"}' \
   --from validator --chain-id my-testnet-1 \
-  --gas auto --gas-adjustment 1.5 -y
+  --gas auto --gas-adjustment 1.5 --gas-prices 0.025stake -y
 
 ```
 

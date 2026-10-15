@@ -42,8 +42,10 @@ message MsgSubmitCheckpoint {
 
   repeated Signature signatures = 9 [(gogoproto.nullable) = false];
 
-  reserved 10 to 15; // Tier 2/3 attestations and proofs
+  // Optional. When set, it is covered by the signatures (CheckpointSignDoc.zk_anchor).
+  ZkAnchor zk_anchor = 10;
 
+  reserved 11 to 15; // Tier 2/3 attestations and proofs
 }
 
 message MsgSubmitCheckpointResponse {

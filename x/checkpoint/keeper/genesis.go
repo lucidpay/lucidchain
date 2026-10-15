@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"cosmossdk.io/collections"
+	errorsmod "cosmossdk.io/errors"
 
 	"github.com/lucidpay/lucidchain/x/checkpoint/types"
 )
@@ -19,6 +20,10 @@ func (k Keeper) InitGenesis(ctx context.Context, genState types.GenesisState) er
 	}
 
 	for _, cp := range genState.Checkpoints {
+		if err := types.ValidateZkAnchor(cp.ZkAnchor); err != nil {
+			return errorsmod.Wrapf(err, "genesis checkpoint %s/%d", cp.SidechainId, cp.LcSequence)
+		}
+
 		if err := k.Checkpoints.Set(ctx, collections.Join(cp.SidechainId, cp.LcSequence), cp); err != nil {
 			return err
 		}

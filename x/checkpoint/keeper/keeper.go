@@ -207,6 +207,7 @@ func (k Keeper) SubmitCheckpoint(ctx context.Context, msg *types.MsgSubmitCheckp
 		RecordCount:            msg.RecordCount,
 		SignerSetVersion:       msg.SignerSetVersion,
 		DataPointer:            msg.DataPointer,
+		ZkAnchor:               msg.ZkAnchor, // NEW
 	})
 	if err != nil {
 		return nil, errorsmod.Wrap(sdkerrors.ErrInvalidRequest, err.Error())
@@ -236,6 +237,7 @@ func (k Keeper) SubmitCheckpoint(ctx context.Context, msg *types.MsgSubmitCheckp
 		FinalizedHeight:        height,
 		FinalizedAt:            sdkCtx.BlockTime(),
 		DataPointer:            msg.DataPointer,
+		ZkAnchor:               msg.ZkAnchor, // NEW
 	}
 	if err := k.storeCheckpoint(ctx, cp); err != nil {
 		return nil, err
@@ -292,7 +294,7 @@ func validateSubmission(msg *types.MsgSubmitCheckpoint, p types.Params) error {
 		return errorsmod.Wrapf(types.ErrLimitExceeded,
 			"%d total signature bytes, max %d", total, p.MaxSignatureBytesPerCheckpoint)
 	}
-	return nil
+	return types.ValidateZkAnchor(msg.ZkAnchor)
 }
 
 // checkChaining enforces lc_sequence == latest+1 and the previous-hash link.
