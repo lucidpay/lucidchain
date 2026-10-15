@@ -401,7 +401,7 @@ lucidchaind query checkpoint -h
   
 `submit-attestation.sh` expects schema `kyc-v1` and an ACTIVE attestor `acme` whose signer key is the `validator` key. Creating the schema and activating the attestor are governance-only, so set them up first.
 
-# 1. create the schema (governance)
+**1. create the schema (governance)**
 
 ```bash
 cat > schema.json <<'EOF'
@@ -436,7 +436,7 @@ lucidchaind query attestor schemas
 
 ```
 
-# 2. register the attestor, with the validator key as its signer
+**2. register the attestor, with the validator key as its signer**
 
 ```bash
 lucidchaind tx attestor register-attestor \
@@ -487,7 +487,7 @@ tx: null
 txhash: 5D1C540C4E110B77D05FDE3E74EAC2FE9D2685B522C77AB7BBE6993E52928AEB  
 
 
-# now run 
+**now run**
 
 ```bash
 
@@ -721,16 +721,16 @@ lucidchaind query auth module-account gov
 
 you should see a similar output
 
-account:
-  type: /cosmos.auth.v1beta1.ModuleAccount
-  value:
-    account_number: 14541275249009342428
-    address: cosmos10d07y265gmmuvt4z0w9aw880jnsr700j6zn9kn  <<== grab this
-    name: gov
-    permissions:
-    - burner
-    public_key: ""
-    sequence: 0
+account:  
+  type: /cosmos.auth.v1beta1.ModuleAccount  
+  value:  
+    account_number: 14541275249009342428  
+    address: cosmos10d07y265gmmuvt4z0w9aw880jnsr700j6zn9kn  <<== grab this  
+    name: gov  
+    permissions:  
+    - burner  
+    public_key: ""  
+    sequence: 0  
 
 Then run the following
 
