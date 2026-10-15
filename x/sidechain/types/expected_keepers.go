@@ -22,6 +22,11 @@ type BankKeeper interface {
 	SendCoinsFromAccountToModule(ctx context.Context, senderAddr sdk.AccAddress, recipientModule string, amt sdk.Coins) error
 	SendCoinsFromModuleToAccount(ctx context.Context, senderModule string, recipientAddr sdk.AccAddress, amt sdk.Coins) error
 	BurnCoins(ctx context.Context, moduleName string, amt sdk.Coins) error
+	// Added for the genesis solvency check.
+	GetAllBalances(ctx context.Context, addr sdk.AccAddress) sdk.Coins
+	// Added so RegisterSidechain can reject operators whose address the bank
+	// module blocks (they could never receive their bond back).
+	BlockedAddr(addr sdk.AccAddress) bool
 }
 
 // ParamSubspace defines the expected Subspace interface for parameters.

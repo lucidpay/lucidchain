@@ -7,9 +7,20 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
-// MaxPeriodSeconds caps every duration in the module (10 years). It keeps
-// time arithmetic far from overflow.
-const MaxPeriodSeconds uint64 = 10 * 365 * 24 * 60 * 60
+const (
+	// MaxSignerKeysCap bounds Params.MaxSignerKeys. With 1952-byte keys this
+	// directly bounds per-sidechain state size.
+	MaxSignerKeysCap uint32 = 64
+
+	// MinExitCooldownSeconds must stay above your governance voting period plus
+	// a safety margin, so a slash proposal can still land during the cooldown.
+	// SET THIS FROM YOUR GOV PARAMS before launch.
+	MinExitCooldownSeconds uint64 = 3 * 24 * 60 * 60
+
+	// MaxPeriodSeconds caps every duration in the module (10 years). It keeps
+	// time arithmetic far from overflow.
+	MaxPeriodSeconds uint64 = 10 * 365 * 24 * 60 * 60
+)
 
 // DefaultParams returns the default module params. The bonds are placeholders:
 // set them from your economics. Registration needs governance activation.
@@ -68,15 +79,35 @@ func (p Params) Validate() error {
 			return fmt.Errorf("min_bond for %s must be positive", tb.Tier)
 		}
 	}
+
+	// every tier present exactly once, one denom across all tiers
+	for _, tier := range []AssuranceTier{
+		AssuranceTier_ASSURANCE_TIER_NOTARIZED,
+		AssuranceTier_ASSURANCE_TIER_ATTESTED,
+		AssuranceTier_ASSURANCE_TIER_PROVEN,
+	} {
+		if _, ok := seen[tier]; !ok {
+			return fmt.Errorf("min_bond_by_tier is missing tier %s", tier)
+		}
+	}
+	denom := p.MinBondByTier[0].MinBond.Denom
+	for _, tb := range p.MinBondByTier {
+		if tb.MinBond.Denom != denom {
+			return fmt.Errorf("all min bonds must use one denom, got %s and %s", denom, tb.MinBond.Denom)
+		}
+	}
+
 	if p.MissedCheckpointGraceSeconds > MaxPeriodSeconds {
 		return fmt.Errorf("missed_checkpoint_grace_seconds must be at most %d", MaxPeriodSeconds)
 	}
-	if p.ExitCooldownSeconds == 0 || p.ExitCooldownSeconds > MaxPeriodSeconds {
-		return fmt.Errorf("exit_cooldown_seconds must be in [1, %d]", MaxPeriodSeconds)
+
+	if p.ExitCooldownSeconds < MinExitCooldownSeconds || p.ExitCooldownSeconds > MaxPeriodSeconds {
+		return fmt.Errorf("exit_cooldown_seconds must be in [%d, %d]", MinExitCooldownSeconds, MaxPeriodSeconds)
 	}
-	if p.MaxSignerKeys == 0 {
-		return fmt.Errorf("max_signer_keys must be positive")
+	if p.MaxSignerKeys == 0 || p.MaxSignerKeys > MaxSignerKeysCap {
+		return fmt.Errorf("max_signer_keys must be in [1, %d]", MaxSignerKeysCap)
 	}
+
 	if len(p.AllowedPubkeyTypeUrls) == 0 {
 		return fmt.Errorf("allowed_pubkey_type_urls must not be empty")
 	}

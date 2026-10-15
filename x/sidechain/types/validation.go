@@ -1,6 +1,12 @@
 package types
 
 import (
+	"net/url"
+	"strings"
+	"unicode"
+
+	"unicode/utf8"
+
 	errorsmod "cosmossdk.io/errors"
 
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
@@ -14,13 +20,51 @@ const (
 	MaxURIBytes    = 512
 )
 
+// expectedKeyLen pins the raw public key size per allowed type. A key of the
+// wrong size would be accepted by type URL alone and then fail every checkpoint
+// verification, locking the bond. A type missing from this map is rejected, so
+// adding a new key type through governance also needs a code change here.
+var expectedKeyLen = map[string]int{
+	"/cosmos.crypto.mldsa65.PubKey":   1952,
+	"/cosmos.crypto.ed25519.PubKey":   32,
+	"/cosmos.crypto.secp256k1.PubKey": 33,
+}
+
+var allowedURISchemes = map[string]struct{}{"https": {}, "ipfs": {}}
+
 // ValidateText checks a free-text field against a byte limit.
 func ValidateText(field, v string, maxBytes int, required bool) error {
 	if required && v == "" {
 		return errorsmod.Wrapf(ErrInvalidRequest, "%s is required", field)
 	}
-	if len(v) > maxBytes {
+	if len(v) > maxBytes { // first, so the loop below is bounded
 		return errorsmod.Wrapf(ErrLimitExceeded, "%s is %d bytes, max %d", field, len(v), maxBytes)
+	}
+	if !utf8.ValidString(v) {
+		return errorsmod.Wrapf(ErrInvalidRequest, "%s must be valid UTF-8", field)
+	}
+	for _, r := range v {
+		if unicode.IsControl(r) || unicode.Is(unicode.Cf, r) {
+			return errorsmod.Wrapf(ErrInvalidRequest, "%s contains control or formatting characters", field)
+		}
+	}
+	return nil
+}
+
+// ValidateURI validates an optional URI: valid text, parseable, allowed scheme.
+func ValidateURI(field, v string, maxBytes int) error {
+	if v == "" {
+		return nil
+	}
+	if err := ValidateText(field, v, maxBytes, false); err != nil {
+		return err
+	}
+	u, err := url.Parse(v)
+	if err != nil {
+		return errorsmod.Wrapf(ErrInvalidRequest, "%s is not a valid URI: %s", field, err)
+	}
+	if _, ok := allowedURISchemes[strings.ToLower(u.Scheme)]; !ok || u.Host == "" {
+		return errorsmod.Wrapf(ErrInvalidRequest, "%s must be an https:// or ipfs:// URI", field)
 	}
 	return nil
 }
@@ -67,6 +111,17 @@ func ValidateSignerSet(keys []*codectypes.Any, threshold uint32, p Params) error
 		if !ok {
 			return errorsmod.Wrapf(ErrInvalidSigners, "signer key %d is not an unpacked public key", i)
 		}
+
+		want, known := expectedKeyLen[a.TypeUrl]
+		if !known {
+			return errorsmod.Wrapf(ErrInvalidSigners,
+				"signer key %d: no expected key size registered for type %q", i, a.TypeUrl)
+		}
+		if got := len(pk.Bytes()); got != want {
+			return errorsmod.Wrapf(ErrInvalidSigners,
+				"signer key %d has %d bytes, %s keys must be %d", i, got, a.TypeUrl, want)
+		}
+
 		id := a.TypeUrl + "\x00" + string(pk.Bytes())
 		if _, dup := seen[id]; dup {
 			return errorsmod.Wrapf(ErrInvalidSigners, "signer key %d is a duplicate", i)

@@ -428,10 +428,10 @@ cat > schema.json <<'EOF'
 EOF
 lucidchaind tx gov submit-proposal schema.json --from validator \
     --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
-lucidchaind tx gov vote <proposal-id> yes --from validator --chain-id my-testnet-1 --gas-prices 0stake --yes
+lucidchaind tx gov vote <proposal-id> yes --from validator --chain-id my-testnet-1 --gas-prices 0stake --yes  # proposal ID should be 1 if this is your first proposal
 
 # after the voting period
-lucidchaind query attestor schemas 
+lucidchaind query attestor schemas # status should be ATTESTOR_STATUS_PENDING
 
 ```
 
@@ -445,9 +445,31 @@ lucidchaind tx attestor register-attestor \
   --credential-uri https://example.org/acme.json \
   --from validator --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
 
+
+lucidchaind query attestor attestor acme   # status should be ATTESTOR_STATUS_PENDING
+
+
 # 3. activate it (governance): same proposal format as step 1, with this message
 #   {"@type": "/lucidchain.attestor.v1.MsgActivateAttestor",
 #    "authority": "cosmos10d07y265gmmuvt4z0w9aw880jnsr700j6zn9kn", "id": "acme"}
+
+
+cat > approve-attestor.json <<'EOF'
+{
+  "messages": [{"@type": "/lucidchain.attestor.v1.MsgActivateAttestor",
+    "authority": "cosmos10d07y265gmmuvt4z0w9aw880jnsr700j6zn9kn", "id": "acme"}
+    ],
+  "metadata": "ipfs://test",
+  "deposit": "10000000stake",
+  "title": "Aprove Attestor",
+  "summary": "Proposal to approve attestor"
+}
+EOF
+lucidchaind tx gov submit-proposal approve-attestor.json --from validator \
+    --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
+lucidchaind tx gov vote <proposal-id> yes --from validator --chain-id my-testnet-1 --gas-prices 0stake --yes  # proposal ID should be 2 here 
+
+
 lucidchaind query attestor attestor acme   # status should be ATTESTOR_STATUS_ACTIVE
 
 ```
@@ -587,6 +609,8 @@ lucidchaind q proofs verifier --proof-system-id plonk-bn254 --claim-id geofence.
 ```
 
 **build a proof system**
+
+IMPORTANT: Bellow script not working. Needs fixing
 
 ```bash
 

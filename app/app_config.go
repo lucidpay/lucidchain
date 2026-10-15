@@ -74,7 +74,14 @@ var (
 		{Account: govtypes.ModuleName, Permissions: []string{authtypes.Burner}},
 		{Account: ibctransfertypes.ModuleName, Permissions: []string{authtypes.Minter, authtypes.Burner}},
 		{Account: icatypes.ModuleName},
-		{Account: attestormoduletypes.ModuleName, Permissions: []string{authtypes.Minter, authtypes.Burner, authtypes.Staking}}, {Account: checkpointmoduletypes.ModuleName, Permissions: []string{authtypes.Minter, authtypes.Burner, authtypes.Staking}}, {Account: proofsmoduletypes.ModuleName, Permissions: []string{authtypes.Minter, authtypes.Burner, authtypes.Staking}}, {Account: sidechainmoduletypes.ModuleName, Permissions: []string{authtypes.Minter, authtypes.Burner, authtypes.Staking}}}
+		// TODO: (before launch): attestor currently only burns (keeper.go:289). Narrow to
+		// Burner only unless the finished module really needs Minter or Staking.
+		{Account: attestormoduletypes.ModuleName, Permissions: []string{authtypes.Minter, authtypes.Burner, authtypes.Staking}},
+		// TODO: TO be added after the module is finished
+		{Account: checkpointmoduletypes.ModuleName, Permissions: []string{authtypes.Minter, authtypes.Burner, authtypes.Staking}},
+		{Account: proofsmoduletypes.ModuleName, Permissions: []string{authtypes.Minter, authtypes.Burner, authtypes.Staking}},
+		{Account: sidechainmoduletypes.ModuleName, Permissions: []string{authtypes.Burner}},
+	}
 
 	// blocked account addresses
 	blockAccAddrs = []string{
@@ -83,6 +90,11 @@ var (
 		minttypes.ModuleName,
 		stakingtypes.BondedPoolName,
 		stakingtypes.NotBondedPoolName,
+		// NEW: added the following module accounts to the blocked list
+		sidechainmoduletypes.ModuleName,
+		attestormoduletypes.ModuleName,
+		checkpointmoduletypes.ModuleName,
+		proofsmoduletypes.ModuleName,
 		// We allow the following module accounts to receive funds:
 		// govtypes.ModuleName
 	}

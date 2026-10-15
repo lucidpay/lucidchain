@@ -37,7 +37,7 @@ func (ms msgServer) RegisterSidechain(ctx context.Context, msg *types.MsgRegiste
 	if err := types.ValidateText("name", msg.Name, types.MaxNameBytes, true); err != nil {
 		return nil, err
 	}
-	if err := types.ValidateText("metadata_uri", msg.MetadataUri, types.MaxURIBytes, false); err != nil {
+	if err := types.ValidateURI("metadata_uri", msg.MetadataUri, types.MaxURIBytes); err != nil {
 		return nil, err
 	}
 	if err := types.ValidateCheckpointInterval(msg.CheckpointIntervalSeconds); err != nil {
@@ -200,7 +200,7 @@ func (ms msgServer) UpdateSidechain(ctx context.Context, msg *types.MsgUpdateSid
 	if err := types.ValidateText("name", msg.Name, types.MaxNameBytes, true); err != nil {
 		return nil, err
 	}
-	if err := types.ValidateText("metadata_uri", msg.MetadataUri, types.MaxURIBytes, false); err != nil {
+	if err := types.ValidateURI("metadata_uri", msg.MetadataUri, types.MaxURIBytes); err != nil {
 		return nil, err
 	}
 	if err := types.ValidateCheckpointInterval(msg.CheckpointIntervalSeconds); err != nil {

@@ -18,7 +18,7 @@ HI="$(b64hex "$(jq -r .hi <<<"$B")")"
 LO="$(b64hex "$(jq -r .lo <<<"$B")")"
 echo "binding hi=$HI lo=$LO"
 
-go run ./cmd/zkgeo prove -scheme plonk $CIRCUIT \
+go run ../../cmd/zkgeo prove -scheme plonk $CIRCUIT \
   -pk "$KEYS/pk.bin" -vk "$KEYS/vk.bin" \
   -hi "$HI" -lo "$LO" -batch batch.json -out "$KEYS"
 

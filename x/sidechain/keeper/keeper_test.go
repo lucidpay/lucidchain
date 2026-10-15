@@ -64,6 +64,7 @@ var testBlockTime = time.Unix(1_700_000_000, 0).UTC()
 type mockBank struct {
 	accounts map[string]math.Int
 	modules  map[string]math.Int
+	blocked  map[string]bool
 
 	failToModule   bool
 	failFromModule bool
@@ -72,7 +73,11 @@ type mockBank struct {
 var _ types.BankKeeper = (*mockBank)(nil)
 
 func newMockBank() *mockBank {
-	return &mockBank{accounts: map[string]math.Int{}, modules: map[string]math.Int{}}
+	return &mockBank{
+		accounts: map[string]math.Int{},
+		modules:  map[string]math.Int{},
+		blocked:  map[string]bool{},
+	}
 }
 
 func (b *mockBank) balance(addr sdk.AccAddress) math.Int {
@@ -151,6 +156,27 @@ func (b *mockBank) BurnCoins(_ context.Context, module string, coins sdk.Coins) 
 	}
 	b.modules[module] = bal.Sub(amt)
 	return nil
+}
+
+// GetAllBalances reads the same ledger the send/burn methods update. Module
+// accounts are keyed by name in b.modules, so match them by derived address.
+func (b *mockBank) GetAllBalances(_ context.Context, addr sdk.AccAddress) sdk.Coins {
+	for name, amt := range b.modules {
+		if addr.Equals(authtypes.NewModuleAddress(name)) {
+			return sdk.NewCoins(sdk.NewCoin(sdk.DefaultBondDenom, amt))
+		}
+	}
+	return sdk.NewCoins(sdk.NewCoin(sdk.DefaultBondDenom, b.balance(addr)))
+}
+
+// BlockedAddr reports whether the address is blocked from receiving funds.
+func (b *mockBank) BlockedAddr(addr sdk.AccAddress) bool {
+	return b.blocked[string(addr)]
+}
+
+// block marks an address as blocked, for tests.
+func (b *mockBank) block(addr sdk.AccAddress) {
+	b.blocked[string(addr)] = true
 }
 
 // ---------------------------------------------------------------------------
@@ -278,6 +304,16 @@ func (f *fixture) setParams(t *testing.T, mutate func(p *types.Params)) {
 	require.NoError(t, err)
 	mutate(&p)
 	require.NoError(t, f.keeper.SetParams(f.ctx, p))
+}
+
+// setParamsUnchecked is setParams without validation. It exists to reach states
+// that Params.Validate now forbids, so the handlers' defensive branches stay covered.
+func (f *fixture) setParamsUnchecked(t *testing.T, mutate func(p *types.Params)) {
+	t.Helper()
+	p, err := f.keeper.GetParams(f.ctx)
+	require.NoError(t, err)
+	mutate(&p)
+	require.NoError(t, f.keeper.Params.Set(f.ctx, p)) // bypasses Validate
 }
 
 func (f *fixture) advance(d time.Duration) {
@@ -485,7 +521,9 @@ func TestRegisterSidechain_PerTierBond(t *testing.T) {
 
 func TestRegisterSidechain_TierWithoutMinBond(t *testing.T) {
 	f := newFixture(t)
-	f.setParams(t, func(p *types.Params) { p.MinBondByTier = p.MinBondByTier[:1] }) // only tier 1
+	f.setParamsUnchecked(t, func(p *types.Params) {
+		p.MinBondByTier = p.MinBondByTier[:1] // only tier 1
+	})
 
 	m := f.registerMsg(t)
 	m.Tier = types.AssuranceTier_ASSURANCE_TIER_PROVEN
@@ -822,10 +860,14 @@ func TestInitiateSidechainExit(t *testing.T) {
 
 	t.Run("follows exit_cooldown_seconds", func(t *testing.T) {
 		f := newActiveFixture(t)
-		f.setParams(t, func(p *types.Params) { p.ExitCooldownSeconds = 3600 })
+		// any value at or above the floor; the point is that exit uses the param
+		cooldown := types.MinExitCooldownSeconds + 3600
+		f.setParams(t, func(p *types.Params) { p.ExitCooldownSeconds = cooldown })
+
 		_, err := f.msgServer.InitiateSidechainExit(f.ctx, f.exitMsg())
 		require.NoError(t, err)
-		require.True(t, f.get(t, testID).BondReturnAt.Equal(testBlockTime.Add(time.Hour)))
+		require.True(t, f.get(t, testID).BondReturnAt.Equal(
+			testBlockTime.Add(time.Duration(cooldown)*time.Second)))
 	})
 
 	t.Run("allowed from PENDING, SUSPENDED and SLASHED", func(t *testing.T) {
@@ -911,19 +953,42 @@ func TestProcessExits_BankFailureIsSkippedAndRetried(t *testing.T) {
 	f.advance(15 * day)
 	operatorBefore := f.bal(f.operator)
 
-	// A failing payout must not return an error (that would halt the chain)
-	// and must leave the sidechain and its queue entry untouched.
+	// A failing payout must not return an error (that would halt the chain).
+	// The sidechain stays EXITED with its bond, and the queue entry is moved
+	// back by ExitRetryDelay instead of being retried every block.
 	f.bank.failFromModule = true
+	failedAt := f.ctx.BlockTime()
 	require.NoError(t, f.keeper.ProcessExits(f.ctx))
 	require.Equal(t, operatorBefore, f.bal(f.operator))
-	require.Equal(t, tier1Bond, f.get(t, testID).Bond.Amount.Int64())
+	sc := f.get(t, testID)
+	require.Equal(t, types.SidechainStatus_SIDECHAIN_STATUS_EXITED, sc.Status)
+	require.Equal(t, tier1Bond, sc.Bond.Amount.Int64())
 	require.Equal(t, 1, f.exitQueueLen(t))
 
-	// Once the bank recovers, the next pass pays out.
+	// The entry now sits at failedAt + ExitRetryDelay.
+	var keys []collections.Pair[uint64, string]
+	require.NoError(t, f.keeper.ExitQueue.Walk(f.ctx, nil,
+		func(k collections.Pair[uint64, string]) (bool, error) {
+			keys = append(keys, k)
+			return false, nil
+		}))
+	require.Len(t, keys, 1)
+	require.Equal(t, uint64(failedAt.Add(keeper.ExitRetryDelay).Unix()), keys[0].K1())
+	require.Equal(t, testID, keys[0].K2())
+
+	// The bank recovers, but the very next pass must not retry yet.
 	f.bank.failFromModule = false
+	f.advance(time.Minute)
+	require.NoError(t, f.keeper.ProcessExits(f.ctx))
+	require.Equal(t, operatorBefore, f.bal(f.operator))
+	require.Equal(t, 1, f.exitQueueLen(t))
+
+	// Once the retry delay has passed, it pays out.
+	f.advance(keeper.ExitRetryDelay)
 	require.NoError(t, f.keeper.ProcessExits(f.ctx))
 	require.Equal(t, operatorBefore+tier1Bond, f.bal(f.operator))
 	require.Zero(t, f.exitQueueLen(t))
+	require.True(t, f.get(t, testID).Bond.Amount.IsZero())
 }
 
 func TestProcessExits_HandlesSeveralAndDanglingEntries(t *testing.T) {
