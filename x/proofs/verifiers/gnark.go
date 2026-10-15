@@ -17,6 +17,8 @@ import (
 	frbls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	frbn254 "github.com/consensys/gnark-crypto/ecc/bn254/fr"
 	"github.com/consensys/gnark/backend/groth16"
+	groth16bls12381 "github.com/consensys/gnark/backend/groth16/bls12-381"
+	groth16bn254 "github.com/consensys/gnark/backend/groth16/bn254"
 	"github.com/consensys/gnark/backend/plonk"
 	"github.com/consensys/gnark/backend/witness"
 
@@ -241,8 +243,8 @@ func readExact(r io.ReaderFrom, bz []byte) error {
 }
 
 // PublicInputCount implements types.ProofVerifier: the number of public inputs
-// the key expects, as counted in a public witness (the Groth16 constant-one
-// wire is already subtracted, so a registration of 7 means 7 for both schemes).
+// the key expects, as counted in a public witness (Groth16 commitment wires are
+// not counted, so a registration of 7 means 7 for both schemes).
 func (v gnarkVerifier) PublicInputCount(vkBytes []byte) (int, error) {
 	switch v.scheme {
 	case schemeGroth16:
@@ -262,15 +264,30 @@ func (v gnarkVerifier) PublicInputCount(vkBytes []byte) (int, error) {
 }
 
 // publicInputCount returns how many public inputs a key expects, as counted
-// in a public witness. gnark's Groth16 key also counts the implicit constant-one
-// wire, PLONK's does not. TestPublicInputCountConvention pins this for the
-// gnark version in use: re-run it on every gnark upgrade.
+// in a public witness. gnark's Groth16 NbPublicWitness already leaves out the
+// constant-one wire, but also counts one wire per commitment (a circuit that
+// calls api.Commit, for example through std/rangecheck). gnark's own verifier
+// subtracts those the same way. PLONK's count is the public inputs alone.
+// TestPublicInputCountConvention pins this for the gnark version in use:
+// re-run it on every gnark upgrade.
 func publicInputCount(vk interface{ NbPublicWitness() int }, s scheme) int {
 	n := vk.NbPublicWitness()
 	if s == schemeGroth16 {
-		n--
+		n -= groth16Commitments(vk)
 	}
 	return n
+}
+
+// groth16Commitments returns the number of commitments a Groth16 key carries,
+// for the curves registered in Default.
+func groth16Commitments(vk any) int {
+	switch k := vk.(type) {
+	case *groth16bn254.VerifyingKey:
+		return len(k.PublicAndCommitmentCommitted)
+	case *groth16bls12381.VerifyingKey:
+		return len(k.PublicAndCommitmentCommitted)
+	}
+	return 0
 }
 
 // CheckInputs implements types.ProofVerifier.

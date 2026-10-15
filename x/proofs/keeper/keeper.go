@@ -412,6 +412,8 @@ func (k Keeper) expectedInputs(layout []types.InputBinding, cp checkpointtypes.C
 			v = new(big.Int).SetBytes(cp.ZkAnchor.RecordsRoot)
 		case types.InputSource_INPUT_SOURCE_CHECKPOINT_RECORD_COUNT:
 			v = new(big.Int).SetUint64(cp.RecordCount)
+		case types.InputSource_INPUT_SOURCE_FIXED_VALUE:
+			v = new(big.Int).SetBytes(b.Value)
 		default:
 			return nil, errorsmod.Wrap(types.ErrInvalidRequest, "unknown input source")
 		}
