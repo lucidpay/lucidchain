@@ -717,36 +717,21 @@ Run the following to get the gov module address
 
 lucidchaind query auth module-account gov
 
-#you should see a similar output
-
-#account:
-#  type: /cosmos.auth.v1beta1.ModuleAccount
-#  value:
-#    account_number: 14541275249009342428
-#    address: cosmos10d07y265gmmuvt4z0w9aw880jnsr700j6zn9kn  <<== grab this
-#    name: gov
-#    permissions:
-#    - burner
-#    public_key: ""
-#    sequence: 0
-
-#{
-#  "messages": [
-#    {
-#      "@type": "/lucidchain.sidechain.v1.MsgSlashSidechain",
-#      "authority": "cosmos10d07y265gmmuvt4z0w9aw880jnsr700j6zn9kn",
-#      "id": "hospitality-platform-01",
-#      "slash_fraction": "0.100000000000000000",
-#      "reason": "conflicting checkpoints signed at sequence 42"
-#    }
-#  ],
-#  "metadata": "",
-#  "deposit": "10000000stake",
-#  "title": "Slash hospitality-platform-01",
-#  "summary": "Burn 10% of the bond for signing conflicting checkpoints."
-#}
-
 ```
+
+you should see a similar output
+
+account:
+  type: /cosmos.auth.v1beta1.ModuleAccount
+  value:
+    account_number: 14541275249009342428
+    address: cosmos10d07y265gmmuvt4z0w9aw880jnsr700j6zn9kn  <<== grab this
+    name: gov
+    permissions:
+    - burner
+    public_key: ""
+    sequence: 0
+
 Then run the following
 
 ```bash
