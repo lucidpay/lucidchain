@@ -6,7 +6,7 @@ SC="${SC:-hospitality-platform-01}"
 SEQ="${SEQ:-1}"
 CLAIM="${CLAIM:-geofence.v1}"
 SYSTEM="${SYSTEM:-groth16-bn254}"
-KEYS="${KEYS:-../gen-vk}"
+KEYS="${KEYS:-../../gen-vk}"
 FROM="${FROM:-validator}"
 CHAIN_ID="${CHAIN_ID:-my-testnet-1}"
 

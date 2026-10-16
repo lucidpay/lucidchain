@@ -1,5 +1,26 @@
 # Jump start your node
 
+Start by building your work area in your home directory after getting the source code
+
+```bash
+
+mkdir tmp_workarea
+cd tmp_workarea
+mkdir keys-geo-groth16-bn254
+mkdir keys-geo-plonk-bn254
+mkdir json
+mkdir out
+
+#build the bins for both Groth16 and PLONK
+cd ~/go/src/github.com/lucidpay/lucidchain
+go run ./cmd/zkgeo setup -scheme plonk -capacity 8 -records-depth 5 -area-depth 4 -out ~/tmp_workarea/keys-geo-plonk-bn254
+go run ./cmd/zkgeo setup -scheme groth16 -capacity 8 -records-depth 5 -area-depth 4 -out ~/tmp_workarea/keys-geo-groth16-bn254
+cd 
+
+```
+
+Initialize the blockchain
+
 ```bash
 
 lucidchaind init dev-test-node --chain-id my-testnet-1
@@ -45,41 +66,34 @@ jq '.app_state.sidechain.params.allowed_pubkey_type_urls += ["/cosmos.crypto.sec
 
 ```
 
-now run
+now add the verifiers
 
 ```bash
 
 cd ~/go/src/github.com/lucidpay/lucidchain
 chmod +x ./tools/gen-vk/add-verifier.sh
 #./tools/gen-vk/add-verifier.sh                       # defaults: ~/.lucidchain/config/genesis.json, ./vk.bin
-./tools/gen-vk/add-verifier.sh ~/.lucidchain/config/genesis.json keys-geo/vk.bin plonk-bn254 500000
-
-```
-
-```bash
-go run ./cmd/zkgeo setup -scheme groth16 \
-  -capacity 8 -records-depth 5 -area-depth 4 \
-  -out keys-geo-groth16
-
-ls -l keys-geo-groth16     # expect pk.bin and vk.bin
-
-```
-
-```bash
-
-./tools/gen-vk/add-verifier.sh ~/.lucidchain/config/genesis.json keys-geo-groth16/vk.bin groth16-bn254 500000
+./tools/gen-vk/add-verifier.sh ~/.lucidchain/config/genesis.json ~/tmp_workarea/keys-geo-plonk-bn254/vk.bin plonk-bn254 500000
+./tools/gen-vk/add-verifier.sh ~/.lucidchain/config/genesis.json ~/tmp_workarea/keys-geo-groth16-bn254/vk.bin groth16-bn254 500000
 
 ```
 
 Note: with the default genesis the governance voting period is 48 hours, so each proposal below takes two days to pass. For a dev chain, shorten it before the first start:
 
 ```bash
+#go back to home directory
+cd
 
 G=~/.lucidchain/config/genesis.json
 `jq '.app_state.gov.params.voting_period = "60s" | .app_state.gov.params.expedited_voting_period = "30s"' "$G" > /tmp/g.json && mv /tmp/g.json "$G"`
 
 #validate, reset and start the test chain
 lucidchaind genesis validate
+
+```
+Reset and start the node if validation is good
+
+```bash
 lucidchaind comet unsafe-reset-all
 lucidchaind start
 
@@ -284,7 +298,13 @@ sidechains:
 Syntax:  
 
 lucidchaind tx checkpoint submit-checkpoint [sidechain-id] [lc-sequence] [state-root] [previous-checkpoint-hash] [record-count] [data-pointer] [signer-set-version] [flags]
-  
+
+
+# IMPORTAMT
+These steps create a checkpoint with jusrt a place holder for ZK_Anchor and that cannot be proved using ZKP. Second example does
+
+**Example 1**
+
 ```bash
 
 #Syntax
@@ -305,6 +325,8 @@ Steps needed
 ```bash
 
 go build -o ~/tools/signcheckpoint/signcheckpoint ./tools/signcheckpoint
+
+chmod +x ./tools/zkgeo/submit-checkpoint-from-batch.sh
 
 export STATE_ROOT=d841f966f8bf17d49335f4b134c2178fd5aca8244d46b8d5f9a5470338095b7b
 export STATE_ROOT_B64=$(echo $STATE_ROOT | xxd -r -p | base64 -w0)
@@ -394,7 +416,98 @@ lucidchaind q checkpoint checkpoints hospitality-platform-01 --page-limit 10 --p
 
 lucidchaind query checkpoint -h
 
-  ```
+```
+
+**Example 2**
+This checkpoint is provable and has proper geo coordinates
+
+```bash
+#first create random seeds
+echo "0x00$(openssl rand -hex 31)"
+echo "0x00$(openssl rand -hex 31)"
+```
+
+#Use the random seeds to create records.json file
+
+
+[
+  {"lon": 55.2700, "lat": 25.2000, "t": 1791817725, "salt": "0x00<62 hex digits>"}, <<== put random seeds here
+  {"lon": 55.2705, "lat": 25.2002, "t": 1791817735, "salt": "0x00<62 hex digits>"}  <<== put random seeds here
+]
+
+```bash
+
+cat > ~/tmp_workarea/json/records.json <<'EOF'
+[
+  {"lon": 55.2700, "lat": 25.2000, "t": 1791817725, "salt": "0x00d8824fe3771f23ad8dfb3c499da8e1a156521fdded097914abe8373e2f38c0"},
+  {"lon": 55.2705, "lat": 25.2002, "t": 1791817735, "salt": "0x00bf8782b878d4ead438686a98258aa6b158fba629d71190c25c0686e0dacfd2"}
+]
+EOF
+
+```
+now build the batch
+syntax: python3 build-batch.py --records records.json \
+  --area-box <lon_min> <lat_min> <lon_max> <lat_max> \
+  --out-dir ~/tmp_workarea/json
+
+```bash
+
+python3 tools/zkgeo/build-batch.py --records ~/tmp_workarea/json/records.json --area-box 55.269 25.199 55.272 25.201 --out-dir ~/tmp_workarea/json
+
+```
+
+Look at the anchor the batch produces
+
+```bash
+
+go run ./cmd/batchroot -batch ~/tmp_workarea/json/batch.json -records-depth 5
+
+```
+
+It should read something similar
+
+record_count:       2
+records_tree_depth: 5
+records_root (hex): 1fa36e40d77dacac45dd651536e47cdc74c84aba7ef19fa88e6665c41958faf5
+records_root (b64): H6NuQNd9rKxF3WUVNuR83HTISrp+8Z+ojmZlxBlY+vU=
+
+```bash
+export STATE_ROOT=d841f966f8bf17d49335f4b134c2178fd5aca8244d46b8d5f9a5470338095b7c
+export K1=$(lucidchaind keys export sidechainkey1 --unarmored-hex --unsafe)
+export K2=$(lucidchaind keys export sidechainkey2 --unarmored-hex --unsafe)
+
+DRY_RUN=1 BATCH=~/tmp_workarea/json/batch.json tools/zkgeo/submit-checkpoint-from-batch.sh
+BATCH=~/tmp_workarea/json/batch.json tools/zkgeo/submit-checkpoint-from-batch.sh
+
+```
+#Use the sequence the script printed:
+
+```bash
+SEQ=<new sequence> SCHEME=groth16 BATCH=~/tmp_workarea/json/batch.json tools/zkgeo/prove-and-submit-geo.sh
+unset K1 K2
+
+```
+
+The PLONK version
+
+```bash
+SEQ=<new sequence> SCHEME=plonk BATCH=~/tmp_workarea/json/batch.json tools/zkgeo/prove-and-submit-geo.sh
+
+```
+```bash
+SEQ=2 SCHEME=plonk BATCH=~/tmp_workarea/json/batch.json tools/zkgeo/prove-and-submit-geo.sh
+
+```
+
+To check use
+
+```bash
+
+lucidchaind q proofs proofs-for-checkpoint --sidechain-id hospitality-platform-01 --checkpoint-sequence 2 -o json \
+  | jq '.proofs[] | {proof_system_id, claim_id, verified_height}'
+  
+```
+
 
 **How to work with attestor**
   
@@ -403,7 +516,7 @@ lucidchaind query checkpoint -h
 **1. create the schema (governance)**
 
 ```bash
-cat > schema.json <<'EOF'
+cat > ~/tmp_workarea/json/schema.json <<'EOF'
 {
   "messages": [{
     "@type": "/lucidchain.attestor.v1.MsgCreateAttestationSchema",
@@ -426,12 +539,10 @@ cat > schema.json <<'EOF'
   "summary": "Create kyc-v1 schema"
 }
 EOF
-lucidchaind tx gov submit-proposal schema.json --from validator \
+lucidchaind tx gov submit-proposal ~/tmp_workarea/json/schema.json --from validator \
     --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
 lucidchaind tx gov vote <proposal-id> yes --from validator --chain-id my-testnet-1 --gas-prices 0stake --yes  # proposal ID should be 1 if this is your first proposal
 
-# after the voting period
-lucidchaind query attestor schemas # status should be ATTESTOR_STATUS_PENDING
 
 ```
 
@@ -448,13 +559,15 @@ lucidchaind tx attestor register-attestor \
 
 lucidchaind query attestor attestor acme   # status should be ATTESTOR_STATUS_PENDING
 
+```
 
-# 3. activate it (governance): same proposal format as step 1, with this message
-#   {"@type": "/lucidchain.attestor.v1.MsgActivateAttestor",
-#    "authority": "cosmos10d07y265gmmuvt4z0w9aw880jnsr700j6zn9kn", "id": "acme"}
+3. activate it (governance): same proposal format as step 1, with this message
+   {"@type": "/lucidchain.attestor.v1.MsgActivateAttestor",
+    "authority": "cosmos10d07y265gmmuvt4z0w9aw880jnsr700j6zn9kn", "id": "acme"}
 
+```bash
 
-cat > approve-attestor.json <<'EOF'
+cat > ~/tmp_workarea/json/approve-attestor.json <<'EOF'
 {
   "messages": [{"@type": "/lucidchain.attestor.v1.MsgActivateAttestor",
     "authority": "cosmos10d07y265gmmuvt4z0w9aw880jnsr700j6zn9kn", "id": "acme"}
@@ -465,11 +578,14 @@ cat > approve-attestor.json <<'EOF'
   "summary": "Proposal to approve attestor"
 }
 EOF
-lucidchaind tx gov submit-proposal approve-attestor.json --from validator \
+lucidchaind tx gov submit-proposal ~/tmp_workarea/json/approve-attestor.json --from validator \
     --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
 lucidchaind tx gov vote <proposal-id> yes --from validator --chain-id my-testnet-1 --gas-prices 0stake --yes  # proposal ID should be 2 here 
 
+```
 
+```bash
+#give it a minute then check
 lucidchaind query attestor attestor acme   # status should be ATTESTOR_STATUS_ACTIVE
 
 ```
@@ -480,11 +596,11 @@ First step is to create a claim
 
 ```bash
 
-printf '%s' '{"revenue":"1250000","period":"2026-09"}' > claim.json
+printf '%s' '{"revenue":"1250000","period":"2026-09"}' > ~/tmp_workarea/json/claim.json
 
 #run the shell script. shell script can be found under tools/signbytes
-
-./submit-attestation.sh
+chmod +x tools/signbytes/submit-attestation.sh
+CLAIM_FILE=~/tmp_workarea/json/claim.json tools/signbytes/submit-attestation.sh
 
 ```
 you should get something like this  
@@ -610,15 +726,29 @@ lucidchaind q proofs verifier --proof-system-id plonk-bn254 --claim-id geofence.
 
 **build a proof system**
 
-IMPORTANT: Bellow script not working. Needs fixing
+Build the record file
 
 ```bash
+cat > ~/tmp_workarea/json/records.json <<'EOF'
+[
+  {"lon": 55.2700, "lat": 25.2000, "t": 1791817725, "salt": "0x00d8824fe3771f23ad8dfb3c499da8e1a156521fdded097914abe8373e2f38c0"},
+  {"lon": 55.2705, "lat": 25.2002, "t": 1791817735, "salt": "0x00bf8782b878d4ead438686a98258aa6b158fba629d71190c25c0686e0dacfd2"}
+]
+EOF
 
+python3 tools/zkgeo/build-batch.py --records ~/tmp_workarea/json/records.json --area-box 55.269 25.199 55.272 25.201 --out-dir ~/tmp_workarea/json
+
+chmod +x tools/zkgeo/prove-and-submit-geo.sh
+
+
+BATCH_DIR=~/tmp_workarea/json
+OUT_DIR=~/tmp_workarea/out
+SCHEME=groth16 BATCH="$BATCH_DIR/batch.json" OUT="$OUT_DIR/out-groth16" tools/zkgeo/prove-and-submit-geo.sh
  
-cd tools/prove
-chmod +x prove-and-submit.sh
-
-./prove-and-submit.sh 
+# for groth16 
+SYSTEM=groth16 KEYS=~/tmp_workarea/keys-geo-groth16-bn254 tools/xkgeo/prove-and-submit-geo.sh
+# for PLONK do not pass SYSTEM since it is the default
+KEYS=$PWD/keys-geo-groth16 ./prove-and-submit.sh 
 
 ```
 
