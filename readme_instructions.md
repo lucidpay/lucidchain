@@ -439,8 +439,8 @@ echo "0x00$(openssl rand -hex 31)"
 
 cat > ~/tmp_workarea/json/records.json <<'EOF'
 [
-  {"lon": 55.2700, "lat": 25.2000, "t": 1791817725, "salt": "0x00d8824fe3771f23ad8dfb3c499da8e1a156521fdded097914abe8373e2f38c0"},
-  {"lon": 55.2705, "lat": 25.2002, "t": 1791817735, "salt": "0x00bf8782b878d4ead438686a98258aa6b158fba629d71190c25c0686e0dacfd2"}
+  {"lon": 55.2700, "lat": 25.2000, "t": 1791817725, "salt": "0x0019fd144cb981e43210a8c2c02355a64caee8684ee332084f5432ff1bd04562"},
+  {"lon": 55.2705, "lat": 25.2002, "t": 1791817735, "salt": "0x0047d398cc5307869519699658c43b9db50a0279aafb34551ce72d5a280a3452"}
 ]
 EOF
 
@@ -451,6 +451,8 @@ syntax: python3 build-batch.py --records records.json \
   --out-dir ~/tmp_workarea/json
 
 ```bash
+
+cd go/src/github.com/lucidpay/lucidchain
 
 python3 tools/zkgeo/build-batch.py --records ~/tmp_workarea/json/records.json --area-box 55.269 25.199 55.272 25.201 --out-dir ~/tmp_workarea/json
 
@@ -468,11 +470,11 @@ It should read something similar
 
 record_count:       2
 records_tree_depth: 5
-records_root (hex): 1fa36e40d77dacac45dd651536e47cdc74c84aba7ef19fa88e6665c41958faf5
-records_root (b64): H6NuQNd9rKxF3WUVNuR83HTISrp+8Z+ojmZlxBlY+vU=
+records_root (hex): 285913ce081ba290df18878a6be6f6b277339ae13276971fbf47557ac16d17bb
+records_root (b64): KFkTzggbopDfGIeKa+b2snczmuEydpcfv0dVesFtF7s=
 
 ```bash
-export STATE_ROOT=1fa36e40d77dacac45dd651536e47cdc74c84aba7ef19fa88e6665c41958faf5
+export STATE_ROOT=285913ce081ba290df18878a6be6f6b277339ae13276971fbf47557ac16d17bb
 export K1=$(lucidchaind keys export sidechainkey1 --unarmored-hex --unsafe)
 export K2=$(lucidchaind keys export sidechainkey2 --unarmored-hex --unsafe)
 
@@ -480,7 +482,10 @@ DRY_RUN=1 BATCH=~/tmp_workarea/json/batch.json tools/zkgeo/submit-checkpoint-fro
 BATCH=~/tmp_workarea/json/batch.json tools/zkgeo/submit-checkpoint-from-batch.sh
 
 ```
-#Use the sequence the script printed:
+Use the sequence the script printed: e.g. 
+
+next: SEQ=2 SCHEME=groth16 BATCH=/home/dev/tmp_workarea/json/batch.json tools/zkgeo/prove-and-submit-geo.sh
+
 
 ```bash
 SEQ=<new sequence> SCHEME=groth16 BATCH=~/tmp_workarea/json/batch.json tools/zkgeo/prove-and-submit-geo.sh
@@ -489,13 +494,9 @@ unset K1 K2
 ```
 
 The PLONK version
-
+Same sequence
 ```bash
 SEQ=<new sequence> SCHEME=plonk BATCH=~/tmp_workarea/json/batch.json tools/zkgeo/prove-and-submit-geo.sh
-
-```
-```bash
-SEQ=2 SCHEME=plonk BATCH=~/tmp_workarea/json/batch.json tools/zkgeo/prove-and-submit-geo.sh
 
 ```
 
