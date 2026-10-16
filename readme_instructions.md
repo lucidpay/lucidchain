@@ -472,7 +472,7 @@ records_root (hex): 1fa36e40d77dacac45dd651536e47cdc74c84aba7ef19fa88e6665c41958
 records_root (b64): H6NuQNd9rKxF3WUVNuR83HTISrp+8Z+ojmZlxBlY+vU=
 
 ```bash
-export STATE_ROOT=d841f966f8bf17d49335f4b134c2178fd5aca8244d46b8d5f9a5470338095b7c
+export STATE_ROOT=1fa36e40d77dacac45dd651536e47cdc74c84aba7ef19fa88e6665c41958faf5
 export K1=$(lucidchaind keys export sidechainkey1 --unarmored-hex --unsafe)
 export K2=$(lucidchaind keys export sidechainkey2 --unarmored-hex --unsafe)
 
@@ -505,7 +505,7 @@ To check use
 
 lucidchaind q proofs proofs-for-checkpoint --sidechain-id hospitality-platform-01 --checkpoint-sequence 2 -o json \
   | jq '.proofs[] | {proof_system_id, claim_id, verified_height}'
-  
+
 ```
 
 
