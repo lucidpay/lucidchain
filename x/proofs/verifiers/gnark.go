@@ -296,10 +296,15 @@ func (v gnarkVerifier) CheckInputs(publicInputs []byte, expected []types.Expecte
 	if err != nil {
 		return err
 	}
+
 	for _, e := range expected {
 		got, err := elementAt(w, e.Index)
 		if err != nil {
 			return err
+		}
+		want := new(big.Int).SetBytes(e.Value)
+		if got.Cmp(want) != 0 {
+			return fmt.Errorf("public input %d does not match chain state: got %x, want %x", e.Index, got, want)
 		}
 		if got.Cmp(new(big.Int).SetBytes(e.Value)) != 0 {
 			return fmt.Errorf("public input %d does not match chain state", e.Index)

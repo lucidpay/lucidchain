@@ -75,6 +75,7 @@ chmod +x ./tools/gen-vk/add-verifier.sh
 #./tools/gen-vk/add-verifier.sh                       # defaults: ~/.lucidchain/config/genesis.json, ./vk.bin
 ./tools/gen-vk/add-verifier.sh ~/.lucidchain/config/genesis.json ~/tmp_workarea/keys-geo-plonk-bn254/vk.bin plonk-bn254 500000
 ./tools/gen-vk/add-verifier.sh ~/.lucidchain/config/genesis.json ~/tmp_workarea/keys-geo-groth16-bn254/vk.bin groth16-bn254 500000
+cd
 
 ```
 
@@ -82,15 +83,37 @@ Note: with the default genesis the governance voting period is 48 hours, so each
 
 ```bash
 #go back to home directory
-cd
 
 G=~/.lucidchain/config/genesis.json
 `jq '.app_state.gov.params.voting_period = "60s" | .app_state.gov.params.expedited_voting_period = "30s"' "$G" > /tmp/g.json && mv /tmp/g.json "$G"`
 
+```
+
+Add attestors schema
+
+```bash
+G=~/.lucidchain/config/genesis.json
+
+`jq '.app_state.attestor.schemas = [
+  {
+    "id": "kyc-v1",
+    "title": "KYC check",
+    "domain": "identity",
+    "claim_description": "Subject passed KYC",
+    "exclusions": "Does not cover sanctions screening",
+    "required_data_sources": [],
+    "validity_period_seconds": "31536000",
+    "dispute_window_seconds": "86400",
+    "active": true
+  }
+]' "$G" > /tmp/g.json && mv /tmp/g.json "$G"`
+
+unset G
 #validate, reset and start the test chain
 lucidchaind genesis validate
 
 ```
+
 Reset and start the node if validation is good
 
 ```bash
@@ -323,6 +346,8 @@ Steps needed
  to build the binary, run this from the repository folder:
   
 ```bash
+
+cd go/src/github.com/lucidpay/lucidchain
 
 go build -o ~/tools/signcheckpoint/signcheckpoint ./tools/signcheckpoint
 
@@ -586,8 +611,12 @@ lucidchaind tx gov vote <proposal-id> yes --from validator --chain-id my-testnet
 ```
 
 ```bash
-#give it a minute then check
+#give it a couple minutes then check
+
 lucidchaind query attestor attestor acme   # status should be ATTESTOR_STATUS_ACTIVE
+
+#if it doesn't activate make sure your proposal-id is correct. You can list the proposals using
+lucidchaind query gov proposals
 
 ```
 
@@ -730,12 +759,8 @@ lucidchaind q proofs verifier --proof-system-id plonk-bn254 --claim-id geofence.
 Build the record file
 
 ```bash
-cat > ~/tmp_workarea/json/records.json <<'EOF'
-[
-  {"lon": 55.2700, "lat": 25.2000, "t": 1791817725, "salt": "0x00d8824fe3771f23ad8dfb3c499da8e1a156521fdded097914abe8373e2f38c0"},
-  {"lon": 55.2705, "lat": 25.2002, "t": 1791817735, "salt": "0x00bf8782b878d4ead438686a98258aa6b158fba629d71190c25c0686e0dacfd2"}
-]
-EOF
+#records.json file is already created suring the submission of the check point
+
 
 python3 tools/zkgeo/build-batch.py --records ~/tmp_workarea/json/records.json --area-box 55.269 25.199 55.272 25.201 --out-dir ~/tmp_workarea/json
 
