@@ -4,7 +4,11 @@
 # WARNING: this exports the signer's PRIVATE KEY in plaintext
 # (keys export --unarmored-hex --unsafe). Local testnets only.
 #
-# Needs: lucidchaind, openssl, python3 (standard library only).
+# Needs: lucidchaind, openssl, python3 (standard library only), realpath.
+#
+# Files (defaults live in ~/tmp_workarea/json, like the other zkgeo scripts):
+#   CLAIM_FILE=$JSON_DIR/claim.json   claim that is signed and submitted
+#   SIGS_FILE=$JSON_DIR/sigs.json     signatures output
 set -euo pipefail
 
 BIN="${BIN:-lucidchaind}"
@@ -14,20 +18,27 @@ SCHEMA_ID="${SCHEMA_ID:-kyc-v1}"
 ATTESTOR_ID="${ATTESTOR_ID:-acme}"
 SIDECHAIN_ID="${SIDECHAIN_ID:-hospitality-platform-01}"
 SIGNER_INDEX="${SIGNER_INDEX:-0}"          # position in the attestor's signer_keys
-CLAIM_FILE="${CLAIM_FILE:-claim.json}"
 GAS_PRICES="${GAS_PRICES:-0stake}"
-NO_SUBMIT="${NO_SUBMIT:-0}"                # 1 = only produce sigs.json
+NO_SUBMIT="${NO_SUBMIT:-0}"                # 1 = only produce the signatures file
 # Optional overrides; fetched from the latest checkpoint when unset.
 SEQ="${SEQ:-}"
 CHECKPOINT_HASH_HEX="${CHECKPOINT_HASH_HEX:-}"
 
-for c in "$BIN" openssl python3; do
+# Resolve paths against the caller's directory (absolute paths, no surprises).
+JSON_DIR="$(realpath -m "${JSON_DIR:-$HOME/tmp_workarea/json}")"
+CLAIM_FILE="$(realpath -m "${CLAIM_FILE:-$JSON_DIR/claim.json}")"
+SIGS_FILE="$(realpath -m "${SIGS_FILE:-$JSON_DIR/sigs.json}")"
+mkdir -p "$JSON_DIR" "$(dirname "$CLAIM_FILE")" "$(dirname "$SIGS_FILE")"
+
+for c in "$BIN" openssl python3 realpath; do
   command -v "$c" >/dev/null || { echo "missing: $c"; exit 1; }
 done
 
 umask 077
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"; unset K1' EXIT
+
+echo "claim=$CLAIM_FILE sigs=$SIGS_FILE"
 
 # --- claim file: exact bytes are signed and submitted ------------------------
 if [ ! -f "$CLAIM_FILE" ]; then
@@ -90,14 +101,16 @@ if s > n // 2:
     s = n - s
 print((r.to_bytes(32, "big") + s.to_bytes(32, "big")).hex())')"
 
-printf '[{"signer_index": %s, "signature": "%s"}]\n' "$SIGNER_INDEX" "$SIG_HEX" > sigs.json
-echo "Wrote sigs.json"
+printf '[{"signer_index": %s, "signature": "%s"}]\n' "$SIGNER_INDEX" "$SIG_HEX" > "$SIGS_FILE"
+echo "Wrote $SIGS_FILE"
 
-[ "$NO_SUBMIT" = "1" ] && exit 0
+if [ "$NO_SUBMIT" = "1" ]; then
+  exit 0
+fi
 
 # --- submit -----------------------------------------------------------------------
 "$BIN" tx attestor submit-attestation "$SCHEMA_ID" "$ATTESTOR_ID" "$SIDECHAIN_ID" "$SEQ" \
-  --claim-file "$CLAIM_FILE" --signatures-file sigs.json \
+  --claim-file "$CLAIM_FILE" --signatures-file "$SIGS_FILE" \
   --from "$KEY_NAME" --chain-id "$CHAIN_ID" \
   --gas auto --gas-adjustment 1.5 --gas-prices "$GAS_PRICES" --yes
 

@@ -302,6 +302,7 @@ func (v gnarkVerifier) CheckInputs(publicInputs []byte, expected []types.Expecte
 		if err != nil {
 			return err
 		}
+		// TODO: remove the first check once we have a gnark version that guarantees canonical encoding of public inputs - DEBUG
 		want := new(big.Int).SetBytes(e.Value)
 		if got.Cmp(want) != 0 {
 			return fmt.Errorf("public input %d does not match chain state: got %x, want %x", e.Index, got, want)
