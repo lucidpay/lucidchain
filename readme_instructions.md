@@ -545,7 +545,7 @@ lucidchaind q proofs proofs-for-checkpoint --sidechain-id hospitality-platform-0
 
 ```bash
 
-lucidchaind q proofs proofs-for-checkpoint --sidechain-id hospitality-platform-01 --checkpoint-sequence 1
+lucidchaind q proofs proofs-for-checkpoint --sidechain-id hospitality-platform-01 --checkpoint-sequence <new sequence>
 
 ```
 
@@ -708,7 +708,7 @@ txhash: 5D1C540C4E110B77D05FDE3E74EAC2FE9D2685B522C77AB7BBE6993E52928AEB
 
 ```bash
 
-lucidchaind query attestor checkpoint-attestations hospitality-platform-01 1
+lucidchaind query attestor checkpoint-attestations hospitality-platform-01 2
 
 ```
 
@@ -748,7 +748,7 @@ lucidchaind tx bank send validator <challenger-address> 5000000stake \
 
 #raise a dispute
 lucidchaind tx attestor raise-dispute \
-  30dd87b708f6bbd7a6e6c6527aceec4340cce248ee583fdff0b8455eb03aaafc \
+  <attestation id> \
   ipfs://test-evidence 100000 \
   --from challenger --chain-id my-testnet-1 \
   --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
@@ -759,25 +759,28 @@ lucidchaind tx attestor raise-dispute \
 
 create proposal.json with the json data bellow. Get dispute_id from the raise dispute tx  
 
-```json
-  {
-    "messages": [{
-      "@type": "/lucidchain.attestor.v1.MsgResolveDispute",
-      "authority": "cosmos10d07y265gmmuvt4z0w9aw880jnsr700j6zn9kn",
-      "dispute_id": "d754de88bd68083b99594458e9463d743fc911772fdf7a83298725e75de3b0c8",
-      "upheld": true,
-      "rationale_uri": "ipfs://test-rationale"
-    }],
-    "metadata": "ipfs://test",
-    "deposit": "10000000stake",
-    "title": "Resolve dispute",
-    "summary": "Resolve the test dispute"
-  }
+```bash
+cat > ~/tmp_workarea/json/resolution-proposal.json <<'EOF'
+{
+  "messages": [{
+    "@type": "/lucidchain.attestor.v1.MsgResolveDispute",
+    "authority": "cosmos10d07y265gmmuvt4z0w9aw880jnsr700j6zn9kn",
+    "dispute_id": "ea7a5ad479359ecf32b0131f9482b2021dae5d52824c177a8a8484daa68b9ff7",
+    "upheld": true,
+    "rationale_uri": "ipfs://test-rationale"
+  }],
+  "metadata": "ipfs://test",
+  "deposit": "10000000stake",
+  "title": "Resolve dispute",
+  "summary": "Resolve the test dispute"
+}
+EOF
+
 ```
 
 ```bash
 #run
-lucidchaind tx gov submit-proposal proposal.json --from validator \
+lucidchaind tx gov submit-proposal ~/tmp_workarea/json/resolution-proposal.json --from validator \
     --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
 
 #wait until block created and then run (the proposal passes after the voting period: 48 hours by default)
@@ -797,7 +800,8 @@ lucidchaind query attestor -h
 
 You will need to create a proposal suspend.json
 
-```json
+```bash
+cat > ~/tmp_workarea/json/suspension-proposal.json <<'EOF'
 {
   "messages": [
     {
@@ -811,6 +815,7 @@ You will need to create a proposal suspend.json
   "title": "Suspend hospitality-platform-01",
   "summary": "Temporarily halt checkpoint submission for this sidechain."
 }
+EOF
 
 ```
 
@@ -818,7 +823,7 @@ Submit and vote in one go
 
 ```bash
 
-lucidchaind tx gov submit-proposal suspend.json --from validator --chain-id my-testnet-1 -y; sleep 7; lucidchaind tx gov vote <proposal id> yes --from validator --chain-id my-testnet-1 -y
+lucidchaind tx gov submit-proposal ~/tmp_workarea/json/suspension-proposal.json --from validator --chain-id my-testnet-1 -y; sleep 7; lucidchaind tx gov vote <proposal id> yes --from validator --chain-id my-testnet-1 -y
 
 #example
 #lucidchaind tx gov submit-proposal suspend.json --from validator --chain-id my-testnet-1 -y; sleep 7; lucidchaind tx gov vote 3 yes --from validator --chain-id my-testnet-1 -y
@@ -830,12 +835,13 @@ lucidchaind tx gov submit-proposal suspend.json --from validator --chain-id my-t
 **How to slash a sidechain**
 You will need to create a proposal slash.json
 
-```json
+```bash
+cat > ~/tmp_workarea/json/slash-proposal.json <<'EOF'
 {
   "messages": [
     {
       "@type": "/lucidchain.sidechain.v1.MsgSlashSidechain",
-      "authority": "<gov module address>",
+      "authority": "cosmos10d07y265gmmuvt4z0w9aw880jnsr700j6zn9kn",
       "id": "hospitality-platform-01",
       "slash_fraction": "0.100000000000000000",
       "reason": "conflicting checkpoints signed at sequence 42"
@@ -846,6 +852,7 @@ You will need to create a proposal slash.json
   "title": "Slash hospitality-platform-01",
   "summary": "Burn 10% of the bond for signing conflicting checkpoints."
 }
+EOF
 
 ```
 
@@ -873,14 +880,14 @@ account:
 Then run the following
 
 ```bash
-lucidchaind tx gov submit-proposal slash.json --from validator --chain-id my-testnet-1 -y
+lucidchaind tx gov submit-proposal ~/tmp_workarea/json/slash-proposal.json --from validator --chain-id my-testnet-1 -y
 
 #wait until tx is completed, then vote. Submission and voting should happen within 60s timeframe otherwise the proposal gets dissmissed
 
 lucidchaind tx gov vote 1 yes --from validator --chain-id my-testnet-1 -y
 
 # This will make submission and voting within the time frame
-lucidchaind tx gov submit-proposal slash.json --from validator --chain-id my-testnet-1 -y && sleep 7 && lucidchaind tx gov vote 1 yes --from validator --chain-id my-testnet-1 -y
+lucidchaind tx gov submit-proposal ~/tmp_workarea/json/slash-proposal.json  --from validator --chain-id my-testnet-1 -y && sleep 7 && lucidchaind tx gov vote 1 yes --from validator --chain-id my-testnet-1 -y
 
 #query to verify
 lucidchaind query sidechain sidechain hospitality-platform-01
