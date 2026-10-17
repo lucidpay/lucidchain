@@ -1213,16 +1213,16 @@ func TestRaiseDispute_Success(t *testing.T) {
 	require.Equal(t, types.AttestationStatus_ATTESTATION_STATUS_DISPUTED, f.getAttestation(t, attID).Status)
 
 	a := f.getAttestor(t)
-	require.Equal(t, types.AttestorStatus_ATTESTOR_STATUS_SUSPENDED, a.Status)
+	require.Equal(t, types.AttestorStatus_ATTESTOR_STATUS_ACTIVE, a.Status)
 	require.Equal(t, uint64(1), a.OpenDisputes)
 
 	require.Equal(t, startFunds-disputeBond, f.bal(f.challenger))
 	require.Equal(t, attestorBond+disputeBond, f.moduleBal())
 	f.requireEscrowInvariant(t)
 
-	// A suspended attestor cannot attest.
+	// A pending dispute does not stop the attestor from attesting.
 	_, err := f.msgServer.SubmitAttestation(f.ctx, f.attestMsg(t, 2, 0, 1))
-	require.ErrorIs(t, err, types.ErrAttestorNotActive)
+	require.NoError(t, err)
 }
 
 func TestRaiseDispute_WindowBoundary(t *testing.T) {
@@ -1382,7 +1382,7 @@ func TestResolveDispute_NotUpheld(t *testing.T) {
 	require.Equal(t, attestorBond, f.moduleBal())
 	f.requireEscrowInvariant(t)
 
-	// The reinstated attestor can attest again, and the upheld attestation is final.
+	// The attestor was never suspended and can attest again; the upheld attestation is final.
 	f.attest(t, 2)
 	_, err := f.msgServer.RaiseDispute(f.ctx, &types.MsgRaiseDispute{
 		Challenger: f.challengerS, AttestationId: attID, EvidenceUri: "ipfs://e", BondAmount: math.NewInt(disputeBond),
@@ -1473,7 +1473,8 @@ func TestResolveDispute_BankFailureLeavesStateUntouched(t *testing.T) {
 	require.ErrorContains(t, err, "failed to pay challenger")
 
 	require.False(t, f.getDispute(t, disputeID).Resolved)
-	require.Equal(t, types.AttestorStatus_ATTESTOR_STATUS_SUSPENDED, f.getAttestor(t).Status)
+	require.Equal(t, types.AttestorStatus_ATTESTOR_STATUS_ACTIVE, f.getAttestor(t).Status)
+	require.EqualValues(t, 1, f.getAttestor(t).OpenDisputes)
 }
 
 func TestResolveDispute_CustomResolverAuthority(t *testing.T) {
@@ -1491,13 +1492,10 @@ func TestResolveDispute_CustomResolverAuthority(t *testing.T) {
 }
 
 func TestMultipleOpenDisputes(t *testing.T) {
-	t.Run("attestor is reinstated only when the last dispute is resolved", func(t *testing.T) {
+	t.Run("open disputes are counted and the attestor stays active throughout", func(t *testing.T) {
 		f := newActiveFixture(t)
 		d1 := f.raiseDispute(t, f.attest(t, 1))
-		// The second attestation must exist before the attestor is suspended.
-		// Re-activate the attestor to attest again, then dispute both.
-		f.setAttestorStatus(t, types.AttestorStatus_ATTESTOR_STATUS_ACTIVE)
-		att2 := f.attest(t, 2)
+		att2 := f.attest(t, 2) // a pending dispute does not stop the attestor
 		d2 := f.raiseDispute(t, att2)
 
 		require.Equal(t, uint64(2), f.getAttestor(t).OpenDisputes)
@@ -1505,7 +1503,7 @@ func TestMultipleOpenDisputes(t *testing.T) {
 		f.mustResolve(t, d1, false)
 		a := f.getAttestor(t)
 		require.Equal(t, uint64(1), a.OpenDisputes)
-		require.Equal(t, types.AttestorStatus_ATTESTOR_STATUS_SUSPENDED, a.Status)
+		require.Equal(t, types.AttestorStatus_ATTESTOR_STATUS_ACTIVE, a.Status)
 
 		f.mustResolve(t, d2, false)
 		a = f.getAttestor(t)
@@ -1517,7 +1515,6 @@ func TestMultipleOpenDisputes(t *testing.T) {
 	t.Run("a later not-upheld resolution does not undo a slash", func(t *testing.T) {
 		f := newActiveFixture(t)
 		d1 := f.raiseDispute(t, f.attest(t, 1))
-		f.setAttestorStatus(t, types.AttestorStatus_ATTESTOR_STATUS_ACTIVE)
 		d2 := f.raiseDispute(t, f.attest(t, 2))
 
 		f.mustResolve(t, d1, true)

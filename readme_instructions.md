@@ -602,6 +602,9 @@ lucidchaind tx bank send validator $(lucidchaind keys show attestor-operator -a)
   --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5 --yes
 
 lucidchaind keys show attestor-operator --address
+lucidchaind keys show attestorkey1 --address
+lucidchaind keys show attestorkey2 --address
+lucidchaind keys show attestor-operator --pubkey
 lucidchaind keys show attestorkey1 --pubkey
 lucidchaind keys show attestorkey2 --pubkey
 
@@ -620,7 +623,7 @@ cat > ~/tmp_workarea/json/register-attestor.json <<'EOF'
       "name": "KYC Attestor 01",
       "authorized_schema_ids": ["kyc-v1"],
       "signer_keys": [
-        {"@type": "/cosmos.crypto.secp256k1.PubKey", "key": "AvBD+BO33Avd3QiKHWXc0UMqA79ldJX212SmRDGopwtg"}
+        {"@type":"/cosmos.crypto.secp256k1.PubKey","key":"AvBD+BO33Avd3QiKHWXc0UMqA79ldJX212SmRDGopwtg"}
       ],
       "signature_threshold": 1,
       "bond_amount": "1000000",
@@ -669,10 +672,10 @@ EOF
 
 lucidchaind tx gov submit-proposal ~/tmp_workarea/json/activate-attestor.json --from validator \
   --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
-
+sleep 7
 lucidchaind q gov proposals -o json | jq '.proposals[-1] | {id, status}'
-
-lucidchaind tx gov vote <proposal-id> yes --from validator \
+PID=$(lucidchaind q gov proposals -o json | jq -r '.proposals[-1].id')
+lucidchaind tx gov vote "$PID" yes --from validator \
   --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5 --yes  # proposal id should be 1 
 
 ```
@@ -681,7 +684,7 @@ To validate
 
 ```bash
 
-lucidchaind q gov proposal <proposal id> -o json | jq '.proposal.messages[0]."@type", .proposal.title'
+lucidchaind q gov proposal "$PID" -o json | jq '.proposal.messages[0]."@type", .proposal.title'
 lucidchaind q attestor attestor kyc-attestor-01 | grep status
 
 
@@ -922,6 +925,39 @@ lucidchaind q gov proposal "$PID" -o json | jq '.proposal | {status, failed_reas
 ```
 
 lucidchaind query attestor -h
+
+**How to suspend an attestor**
+
+```bash
+cat > ~/tmp_workarea/json/suspend-attestor-proposal.json <<'EOF'
+{
+  "messages": [{
+    "@type": "/lucidchain.attestor.v1.MsgSuspendAttestor",
+    "authority": "cosmos10d07y265gmmuvt4z0w9aw880jnsr700j6zn9kn",
+    "id": "kyc-attestor-01",
+    "reason": "dispute 19b6c8e1..."
+  }],
+  "metadata": "ipfs://test",
+  "deposit": "10000000stake",
+  "title": "Suspend kyc-attestor-01",
+  "summary": "Suspend kyc-attestor-01"
+}
+EOF
+
+lucidchaind tx gov submit-proposal ~/tmp_workarea/json/suspend-attestor-proposal.json --from validator \
+  --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
+
+sleep 7   # long enough for inclusion in a block
+
+PID=$(lucidchaind q gov proposals -o json | jq -r '.proposals[-1].id')
+lucidchaind q gov proposal "$PID" -o json | jq '.proposal | {id, status, voting_end_time}'
+lucidchaind tx gov vote "$PID" yes --from validator --chain-id my-testnet-1 \
+  --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
+
+#to check
+lucidchaind q attestor attestor kyc-attestor-01 | grep status
+
+```
 
 
 **How to suspend a sidechain**

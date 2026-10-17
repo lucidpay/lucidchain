@@ -13,7 +13,7 @@ enum AttestorStatus {
   ATTESTOR_STATUS_UNSPECIFIED = 0;
   ATTESTOR_STATUS_PENDING     = 1; // registered, bond posted, awaiting activation
   ATTESTOR_STATUS_ACTIVE      = 2; // eligible to submit attestations
-  ATTESTOR_STATUS_SUSPENDED   = 3; // temporarily barred (e.g. open dispute)
+  ATTESTOR_STATUS_SUSPENDED   = 3; // barred by governance via MsgSuspendAttestor
   ATTESTOR_STATUS_SLASHED     = 4; // bond slashed for a provable fault
   ATTESTOR_STATUS_EXITED      = 5; // voluntarily deregistered
 }

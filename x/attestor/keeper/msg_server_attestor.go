@@ -116,6 +116,64 @@ func (ms msgServer) ActivateAttestor(ctx context.Context, msg *types.MsgActivate
 	return &types.MsgActivateAttestorResponse{}, nil
 }
 
+// maxSuspendReasonBytes bounds the free-text reason stored in the event.
+const maxSuspendReasonBytes = 256
+
+// SuspendAttestor bars an ACTIVE attestor from submitting attestations. Authority
+// only. It is the governance lever for a dispute (or any other concern) that
+// should not wait for a ruling; RaiseDispute never suspends on its own.
+func (ms msgServer) SuspendAttestor(ctx context.Context, msg *types.MsgSuspendAttestor) (*types.MsgSuspendAttestorResponse, error) {
+	if err := ms.checkAuthority(ms.authority, msg.Authority); err != nil {
+		return nil, err
+	}
+	if err := validateText("reason", msg.Reason, maxSuspendReasonBytes, false); err != nil {
+		return nil, err
+	}
+
+	attestor, err := ms.GetAttestor(ctx, msg.Id)
+	if err != nil {
+		return nil, err
+	}
+	if attestor.Status != types.AttestorStatus_ATTESTOR_STATUS_ACTIVE {
+		return nil, errorsmod.Wrapf(types.ErrInvalidAttestorState,
+			"attestor %q is %s, only ACTIVE attestors can be suspended", attestor.Id, attestor.Status)
+	}
+
+	attestor.Status = types.AttestorStatus_ATTESTOR_STATUS_SUSPENDED
+	if err := ms.Attestors.Set(ctx, attestor.Id, attestor); err != nil {
+		return nil, err
+	}
+
+	emit(sdk.UnwrapSDKContext(ctx), "attestor_suspended",
+		attr("attestor_id", attestor.Id), attr("reason", msg.Reason))
+	return &types.MsgSuspendAttestorResponse{}, nil
+}
+
+// ReinstateAttestor moves a SUSPENDED attestor back to ACTIVE. Authority only.
+// Open disputes do not block it: lifting a suspension is a governance decision.
+func (ms msgServer) ReinstateAttestor(ctx context.Context, msg *types.MsgReinstateAttestor) (*types.MsgReinstateAttestorResponse, error) {
+	if err := ms.checkAuthority(ms.authority, msg.Authority); err != nil {
+		return nil, err
+	}
+
+	attestor, err := ms.GetAttestor(ctx, msg.Id)
+	if err != nil {
+		return nil, err
+	}
+	if attestor.Status != types.AttestorStatus_ATTESTOR_STATUS_SUSPENDED {
+		return nil, errorsmod.Wrapf(types.ErrInvalidAttestorState,
+			"attestor %q is %s, only SUSPENDED attestors can be reinstated", attestor.Id, attestor.Status)
+	}
+
+	attestor.Status = types.AttestorStatus_ATTESTOR_STATUS_ACTIVE
+	if err := ms.Attestors.Set(ctx, attestor.Id, attestor); err != nil {
+		return nil, err
+	}
+
+	emit(sdk.UnwrapSDKContext(ctx), "attestor_reinstated", attr("attestor_id", attestor.Id))
+	return &types.MsgReinstateAttestorResponse{}, nil
+}
+
 // UpdateAttestorSigners replaces the signer keys and threshold and bumps
 // signer_set_version. Existing attestations keep the version they were signed under.
 func (ms msgServer) UpdateAttestorSigners(ctx context.Context, msg *types.MsgUpdateAttestorSigners) (*types.MsgUpdateAttestorSignersResponse, error) {

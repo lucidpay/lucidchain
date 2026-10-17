@@ -15,7 +15,8 @@ import (
 
 // RaiseDispute challenges an ACTIVE attestation inside its schema's dispute
 // window. The challenger's bond is escrowed, the attestation moves to
-// DISPUTED, and the attestor is suspended until the dispute is resolved.
+// DISPUTED and the attestor's open_disputes counter rises, which blocks its bond return.
+// The attestor is not suspended; governance can do that with MsgSuspendAttestor.
 //
 // An attestation can be disputed at most once: only ACTIVE attestations can be
 // challenged, and a resolved dispute leaves the attestation in a final status.
@@ -103,9 +104,6 @@ func (ms msgServer) RaiseDispute(ctx context.Context, msg *types.MsgRaiseDispute
 	}
 
 	attestor.OpenDisputes++
-	if attestor.Status == types.AttestorStatus_ATTESTOR_STATUS_ACTIVE {
-		attestor.Status = types.AttestorStatus_ATTESTOR_STATUS_SUSPENDED
-	}
 	if err := ms.Attestors.Set(ctx, attestor.Id, attestor); err != nil {
 		return nil, err
 	}
@@ -132,7 +130,7 @@ func (ms msgServer) RaiseDispute(ctx context.Context, msg *types.MsgRaiseDispute
 //
 // Not upheld (attestation stands):
 //   - the challenger's dispute bond is burned
-//   - the attestor is reinstated to ACTIVE once its last open dispute is resolved
+//   - the attestor's status is unchanged; only MsgReinstateAttestor lifts a suspension
 func (ms msgServer) ResolveDispute(ctx context.Context, msg *types.MsgResolveDispute) (*types.MsgResolveDisputeResponse, error) {
 	sdkCtx := sdk.UnwrapSDKContext(ctx)
 
@@ -215,10 +213,6 @@ func (ms msgServer) ResolveDispute(ctx context.Context, msg *types.MsgResolveDis
 
 	if attestor.OpenDisputes > 0 {
 		attestor.OpenDisputes--
-	}
-	if attestor.OpenDisputes == 0 && attestor.Status == types.AttestorStatus_ATTESTOR_STATUS_SUSPENDED {
-		// SUSPENDED is only ever set by an open dispute.
-		attestor.Status = types.AttestorStatus_ATTESTOR_STATUS_ACTIVE
 	}
 
 	if err := ms.Disputes.Set(ctx, dispute.Id, dispute); err != nil {

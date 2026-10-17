@@ -22,6 +22,11 @@ service Msg {
   // NEW: governance vetting step. Registered attestors stay PENDING until activated.
   rpc ActivateAttestor(MsgActivateAttestor) returns (MsgActivateAttestorResponse);
 
+
+  // NEW: governance-only. Suspend / reinstate an attestor.
+  rpc SuspendAttestor(MsgSuspendAttestor) returns (MsgSuspendAttestorResponse);
+  rpc ReinstateAttestor(MsgReinstateAttestor) returns (MsgReinstateAttestorResponse);
+
   // SubmitAttestation publishes a signed claim about a specific checkpoint,
   // under a specific, governance-approved schema.
   rpc SubmitAttestation(MsgSubmitAttestation) returns (MsgSubmitAttestationResponse);
@@ -91,6 +96,24 @@ message MsgActivateAttestor {
   string id = 2;
 }
 message MsgActivateAttestorResponse {}
+
+
+// NEW: governance lever. Suspends an ACTIVE attestor; RaiseDispute alone never does.
+message MsgSuspendAttestor {
+  option (cosmos.msg.v1.signer) = "authority";
+  string authority = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  string id = 2;
+  string reason = 3; // e.g. the dispute id and a short note
+}
+message MsgSuspendAttestorResponse {}
+
+// NEW: lifts a suspension.
+message MsgReinstateAttestor {
+  option (cosmos.msg.v1.signer) = "authority";
+  string authority = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  string id = 2;
+}
+message MsgReinstateAttestorResponse {}
 
 message MsgSubmitAttestation {
   // Submitter pays tx fees and must be the attestor's registered operator
