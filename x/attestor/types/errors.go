@@ -33,5 +33,7 @@ var (
 	ErrInvalidRequest          = errorsmod.Register(ModuleName, 24, "invalid request")
 	ErrLimitExceeded           = errorsmod.Register(ModuleName, 25, "module limit exceeded")
 	ErrInvalidGenesis          = errorsmod.Register(ModuleName, 26, "invalid genesis state")
+	ErrConflictOfInterest      = errorsmod.Register(ModuleName, 27, "attestor conflicts with sidechain owner")
+	ErrSidechainNotFound       = errorsmod.Register(ModuleName, 28, "sidechain not found")
 	ErrInvalidSigner           = errorsmod.Register(ModuleName, 1100, "expected gov account as only signer for proposal message")
 )

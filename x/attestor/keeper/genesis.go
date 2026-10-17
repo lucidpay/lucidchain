@@ -3,6 +3,7 @@ package keeper
 import (
 	"context"
 
+	errorsmod "cosmossdk.io/errors"
 	"github.com/lucidpay/lucidchain/x/attestor/types"
 )
 
@@ -36,6 +37,17 @@ func (k Keeper) InitGenesis(ctx context.Context, gs types.GenesisState) error {
 	}
 
 	for _, at := range gs.Attestations {
+		attestor, err := k.GetAttestor(ctx, at.AttestorId) // attestors are stored above
+		if err != nil {
+			return err
+		}
+		sc, err := k.sidechainKeeper.GetSidechain(ctx, at.SidechainId)
+		if err != nil {
+			return errorsmod.Wrapf(err, "attestation %s", at.Id)
+		}
+		if err := k.checkNoSidechainOperatorConflict(attestor, sc); err != nil {
+			return err
+		}
 		if err := k.setAttestation(ctx, at); err != nil {
 			return err
 		}

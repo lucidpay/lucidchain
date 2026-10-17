@@ -34,6 +34,7 @@ type Keeper struct {
 	// Typically, this should be the x/gov module account.
 	authority        []byte
 	checkpointKeeper types.CheckpointKeeper
+	sidechainKeeper  types.SidechainKeeper
 
 	Schema collections.Schema
 	Params collections.Item[types.Params]
@@ -66,6 +67,7 @@ func NewKeeper(
 	addressCodec address.Codec,
 	authority []byte,
 	checkpointKeeper types.CheckpointKeeper,
+	sidechainKeeper types.SidechainKeeper,
 	bankKeeper types.BankKeeper,
 ) Keeper {
 	if _, err := addressCodec.BytesToString(authority); err != nil {
@@ -80,6 +82,7 @@ func NewKeeper(
 		addressCodec:     addressCodec,
 		authority:        authority,
 		checkpointKeeper: checkpointKeeper,
+		sidechainKeeper:  sidechainKeeper,
 		bankKeeper:       bankKeeper,
 		Params:           collections.NewItem(sb, types.ParamsKey, "params", codec.CollValue[types.Params](cdc)),
 		Attestors: collections.NewMap(

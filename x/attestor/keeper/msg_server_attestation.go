@@ -26,6 +26,7 @@ import (
 //  4. the attestation id is unused
 //  5. the threshold is met and every signature verifies over the sign bytes
 //  6. the attestation is stored ACTIVE and the attestor's reputation goes up
+//  7. the attestor is not linked to the sidechain’s owner
 //
 // The same (schema, sidechain, lc_sequence, attestor) tuple can only ever be
 // attested once, even after the attestation was revoked or overturned.
@@ -77,6 +78,17 @@ func (ms msgServer) SubmitAttestation(ctx context.Context, msg *types.MsgSubmitA
 	}
 	if !json.Valid(msg.ClaimPayload) {
 		return nil, errorsmod.Wrap(types.ErrInvalidRequest, "claim_payload must be valid JSON")
+	}
+
+	sc, err := ms.sidechainKeeper.GetSidechain(ctx, msg.SidechainId)
+	if err != nil {
+		if errors.Is(err, collections.ErrNotFound) {
+			return nil, errorsmod.Wrapf(types.ErrSidechainNotFound, "%q", msg.SidechainId)
+		}
+		return nil, err
+	}
+	if err := ms.checkNoSidechainConflict(attestor, msg.Submitter, sc); err != nil {
+		return nil, err
 	}
 
 	cp, err := ms.checkpointKeeper.GetCheckpoint(ctx, msg.SidechainId, msg.CheckpointSequence)

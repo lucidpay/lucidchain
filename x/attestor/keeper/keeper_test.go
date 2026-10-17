@@ -35,6 +35,7 @@ import (
 	"github.com/lucidpay/lucidchain/x/attestor/keeper"
 	"github.com/lucidpay/lucidchain/x/attestor/types"
 	checkpointtypes "github.com/lucidpay/lucidchain/x/checkpoint/types"
+	sidechaintypes "github.com/lucidpay/lucidchain/x/sidechain/types"
 )
 
 // NOTE: the tests use ed25519 signer keys and set allowed_pubkey_type_urls
@@ -87,6 +88,23 @@ func (m *mockCheckpointKeeper) add(id string, seq uint64) []byte {
 		CheckpointHash: h[:],
 	}
 	return h[:]
+}
+
+// mockSidechains is an in-memory x/sidechain. Like the real keeper it must
+// wrap collections.ErrNotFound for a missing sidechain and return signer keys
+// with cached (unpacked) values.
+type mockSidechains struct {
+	m map[string]sidechaintypes.Sidechain
+}
+
+var _ types.SidechainKeeper = (*mockSidechains)(nil)
+
+func (s *mockSidechains) GetSidechain(_ context.Context, id string) (sidechaintypes.Sidechain, error) {
+	sc, ok := s.m[id]
+	if !ok {
+		return sidechaintypes.Sidechain{}, fmt.Errorf("%w: sidechain %s", collections.ErrNotFound, id)
+	}
+	return sc, nil
 }
 
 // mockBank is a single-denom ledger so tests can assert exact escrow, payout
@@ -200,6 +218,7 @@ type fixture struct {
 	msgServer    types.MsgServer
 	queryServer  types.QueryServer
 	checkpoints  *mockCheckpointKeeper
+	sidechains   *mockSidechains
 	bank         *mockBank
 
 	// signers are the available keys; keyOrder[i] is the index into signers of
@@ -209,6 +228,11 @@ type fixture struct {
 
 	gov, operator, challenger, stranger     sdk.AccAddress
 	govS, operatorS, challengerS, strangerS string
+
+	// sidechainOwner operates the default sidechain; it is distinct from the
+	// attestor operator, so the default setup has no conflict of interest.
+	sidechainOwner  sdk.AccAddress
+	sidechainOwnerS string
 }
 
 // initFixture keeps Ignite's scaffolded tests working.
@@ -242,6 +266,7 @@ func newFixture(t *testing.T) *fixture {
 		ctx:          ctx,
 		addressCodec: addrCodec,
 		checkpoints:  &mockCheckpointKeeper{checkpoints: map[string]checkpointtypes.Checkpoint{}},
+		sidechains:   &mockSidechains{m: map[string]sidechaintypes.Sidechain{}},
 		bank:         newMockBank(),
 		signers:      make([]*ed25519.PrivKey, 3),
 		keyOrder:     []int{0, 1, 2},
@@ -249,17 +274,20 @@ func newFixture(t *testing.T) *fixture {
 		operator:     mk(1),
 		challenger:   mk(2),
 		stranger:     mk(3),
+
+		sidechainOwner: mk(4),
 	}
 	for i := range f.signers {
 		f.signers[i] = ed25519.GenPrivKey()
 	}
 	f.govS, f.operatorS, f.challengerS, f.strangerS = str(f.gov), str(f.operator), str(f.challenger), str(f.stranger)
+	f.sidechainOwnerS = str(f.sidechainOwner)
 
 	for _, a := range []sdk.AccAddress{f.operator, f.challenger, f.stranger} {
 		f.bank.fund(a, startFunds)
 	}
 
-	f.keeper = keeper.NewKeeper(runtime.NewKVStoreService(key), cdc, addrCodec, f.gov, f.checkpoints, f.bank)
+	f.keeper = keeper.NewKeeper(runtime.NewKVStoreService(key), cdc, addrCodec, f.gov, f.checkpoints, f.sidechains, f.bank)
 	f.msgServer = keeper.NewMsgServerImpl(f.keeper)
 	f.queryServer = keeper.NewQueryServerImpl(f.keeper)
 
@@ -344,6 +372,7 @@ func (f *fixture) bootstrap(t *testing.T, bond int64, mutateSchema func(*types.A
 
 	f.activate(t, testAttestor)
 
+	f.putSidechain(t, testSidechain, f.sidechainOwnerS)
 	f.checkpoints.add(testSidechain, 1)
 	f.checkpoints.add(testSidechain, 2)
 }
@@ -1863,6 +1892,7 @@ func TestGenesis_RoundTripRebuildsIndexes(t *testing.T) {
 
 	// Import into a fresh chain whose module account is funded as bank genesis would.
 	g := newFixture(t)
+	g.putSidechain(t, testSidechain, g.sidechainOwnerS) // x/sidechain initializes first
 	g.bank.modules[types.ModuleName] = f.bank.moduleBalance(types.ModuleName)
 	require.NoError(t, g.keeper.InitGenesis(g.ctx, *exported))
 	g.requireEscrowInvariant(t)

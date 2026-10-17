@@ -35,6 +35,7 @@ type ModuleInputs struct {
 
 	AuthKeeper       types.AuthKeeper
 	CheckpointKeeper types.CheckpointKeeper
+	SidechainKeeper  types.SidechainKeeper
 	BankKeeper       types.BankKeeper
 }
 
@@ -57,6 +58,7 @@ func ProvideModule(in ModuleInputs) ModuleOutputs {
 		in.AddressCodec,
 		authority,
 		in.CheckpointKeeper,
+		in.SidechainKeeper,
 		in.BankKeeper,
 	)
 	m := NewAppModule(in.Cdc, k, in.AuthKeeper, in.BankKeeper)

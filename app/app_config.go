@@ -164,8 +164,12 @@ var (
 						ibcexported.ModuleName,
 						ibctransfertypes.ModuleName,
 						icatypes.ModuleName,
-						// chain modules
-						attestormoduletypes.ModuleName, checkpointmoduletypes.ModuleName, proofsmoduletypes.ModuleName, sidechainmoduletypes.ModuleName},
+						// chain modules: sidechain first, attestor depends on it
+						sidechainmoduletypes.ModuleName,
+						checkpointmoduletypes.ModuleName,
+						attestormoduletypes.ModuleName,
+						proofsmoduletypes.ModuleName,
+					},
 				}),
 			},
 			{

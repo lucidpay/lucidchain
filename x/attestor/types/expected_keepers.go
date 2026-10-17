@@ -7,6 +7,7 @@ import (
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	checkpointtypes "github.com/lucidpay/lucidchain/x/checkpoint/types"
+	sidechaintypes "github.com/lucidpay/lucidchain/x/sidechain/types"
 )
 
 // AuthKeeper defines the expected interface for the Auth module.
@@ -35,4 +36,9 @@ type BankKeeper interface {
 type ParamSubspace interface {
 	Get(context.Context, []byte, interface{})
 	Set(context.Context, []byte, interface{})
+}
+
+// SidechainKeeper is the slice of x/sidechain this module needs.
+type SidechainKeeper interface {
+	GetSidechain(ctx context.Context, id string) (sidechaintypes.Sidechain, error)
 }
