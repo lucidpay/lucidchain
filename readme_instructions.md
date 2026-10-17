@@ -178,6 +178,7 @@ lucidchaind tx sidechain register-sidechain -h
 
 ```bash
 
+
 lucidchaind keys add sidechainkey1
 
 lucidchaind keys add sidechainkey2
@@ -190,6 +191,8 @@ Write down the mnemonics in order to recover the keys just in case they get dele
 **display the public keys**
 
 ```bash
+
+lucidchaind keys show attestor-operator --pubkey
 
 lucidchaind keys show sidechainkey1 --pubkey
 
@@ -586,7 +589,107 @@ proofs:
 
 
 **How to work with attestor**
-  
+
+first create the needed keys
+
+```bash
+
+lucidchaind keys add attestor-operator
+lucidchaind keys add attestorkey1
+lucidchaind keys add attestorkey2
+
+lucidchaind tx bank send validator $(lucidchaind keys show attestor-operator -a) 5000000stake \
+  --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5 --yes
+
+lucidchaind keys show attestor-operator --address
+lucidchaind keys show attestorkey1 --pubkey
+lucidchaind keys show attestorkey2 --pubkey
+
+```
+
+Register an attestor
+
+```bash
+cat > ~/tmp_workarea/json/register-attestor.json <<'EOF'
+{
+  "body": {
+    "messages": [{
+      "@type": "/lucidchain.attestor.v1.MsgRegisterAttestor",
+      "operator": "cosmos1yv38wnv40l80z0rfmxeu0ug5wqapptdl3jvl48",
+      "id": "kyc-attestor-01",
+      "name": "KYC Attestor 01",
+      "authorized_schema_ids": ["kyc-v1"],
+      "signer_keys": [
+        {"@type": "/cosmos.crypto.secp256k1.PubKey", "key": "AvBD+BO33Avd3QiKHWXc0UMqA79ldJX212SmRDGopwtg"}
+      ],
+      "signature_threshold": 1,
+      "bond_amount": "1000000",
+      "credential_uri": "https://example.org/attestor.json"
+    }],
+    "memo": "",
+    "timeout_height": "0",
+    "extension_options": [],
+    "non_critical_extension_options": []
+  },
+  "auth_info": {
+    "signer_infos": [],
+    "fee": {"amount": [], "gas_limit": "400000", "payer": "", "granter": ""}
+  },
+  "signatures": []
+}
+EOF
+
+lucidchaind tx sign ~/tmp_workarea/json/register-attestor.json \
+  --from attestor-operator --chain-id my-testnet-1 > ~/tmp_workarea/json/register-attestor.signed.json
+
+lucidchaind tx broadcast ~/tmp_workarea/json/register-attestor.signed.json
+
+#check
+lucidchaind q attestor attestor kyc-attestor-01
+
+```
+
+Activate attestor
+
+
+```bash
+cat > ~/tmp_workarea/json/activate-attestor.json <<'EOF'
+{
+  "messages": [{
+    "@type": "/lucidchain.attestor.v1.MsgActivateAttestor",
+    "authority": "cosmos10d07y265gmmuvt4z0w9aw880jnsr700j6zn9kn",
+    "id": "kyc-attestor-01"
+  }],
+  "metadata": "ipfs://test",
+  "deposit": "10000000stake",
+  "title": "Activate kyc-attestor-01",
+  "summary": "Activate kyc-attestor-01"
+}
+EOF
+
+lucidchaind tx gov submit-proposal ~/tmp_workarea/json/activate-attestor.json --from validator \
+  --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
+
+lucidchaind q gov proposals -o json | jq '.proposals[-1] | {id, status}'
+
+lucidchaind tx gov vote <proposal-id> yes --from validator \
+  --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5 --yes
+
+```
+
+To validate
+
+```bash
+
+lucidchaind q gov proposal <proposal id> -o json | jq '.proposal.messages[0]."@type", .proposal.title'
+lucidchaind q attestor attestor kyc-attestor-01 | grep status
+
+
+```
+
+
+
+
 `submit-attestation.sh` expects schema `kyc-v1` and an ACTIVE attestor `acme` whose signer key is the `validator` key. Creating the schema and activating the attestor are governance-only, so set them up first.
 
 **1. create the schema (governance)**
@@ -627,10 +730,10 @@ lucidchaind tx gov vote <proposal-id> yes --from validator --chain-id my-testnet
 ```bash
 lucidchaind tx attestor register-attestor \
   --id acme --name Acme --authorized-schema-ids kyc-v1 \
-  --signer-keys "$(lucidchaind keys show validator --pubkey)" \
+  --signer-keys "$(lucidchaind keys show attestorkey2 --pubkey)" \
   --signature-threshold 1 --bond-amount 1000000 \
   --credential-uri https://example.org/acme.json \
-  --from validator --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
+  --from attestor-operator --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
 
 
 lucidchaind query attestor attestor acme   # status should be ATTESTOR_STATUS_PENDING
