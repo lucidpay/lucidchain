@@ -548,7 +548,7 @@ lucidchaind q proofs proofs-for-checkpoint --sidechain-id hospitality-platform-0
 
 ```bash
 
-lucidchaind q proofs proofs-for-checkpoint --sidechain-id hospitality-platform-01 --checkpoint-sequence <new sequence>
+lucidchaind q proofs proofs-for-checkpoint --sidechain-id hospitality-platform-01 --checkpoint-sequence <new sequence> # sequece should be 2 if you have followed along
 
 ```
 
@@ -673,7 +673,7 @@ lucidchaind tx gov submit-proposal ~/tmp_workarea/json/activate-attestor.json --
 lucidchaind q gov proposals -o json | jq '.proposals[-1] | {id, status}'
 
 lucidchaind tx gov vote <proposal-id> yes --from validator \
-  --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5 --yes
+  --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5 --yes  # proposal id should be 1 
 
 ```
 
@@ -720,7 +720,7 @@ cat > ~/tmp_workarea/json/schema.json <<'EOF'
 EOF
 lucidchaind tx gov submit-proposal ~/tmp_workarea/json/schema.json --from validator \
     --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
-lucidchaind tx gov vote <proposal-id> yes --from validator --chain-id my-testnet-1 --gas-prices 0stake --yes  # proposal ID should be 1 if this is your first proposal
+lucidchaind tx gov vote <proposal-id> yes --from validator --chain-id my-testnet-1 --gas-prices 0stake --yes  # proposal ID should be 2 if this is your first proposal
 
 
 ```
@@ -759,7 +759,7 @@ cat > ~/tmp_workarea/json/approve-attestor.json <<'EOF'
 EOF
 lucidchaind tx gov submit-proposal ~/tmp_workarea/json/approve-attestor.json --from validator \
     --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
-lucidchaind tx gov vote <proposal-id> yes --from validator --chain-id my-testnet-1 --gas-prices 0stake --yes  # proposal ID should be 2 here 
+lucidchaind tx gov vote <proposal-id> yes --from validator --chain-id my-testnet-1 --gas-prices 0stake --yes  # proposal ID should be 3 here 
 
 ```
 
@@ -783,6 +783,10 @@ printf '%s' '{"revenue":"1250000","period":"2026-09"}' > ~/tmp_workarea/json/cla
 
 #run the shell script. shell script can be found under tools/signbytes
 chmod +x tools/signbytes/submit-attestation.sh
+#dry run
+bash -n tools/signbytes/submit-attestation.sh
+NO_SUBMIT=1 CLAIM_FILE=~/tmp_workarea/json/claim.json tools/signbytes/submit-attestation.sh
+#actual run
 CLAIM_FILE=~/tmp_workarea/json/claim.json tools/signbytes/submit-attestation.sh
 
 ```
@@ -848,6 +852,8 @@ lucidchaind keys show challenger -a      # copy the address
 lucidchaind tx bank send validator <challenger-address> 5000000stake \
   --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
 
+#pull the atteestation id for the next command
+ lucidchaind query attestor checkpoint-attestations hospitality-platform-01 2 -o json | jq -r '.attestations[0].id'
 
 #raise a dispute
 lucidchaind tx attestor raise-dispute \
@@ -863,12 +869,25 @@ lucidchaind tx attestor raise-dispute \
 create proposal.json with the json data bellow. Get dispute_id from the raise dispute tx  
 
 ```bash
+
+#again get the attestation ID
+lucidchaind query attestor checkpoint-attestations hospitality-platform-01 2 -o json | jq -r '.attestations[0].id'
+
+#add the attestation id here and get the dispute ID
+lucidchaind q txs --query "dispute_raised.attestation_id='ea7a5ad479359ecf32b0131f9482b2021dae5d52824c177a8a8484daa68b9ff7'" -o json \
+  | jq -r '.txs[0].events[] | select(.type=="dispute_raised") | .attributes[] | select(.key=="dispute_id") | .value'
+
+```
+
+Adjust in the bellow JSON with the new dispute id
+
+```bash
 cat > ~/tmp_workarea/json/resolution-proposal.json <<'EOF'
 {
   "messages": [{
     "@type": "/lucidchain.attestor.v1.MsgResolveDispute",
     "authority": "cosmos10d07y265gmmuvt4z0w9aw880jnsr700j6zn9kn",
-    "dispute_id": "ea7a5ad479359ecf32b0131f9482b2021dae5d52824c177a8a8484daa68b9ff7",
+    "dispute_id": "19b6c8e162923aa7ad0c8920ae5ebf601b590289f1f0b3e3a8fe188eb9d86966",
     "upheld": true,
     "rationale_uri": "ipfs://test-rationale"
   }],
@@ -882,16 +901,22 @@ EOF
 ```
 
 ```bash
-#run
+
 lucidchaind tx gov submit-proposal ~/tmp_workarea/json/resolution-proposal.json --from validator \
-    --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
+  --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
 
-#wait until block created and then run (the proposal passes after the voting period: 48 hours by default)
-lucidchaind tx gov vote 1 yes --from validator \
-    --chain-id my-testnet-1 --gas-prices 0stake --yes
+sleep 7   # long enough for inclusion in a block
 
-#check
-lucidchaind q tx <txID>
+PID=$(lucidchaind q gov proposals -o json | jq -r '.proposals[-1].id')
+lucidchaind q gov proposal "$PID" -o json | jq '.proposal | {id, status, voting_end_time}'
+lucidchaind tx gov vote "$PID" yes --from validator --chain-id my-testnet-1 \
+  --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
+
+
+#wait a minute or two then check the status of the proposal
+
+PID=$(lucidchaind q gov proposals -o json | jq -r '.proposals[-1].id')
+lucidchaind q gov proposal "$PID" -o json | jq '.proposal | {status, failed_reason, voting_end_time}'
 
 
 ```
@@ -920,16 +945,13 @@ cat > ~/tmp_workarea/json/suspension-proposal.json <<'EOF'
 }
 EOF
 
-```
+lucidchaind tx gov submit-proposal ~/tmp_workarea/json/suspension-proposal.json --from validator --chain-id my-testnet-1 -y; 
+sleep 7; 
+PID=$(lucidchaind q gov proposals -o json | jq -r '.proposals[-1].id')
+lucidchaind tx gov vote "$PID" yes --from validator --chain-id my-testnet-1 -y
 
-Submit and vote in one go
-
-```bash
-
-lucidchaind tx gov submit-proposal ~/tmp_workarea/json/suspension-proposal.json --from validator --chain-id my-testnet-1 -y; sleep 7; lucidchaind tx gov vote <proposal id> yes --from validator --chain-id my-testnet-1 -y
-
-#example
-#lucidchaind tx gov submit-proposal suspend.json --from validator --chain-id my-testnet-1 -y; sleep 7; lucidchaind tx gov vote 3 yes --from validator --chain-id my-testnet-1 -y
+#wait for a minute or two and then query to verify
+lucidchaind query sidechain sidechain hospitality-platform-01
 
 ```
 
@@ -957,42 +979,14 @@ cat > ~/tmp_workarea/json/slash-proposal.json <<'EOF'
 }
 EOF
 
-```
-
-Run the following to get the gov module address
-
-```bash
-
-lucidchaind query auth module-account gov
-
-```
-
-you should see a similar output
-
-account:  
-  type: /cosmos.auth.v1beta1.ModuleAccount  
-  value:  
-    account_number: 14541275249009342428  
-    address: cosmos10d07y265gmmuvt4z0w9aw880jnsr700j6zn9kn  <<== grab this  
-    name: gov  
-    permissions:  
-    - burner  
-    public_key: ""  
-    sequence: 0  
-
-Then run the following
-
-```bash
-lucidchaind tx gov submit-proposal ~/tmp_workarea/json/slash-proposal.json --from validator --chain-id my-testnet-1 -y
-
-#wait until tx is completed, then vote. Submission and voting should happen within 60s timeframe otherwise the proposal gets dissmissed
-
-lucidchaind tx gov vote 1 yes --from validator --chain-id my-testnet-1 -y
 
 # This will make submission and voting within the time frame
-lucidchaind tx gov submit-proposal ~/tmp_workarea/json/slash-proposal.json  --from validator --chain-id my-testnet-1 -y && sleep 7 && lucidchaind tx gov vote 1 yes --from validator --chain-id my-testnet-1 -y
+lucidchaind tx gov submit-proposal ~/tmp_workarea/json/slash-proposal.json  --from validator --chain-id my-testnet-1 -y
+sleep 7
+PID=$(lucidchaind q gov proposals -o json | jq -r '.proposals[-1].id')
+lucidchaind tx gov vote "$PID" yes --from validator --chain-id my-testnet-1 -y
 
-#query to verify
+#wait for a minute or two then query to verify
 lucidchaind query sidechain sidechain hospitality-platform-01
 
 #you should see
@@ -1002,8 +996,8 @@ lucidchaind query sidechain sidechain hospitality-platform-01
 #...
 #  status: SIDECHAIN_STATUS_SLASHED
 
-
-lucidchaind query gov proposal 1
+PID=$(lucidchaind q gov proposals -o json | jq -r '.proposals[-1].id')
+lucidchaind query gov proposal "$PID"
 
 
 ```

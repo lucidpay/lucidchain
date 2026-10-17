@@ -13,7 +13,8 @@ set -euo pipefail
 
 BIN="${BIN:-lucidchaind}"
 CHAIN_ID="${CHAIN_ID:-my-testnet-1}"
-KEY_NAME="${KEY_NAME:-validator}"          # operator and signer key
+OPERATOR_KEY="${OPERATOR_KEY:-attestor-operator}"   # pays fees; must be the attestor's operator
+SIGNER_KEY="${SIGNER_KEY:-attestorkey2}"            # signs the attestation; must be in signer_keys
 SCHEMA_ID="${SCHEMA_ID:-kyc-v1}"
 ATTESTOR_ID="${ATTESTOR_ID:-acme}"
 SIDECHAIN_ID="${SIDECHAIN_ID:-hospitality-platform-01}"
@@ -67,8 +68,8 @@ python3 -c 'import sys;sys.stdout.buffer.write(bytes.fromhex(sys.argv[1]))' "$SI
 
 # --- export the private key (hex) and wrap it as a secp256k1 PEM ---------------
 # The export asks "Continue? [y/N]" on stderr; the answer is piped in.
-K1="$(printf 'y\n' | "$BIN" keys export "$KEY_NAME" --unarmored-hex --unsafe 2>/dev/null | tr -d '[:space:]')"
-[[ "$K1" =~ ^[0-9a-fA-F]{64}$ ]] || { echo "could not export a 32-byte hex key for '$KEY_NAME'"; exit 1; }
+K1="$(printf 'y\n' | "$BIN" keys export "$SIGNER_KEY" --unarmored-hex --unsafe 2>/dev/null | tr -d '[:space:]')"
+[[ "$K1" =~ ^[0-9a-fA-F]{64}$ ]] || { echo "could not export a 32-byte hex key for '$SIGNER_KEY'"; exit 1; }
 
 python3 - "$K1" > "$WORK/key.pem" <<'EOF'
 import sys, base64
@@ -85,7 +86,7 @@ PUB_B64="$(openssl ec -in "$WORK/key.pem" -pubout -conv_form compressed -outform
 if "$BIN" query attestor attestor "$ATTESTOR_ID" | grep -qF "$PUB_B64"; then
   echo "Signer key matches the attestor's registered key."
 else
-  echo "WARNING: $KEY_NAME's pubkey ($PUB_B64) is not in $ATTESTOR_ID's signer_keys; the chain will reject the signature."
+  echo "WARNING: $SIGNER_KEY's pubkey ($PUB_B64) is not in $ATTESTOR_ID's signer_keys; the chain will reject the signature."
 fi
 
 # --- sign: SHA-256(msg), ECDSA, DER -> raw 64-byte r||s with low s -------------
@@ -111,7 +112,7 @@ fi
 # --- submit -----------------------------------------------------------------------
 "$BIN" tx attestor submit-attestation "$SCHEMA_ID" "$ATTESTOR_ID" "$SIDECHAIN_ID" "$SEQ" \
   --claim-file "$CLAIM_FILE" --signatures-file "$SIGS_FILE" \
-  --from "$KEY_NAME" --chain-id "$CHAIN_ID" \
+  --from "$OPERATOR_KEY" --chain-id "$CHAIN_ID" \
   --gas auto --gas-adjustment 1.5 --gas-prices "$GAS_PRICES" --yes
 
 echo
