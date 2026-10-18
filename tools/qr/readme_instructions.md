@@ -133,7 +133,7 @@ jq -e '
 ' "$G" && echo "PQ genesis check: OK"
 
 # qr_ keys that are NOT ML-DSA-65 (expect 0)
-lucidchaind keys list -o json | jq '[.[] | select(.name | startswith("qr_")) | select(.pubkey | contains("mldsa65") | not)] | length'
+lucidchaind keys list --output json | jq '[.[] | select(.name | startswith("qr_")) | select(.pubkey | contains("mldsa65") | not)] | length'
 
 unset G
 ```
@@ -514,6 +514,8 @@ lucidchaind q attestor attestor kyc-attestor-01 | grep status
 
 **1. create the schema (governance)**
 
+Skip this step if you added `kyc-v1` to genesis above (Add attestors schema). Otherwise the proposal fails when it executes, with `"kyc-v1": attestation schema already exists`.
+
 ```bash
 cat > ~/tmp_workarea_qr/json/schema.json <<'EOF'
 {
@@ -764,6 +766,39 @@ lucidchaind tx gov vote "$PID" yes --from qr_validator --chain-id my-testnet-1 \
   --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
 
 #to check
+lucidchaind q attestor attestor kyc-attestor-01 | grep status
+
+```
+
+**How to reinstate a suspended attestor**
+
+Only a SUSPENDED attestor can be reinstated. It becomes ACTIVE again.
+
+```bash
+cat > ~/tmp_workarea_qr/json/reinstate-attestor-proposal.json <<'EOF'
+{
+  "messages": [{
+    "@type": "/lucidchain.attestor.v1.MsgReinstateAttestor",
+    "authority": "cosmos10d07y265gmmuvt4z0w9aw880jnsr700j6zn9kn",
+    "id": "kyc-attestor-01"
+  }],
+  "metadata": "ipfs://test",
+  "deposit": "10000000stake",
+  "title": "Reinstate kyc-attestor-01",
+  "summary": "Reinstate kyc-attestor-01"
+}
+EOF
+
+lucidchaind tx gov submit-proposal ~/tmp_workarea_qr/json/reinstate-attestor-proposal.json --from qr_validator \
+  --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
+
+sleep 7   # long enough for inclusion in a block
+
+PID=$(lucidchaind q gov proposals -o json | jq -r '.proposals[-1].id')
+lucidchaind tx gov vote "$PID" yes --from qr_validator --chain-id my-testnet-1 \
+  --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
+
+#to check (after the voting period)
 lucidchaind q attestor attestor kyc-attestor-01 | grep status
 
 ```
