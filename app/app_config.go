@@ -77,9 +77,9 @@ var (
 		// TODO: (before launch): attestor currently only burns (keeper.go:289). Narrow to
 		// Burner only unless the finished module really needs Minter or Staking.
 		{Account: attestormoduletypes.ModuleName, Permissions: []string{authtypes.Minter, authtypes.Burner, authtypes.Staking}},
-		// TODO: TO be added after the module is finished
-		{Account: checkpointmoduletypes.ModuleName, Permissions: []string{authtypes.Minter, authtypes.Burner, authtypes.Staking}},
-		{Account: proofsmoduletypes.ModuleName, Permissions: []string{authtypes.Minter, authtypes.Burner, authtypes.Staking}},
+		// checkpoint and proofs only send fees from the submitter to fee_collector.
+		{Account: checkpointmoduletypes.ModuleName},
+		{Account: proofsmoduletypes.ModuleName},
 		{Account: sidechainmoduletypes.ModuleName, Permissions: []string{authtypes.Burner}},
 	}
 
