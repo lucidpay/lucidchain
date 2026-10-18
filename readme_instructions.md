@@ -23,7 +23,7 @@ Initialize the blockchain
 
 ```bash
 
-lucidchaind init dev-test-node --chain-id my-testnet-1
+lucidchaind init dev-test-node --chain-id my-testnet-1 # --consensus-key-algo ml_dsa_65 turnes on quantum resistance
 
 nano $HOME/.lucidchain/config/app.toml
 

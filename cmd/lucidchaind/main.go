@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	_ "cosmossdk.io/api/cosmos/crypto/mldsa65"
 	clienthelpers "cosmossdk.io/client/v2/helpers"
 	svrcmd "github.com/cosmos/cosmos-sdk/server/cmd"
 
