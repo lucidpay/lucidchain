@@ -433,10 +433,10 @@ lucidchaind query checkpoint -h
 
 This checkpoint is provable and has proper geo coordinates
 
-```bash
-# first create random seeds
-echo "0x00$(openssl rand -hex 31)"
-echo "0x00$(openssl rand -hex 31)"
+```text
+first create random seeds
+"0x00$(openssl rand -hex 31)"
+"0x00$(openssl rand -hex 31)"
 ```
 
 Use the random seeds to create the `records.json` file. Template:
@@ -449,18 +449,22 @@ Use the random seeds to create the `records.json` file. Template:
 ```
 
 ```bash
-cat > ~/tmp_workarea/json/records.json <<'EOF'
+export RAND_SALT1="0x00$(openssl rand -hex 31)"
+export RAND_SALT2="0x00$(openssl rand -hex 31)"
+cat << EOF > ~/tmp_workarea/json/records.json
 [
-  {"lon": 55.2700, "lat": 25.2000, "t": 1791817725, "salt": "0x00e0bb7026e79cf9dd2c6b5850a59f5600e87d18b08d88e74c524b67669867e7"},
-  {"lon": 55.2705, "lat": 25.2002, "t": 1791817735, "salt": "0x0091b755f9d5c450ed41cd0f36526dc06ad905d0059ff0ee4b345f7e9fce504b"}
+  {"lon": 55.2700, "lat": 25.2000, "t": 1791817725, "salt": "$RAND_SALT1"},
+  {"lon": 55.2705, "lat": 25.2002, "t": 1791817735, "salt": "$RAND_SALT2"}
 ]
 EOF
+
+unset RAND_SALT1 RAND_SALT2
 ```
 
 Now build the batch.
 Syntax:
 
-```bash
+```text
 python3 build-batch.py --records records.json \
   --area-box <lon_min> <lat_min> <lon_max> <lat_max> \
   --out-dir ~/tmp_workarea/json
@@ -508,7 +512,7 @@ next: SEQ=2 SCHEME=groth16 BATCH=/home/dev/tmp_workarea/json/batch.json tools/zk
 
 ```bash
 SEQ=<new sequence> SCHEME=groth16 BATCH=~/tmp_workarea/json/batch.json tools/zkgeo/prove-and-submit-geo.sh
-unset K1 K2
+
 ```
 
 The PLONK version, with the same sequence:
@@ -522,6 +526,8 @@ SEQ=<new sequence> SCHEME=plonk BATCH=~/tmp_workarea/json/batch.json tools/zkgeo
 ```bash
 lucidchaind query proofs proofs-for-checkpoint --sidechain-id hospitality-platform-01 --checkpoint-sequence 2 -o json \
   | jq '.proofs[] | {proof_system_id, claim_id, verified_height}'
+
+  unset STATE_ROOT K1 K2
 ```
 
 You should see something similar to this:
@@ -622,7 +628,10 @@ lucidchaind tx sign ~/tmp_workarea/json/register-attestor.json \
   --from attestor-operator --chain-id my-testnet-1 > ~/tmp_workarea/json/register-attestor.signed.json
 
 lucidchaind tx broadcast ~/tmp_workarea/json/register-attestor.signed.json
+```
+Wait for the block creation
 
+```bash
 # check
 lucidchaind query attestor attestor kyc-attestor-01
 ```
