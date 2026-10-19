@@ -569,15 +569,21 @@ lucidchaind keys add attestor-operator
 lucidchaind keys add attestorkey1
 lucidchaind keys add attestorkey2
 
-lucidchaind tx bank send validator $(lucidchaind keys show attestor-operator -a) 5000000stake \
-  --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5 --yes
-
 lucidchaind keys show attestor-operator --address
 lucidchaind keys show attestorkey1 --address
 lucidchaind keys show attestorkey2 --address
 lucidchaind keys show attestor-operator --pubkey
 lucidchaind keys show attestorkey1 --pubkey
 lucidchaind keys show attestorkey2 --pubkey
+```
+
+### IMPORTANT STEP: Fund the wallet
+
+```bash
+
+lucidchaind tx bank send validator $(lucidchaind keys show attestor-operator -a) 5000000stake \
+  --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5 --yes
+
 ```
 
 ### Register an attestor
@@ -650,6 +656,8 @@ lucidchaind tx gov vote "$PID" yes --from validator \
 
 ### Validate the attestor
 
+Wait for the voting period to end (60s) then validate
+
 ```bash
 lucidchaind query gov proposal "$PID" -o json | jq '.proposal.messages[0]."@type", .proposal.title'
 lucidchaind query attestor attestor kyc-attestor-01 | grep status
@@ -716,7 +724,7 @@ Same proposal format as step 1, with this message:
 
 ```json
    {"@type": "/lucidchain.attestor.v1.MsgActivateAttestor",
-    "authority": "cosmos10d07y265gmmuvt4z0w9aw880jnsr700j6zn9kn", "id": "acme"}
+    "authority": "$GOV_ADDRESS", "id": "acme"}
 ```
 
 ```bash
@@ -824,7 +832,8 @@ pagination:
 ```bash
 lucidchaind keys add challenger
 lucidchaind keys show challenger -a      # the address
-# fund the wallet
+
+# IMPORTANT: fund the wallet
 lucidchaind tx bank send validator $(lucidchaind keys show challenger -a) 5000000stake \
   --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
 
@@ -877,9 +886,12 @@ PID=$(lucidchaind query gov proposals -o json | jq -r '.proposals[-1].id')
 lucidchaind query gov proposal "$PID" -o json | jq '.proposal | {id, status, voting_end_time}'
 lucidchaind tx gov vote "$PID" yes --from validator --chain-id my-testnet-1 \
   --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
+```
 
-# wait a minute or two then check the status of the proposal
 
+wait for the voting period to finish (60s) then check the status of the proposal
+
+```bash
 PID=$(lucidchaind query gov proposals -o json | jq -r '.proposals[-1].id')
 lucidchaind query gov proposal "$PID" -o json | jq '.proposal | {status, failed_reason, voting_end_time}'
 ```
@@ -918,8 +930,11 @@ PID=$(lucidchaind query gov proposals -o json | jq -r '.proposals[-1].id')
 lucidchaind query gov proposal "$PID" -o json | jq '.proposal | {id, status, voting_end_time}'
 lucidchaind tx gov vote "$PID" yes --from validator --chain-id my-testnet-1 \
   --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
+```
 
-# give it a minute or two then check
+wait for the voting period to finish (60s) then check the status
+
+```bash
 lucidchaind query attestor attestor kyc-attestor-01 | grep status
 ```
 
@@ -951,8 +966,11 @@ sleep 7   # long enough for inclusion in a block
 PID=$(lucidchaind query gov proposals -o json | jq -r '.proposals[-1].id')
 lucidchaind tx gov vote "$PID" yes --from validator --chain-id my-testnet-1 \
   --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
+```
 
-# give it a minute or two to check (after the voting period)
+wait for the voting period to finish (60s) then check the status
+
+```bash
 lucidchaind query attestor attestor kyc-attestor-01 | grep status
 ```
 
@@ -982,8 +1000,11 @@ lucidchaind tx gov submit-proposal ~/tmp_workarea/json/sidechain-suspension-prop
 sleep 7
 PID=$(lucidchaind query gov proposals -o json | jq -r '.proposals[-1].id')
 lucidchaind tx gov vote "$PID" yes --from validator --chain-id my-testnet-1 --yes
+```
 
-# wait for a minute or two and then query to verify
+wait for the voting period to finish (60s) then check the status
+
+```bash
 lucidchaind query sidechain sidechain hospitality-platform-01
 ```
 
@@ -1016,17 +1037,22 @@ lucidchaind tx gov submit-proposal ~/tmp_workarea/json/sidechain-slash-proposal.
 sleep 7
 PID=$(lucidchaind query gov proposals -o json | jq -r '.proposals[-1].id')
 lucidchaind tx gov vote "$PID" yes --from validator --chain-id my-testnet-1 --yes
+```
 
-# wait for a minute or two then query to verify
+wait for the voting period to finish (60s) then check the status
+
+```bash
 lucidchaind query sidechain sidechain hospitality-platform-01
+```
 
-# you should see
-#  bond:
-#    amount: "900000"
-#    denom: stake
-# ...
-#  status: SIDECHAIN_STATUS_SLASHED
+ you should see
+  bond:
+    amount: "900000"
+    denom: stake
+ ...
+ status: SIDECHAIN_STATUS_SLASHED
 
+```bash
 PID=$(lucidchaind query gov proposals -o json | jq -r '.proposals[-1].id')
 lucidchaind query gov proposal "$PID"
 ```
