@@ -202,19 +202,20 @@ lucidchaind keys show sidechainkey3 --pubkey
 
 ```
 
-Then register filling in the signer keys
+Register the sidechain
 
 ```bash
 
 lucidchaind tx sidechain register-sidechain \
   hospitality-platform-01 "Hospitality Platform" notarized 1000000stake \
-  --signer-keys '{"@type":"/cosmos.crypto.secp256k1.PubKey","key":"<base64>"}' \
-  --signer-keys '{"@type":"/cosmos.crypto.secp256k1.PubKey","key":"<base64>"}' \
-  --signer-keys '{"@type":"/cosmos.crypto.secp256k1.PubKey","key":"<base64>"}' \
+  --signer-keys "$(lucidchaind keys show sidechainkey1 --pubkey)" \
+  --signer-keys "$(lucidchaind keys show sidechainkey2 --pubkey)" \
+  --signer-keys "$(lucidchaind keys show sidechainkey3 --pubkey)" \
   --signature-threshold 2 \
   --checkpoint-interval-seconds 300 \
   --metadata-uri https://example.org/meta.json \
   --from validator --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5
+
 ```
 
 EXAMPLE  
@@ -382,13 +383,14 @@ $HOME/tools/signcheckpoint/signcheckpoint \
 # take the signatures and add them to submit-checkpoint
 export STATE_ROOT=d841f966f8bf17d49335f4b134c2178fd5aca8244d46b8d5f9a5470338095b7b
 export STATE_ROOT_B64=$(echo $STATE_ROOT | xxd -r -p | base64 -w0)
+export ZK_ROOT=$(printf '%064x' 7 | xxd -r -p | base64 -w0)   # test value; use your real MiMC root for real proofs
 
 #NOTE: --zk-anchor is optional and nullable. But here it demonstrates how to use it
 lucidchaind tx checkpoint submit-checkpoint \
   hospitality-platform-01 1 $STATE_ROOT_B64 "" 100 "ipfs://test-checkpoint-1" 1 \
   --signatures '{"signature":"xWbozMDCDKXRAYugCVQXuWXlxeNdX4Gj814Nax4meeN1KURU1gxGTOflrIyX1Y/FI5sXvncru8ZlS3mxQmBQIQ==","signer_index":0}' \
   --signatures '{"signature":"+hXNHk0IKTP/4X/30iAv8VZjErcp4nlUJ1AZaxnI509SMeNFr7P64vRJTLMxABkkrwFXAc1c9nf8IdPOfBwAoA==","signer_index":1}' \
-  --zk-anchor '{"records_root":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAc=","records_tree_depth":20,"scheme":"ZK_HASH_SCHEME_MIMC_BN254"}' \
+  --zk-anchor '{"records_root":"'"$ZK_ROOT"'","records_tree_depth":20,"scheme":"ZK_HASH_SCHEME_MIMC_BN254"}' \
   --from validator --chain-id my-testnet-1 \
   --gas auto --gas-adjustment 1.5 --gas-prices 0.025stake -y
 
@@ -535,20 +537,12 @@ SEQ=<new sequence> SCHEME=plonk BATCH=~/tmp_workarea/json/batch.json tools/zkgeo
 
 ```
 
-To check use
+**To validate** 
 
 ```bash
 
 lucidchaind q proofs proofs-for-checkpoint --sidechain-id hospitality-platform-01 --checkpoint-sequence 2 -o json \
   | jq '.proofs[] | {proof_system_id, claim_id, verified_height}'
-
-```
-
-**To validate** 
-
-```bash
-
-lucidchaind q proofs proofs-for-checkpoint --sidechain-id hospitality-platform-01 --checkpoint-sequence <new sequence> # sequece should be 2 if you have followed along
 
 ```
 
@@ -613,18 +607,18 @@ lucidchaind keys show attestorkey2 --pubkey
 Register an attestor
 
 ```bash
-cat > ~/tmp_workarea/json/register-attestor.json <<'EOF'
+export ATT_OPER_ADDRESS=$(lucidchaind keys show attestor-operator --address)
+export ATT_KEY_PK=$(lucidchaind keys show attestorkey1 --pubkey)
+cat << EOF > ~/tmp_workarea/json/register-attestor.json 
 {
   "body": {
     "messages": [{
       "@type": "/lucidchain.attestor.v1.MsgRegisterAttestor",
-      "operator": "cosmos1yv38wnv40l80z0rfmxeu0ug5wqapptdl3jvl48",
+      "operator": "$ATT_OPER_ADDRESS",
       "id": "kyc-attestor-01",
       "name": "KYC Attestor 01",
       "authorized_schema_ids": ["kyc-v1"],
-      "signer_keys": [
-        {"@type":"/cosmos.crypto.secp256k1.PubKey","key":"AvBD+BO33Avd3QiKHWXc0UMqA79ldJX212SmRDGopwtg"}
-      ],
+      "signer_keys": [$ATT_KEY_PK],
       "signature_threshold": 1,
       "bond_amount": "1000000",
       "credential_uri": "https://example.org/attestor.json"
@@ -656,11 +650,12 @@ Activate attestor
 
 
 ```bash
-cat > ~/tmp_workarea/json/activate-attestor.json <<'EOF'
+export GOV_ADDRESS=$(lucidchaind q auth module-account gov -o json | jq -r '.account.value.address')
+cat << EOF > ~/tmp_workarea/json/activate-attestor.json
 {
   "messages": [{
     "@type": "/lucidchain.attestor.v1.MsgActivateAttestor",
-    "authority": "cosmos10d07y265gmmuvt4z0w9aw880jnsr700j6zn9kn",
+    "authority": "$GOV_ADDRESS",
     "id": "kyc-attestor-01"
   }],
   "metadata": "ipfs://test",
@@ -700,11 +695,12 @@ lucidchaind q attestor attestor kyc-attestor-01 | grep status
 Skip this step if you added `kyc-v1` to genesis above (Add attestors schema). Otherwise the proposal fails when it executes, with `"kyc-v1": attestation schema already exists`.
 
 ```bash
-cat > ~/tmp_workarea/json/schema.json <<'EOF'
+export GOV_ADDRESS=$(lucidchaind q auth module-account gov -o json | jq -r '.account.value.address')
+cat << EOF > ~/tmp_workarea/json/schema.json
 {
   "messages": [{
     "@type": "/lucidchain.attestor.v1.MsgCreateAttestationSchema",
-    "authority": "cosmos10d07y265gmmuvt4z0w9aw880jnsr700j6zn9kn",
+    "authority": "$GOV_ADDRESS",
     "schema": {
       "id": "kyc-v1",
       "title": "Revenue report",
@@ -725,7 +721,11 @@ cat > ~/tmp_workarea/json/schema.json <<'EOF'
 EOF
 lucidchaind tx gov submit-proposal ~/tmp_workarea/json/schema.json --from validator \
     --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
-lucidchaind tx gov vote <proposal-id> yes --from validator --chain-id my-testnet-1 --gas-prices 0stake --yes  # proposal ID should be 2 if this is your first proposal
+
+sleep 7
+lucidchaind q gov proposals -o json | jq '.proposals[-1] | {id, status}'
+PID=$(lucidchaind q gov proposals -o json | jq -r '.proposals[-1].id')
+lucidchaind tx gov vote "$PID" yes --from validator --chain-id my-testnet-1 --gas-prices 0stake --yes  # proposal ID should be 2 if this is your first proposal
 
 
 ```
@@ -750,11 +750,11 @@ lucidchaind query attestor attestor acme   # status should be ATTESTOR_STATUS_PE
     "authority": "cosmos10d07y265gmmuvt4z0w9aw880jnsr700j6zn9kn", "id": "acme"}
 
 ```bash
-
-cat > ~/tmp_workarea/json/approve-attestor.json <<'EOF'
+export GOV_ADDRESS=$(lucidchaind q auth module-account gov -o json | jq -r '.account.value.address')
+cat << EOF > ~/tmp_workarea/json/approve-attestor.json
 {
   "messages": [{"@type": "/lucidchain.attestor.v1.MsgActivateAttestor",
-    "authority": "cosmos10d07y265gmmuvt4z0w9aw880jnsr700j6zn9kn", "id": "acme"}
+    "authority": "$GOV_ADDRESS", "id": "acme"}
     ],
   "metadata": "ipfs://test",
   "deposit": "10000000stake",
@@ -764,7 +764,10 @@ cat > ~/tmp_workarea/json/approve-attestor.json <<'EOF'
 EOF
 lucidchaind tx gov submit-proposal ~/tmp_workarea/json/approve-attestor.json --from validator \
     --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
-lucidchaind tx gov vote <proposal-id> yes --from validator --chain-id my-testnet-1 --gas-prices 0stake --yes  # proposal ID should be 3 here 
+sleep 7
+lucidchaind q gov proposals -o json | jq '.proposals[-1] | {id, status}'
+PID=$(lucidchaind q gov proposals -o json | jq -r '.proposals[-1].id')
+lucidchaind tx gov vote "$PID" yes --from validator --chain-id my-testnet-1 --gas-prices 0stake --yes  # proposal ID should be 2 if this is your first proposal
 
 ```
 
@@ -816,7 +819,7 @@ tx: null
 txhash: 5D1C540C4E110B77D05FDE3E74EAC2FE9D2685B522C77AB7BBE6993E52928AEB  
 
 
-**now run**
+**now run to verify**
 
 ```bash
 
@@ -852,17 +855,17 @@ Create a challenger
 ```bash
 
 lucidchaind keys add challenger
-lucidchaind keys show challenger -a      # copy the address
+lucidchaind keys show challenger -a      # the address
 #fund the wallet
-lucidchaind tx bank send validator <challenger-address> 5000000stake \
+lucidchaind tx bank send validator $(lucidchaind keys show challenger -a) 5000000stake \
   --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
 
 #pull the atteestation id for the next command
- lucidchaind query attestor checkpoint-attestations hospitality-platform-01 2 -o json | jq -r '.attestations[0].id'
+export ATTESTATION_ID=$(lucidchaind query attestor checkpoint-attestations hospitality-platform-01 2 -o json | jq -r '.attestations[0].id')
 
 #raise a dispute
 lucidchaind tx attestor raise-dispute \
-  <attestation id> \
+  $ATTESTATION_ID \
   ipfs://test-evidence 100000 \
   --from challenger --chain-id my-testnet-1 \
   --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
@@ -875,24 +878,18 @@ create proposal.json with the json data bellow. Get dispute_id from the raise di
 
 ```bash
 
-#again get the attestation ID
-lucidchaind query attestor checkpoint-attestations hospitality-platform-01 2 -o json | jq -r '.attestations[0].id'
+#pull the atteestation id for the next command
+export ATTESTATION_ID=$(lucidchaind query attestor checkpoint-attestations hospitality-platform-01 2 -o json | jq -r '.attestations[0].id')
+export DISPUTE_ID=$(lucidchaind q txs --query "dispute_raised.attestation_id='$ATTESTATION_ID'" -o json \
+  | jq -r '.txs[0].events[] | select(.type=="dispute_raised") | .attributes[] | select(.key=="dispute_id") | .value')
 
-#add the attestation id here and get the dispute ID
-lucidchaind q txs --query "dispute_raised.attestation_id='ea7a5ad479359ecf32b0131f9482b2021dae5d52824c177a8a8484daa68b9ff7'" -o json \
-  | jq -r '.txs[0].events[] | select(.type=="dispute_raised") | .attributes[] | select(.key=="dispute_id") | .value'
-
-```
-
-Adjust in the bellow JSON with the new dispute id
-
-```bash
-cat > ~/tmp_workarea/json/resolution-proposal.json <<'EOF'
+export GOV_ADDRESS=$(lucidchaind q auth module-account gov -o json | jq -r '.account.value.address')
+cat << EOF > ~/tmp_workarea/json/resolution-proposal.json
 {
   "messages": [{
     "@type": "/lucidchain.attestor.v1.MsgResolveDispute",
-    "authority": "cosmos10d07y265gmmuvt4z0w9aw880jnsr700j6zn9kn",
-    "dispute_id": "19b6c8e162923aa7ad0c8920ae5ebf601b590289f1f0b3e3a8fe188eb9d86966",
+    "authority": "$GOV_ADDRESS",
+    "dispute_id": "$DISPUTE_ID",
     "upheld": true,
     "rationale_uri": "ipfs://test-rationale"
   }],
@@ -931,11 +928,12 @@ lucidchaind query attestor -h
 **How to suspend an attestor**
 
 ```bash
-cat > ~/tmp_workarea/json/suspend-attestor-proposal.json <<'EOF'
+export GOV_ADDRESS=$(lucidchaind q auth module-account gov -o json | jq -r '.account.value.address')
+cat << EOF > ~/tmp_workarea/json/suspend-attestor-proposal.json
 {
   "messages": [{
     "@type": "/lucidchain.attestor.v1.MsgSuspendAttestor",
-    "authority": "cosmos10d07y265gmmuvt4z0w9aw880jnsr700j6zn9kn",
+    "authority": "$GOV_ADDRESS",
     "id": "kyc-attestor-01",
     "reason": "dispute 19b6c8e1..."
   }],
@@ -956,7 +954,7 @@ lucidchaind q gov proposal "$PID" -o json | jq '.proposal | {id, status, voting_
 lucidchaind tx gov vote "$PID" yes --from validator --chain-id my-testnet-1 \
   --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
 
-#to check
+#give it a minute or two then check
 lucidchaind q attestor attestor kyc-attestor-01 | grep status
 
 ```
@@ -966,11 +964,12 @@ lucidchaind q attestor attestor kyc-attestor-01 | grep status
 Only a SUSPENDED attestor can be reinstated. It becomes ACTIVE again.
 
 ```bash
-cat > ~/tmp_workarea/json/reinstate-attestor-proposal.json <<'EOF'
+export GOV_ADDRESS=$(lucidchaind q auth module-account gov -o json | jq -r '.account.value.address')
+cat << EOF > ~/tmp_workarea/json/reinstate-attestor-proposal.json
 {
   "messages": [{
     "@type": "/lucidchain.attestor.v1.MsgReinstateAttestor",
-    "authority": "cosmos10d07y265gmmuvt4z0w9aw880jnsr700j6zn9kn",
+    "authority": "$GOV_ADDRESS",
     "id": "kyc-attestor-01"
   }],
   "metadata": "ipfs://test",
@@ -989,7 +988,7 @@ PID=$(lucidchaind q gov proposals -o json | jq -r '.proposals[-1].id')
 lucidchaind tx gov vote "$PID" yes --from validator --chain-id my-testnet-1 \
   --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
 
-#to check (after the voting period)
+#give it a minute or two to check (after the voting period)
 lucidchaind q attestor attestor kyc-attestor-01 | grep status
 
 ```
@@ -1000,12 +999,13 @@ lucidchaind q attestor attestor kyc-attestor-01 | grep status
 You will need to create a proposal suspend.json
 
 ```bash
-cat > ~/tmp_workarea/json/suspension-proposal.json <<'EOF'
+export GOV_ADDRESS=$(lucidchaind q auth module-account gov -o json | jq -r '.account.value.address')
+cat << EOF > ~/tmp_workarea/json/sidechain-suspension-proposal.json
 {
   "messages": [
     {
       "@type": "/lucidchain.sidechain.v1.MsgSuspendSidechain",
-      "authority": "cosmos10d07y265gmmuvt4z0w9aw880jnsr700j6zn9kn",
+      "authority": "$GOV_ADDRESS",
       "id": "hospitality-platform-01"
     }
   ],
@@ -1016,7 +1016,7 @@ cat > ~/tmp_workarea/json/suspension-proposal.json <<'EOF'
 }
 EOF
 
-lucidchaind tx gov submit-proposal ~/tmp_workarea/json/suspension-proposal.json --from validator --chain-id my-testnet-1 -y; 
+lucidchaind tx gov submit-proposal ~/tmp_workarea/json/sidechain-suspension-proposal.json --from validator --chain-id my-testnet-1 -y; 
 sleep 7; 
 PID=$(lucidchaind q gov proposals -o json | jq -r '.proposals[-1].id')
 lucidchaind tx gov vote "$PID" yes --from validator --chain-id my-testnet-1 -y
@@ -1032,12 +1032,13 @@ lucidchaind query sidechain sidechain hospitality-platform-01
 You will need to create a proposal slash.json
 
 ```bash
-cat > ~/tmp_workarea/json/slash-proposal.json <<'EOF'
+export GOV_ADDRESS=$(lucidchaind q auth module-account gov -o json | jq -r '.account.value.address')
+cat << EOF > ~/tmp_workarea/json/sidechain-slash-proposal.json
 {
   "messages": [
     {
       "@type": "/lucidchain.sidechain.v1.MsgSlashSidechain",
-      "authority": "cosmos10d07y265gmmuvt4z0w9aw880jnsr700j6zn9kn",
+      "authority": "$GOV_ADDRESS",
       "id": "hospitality-platform-01",
       "slash_fraction": "0.100000000000000000",
       "reason": "conflicting checkpoints signed at sequence 42"
@@ -1052,7 +1053,7 @@ EOF
 
 
 # This will make submission and voting within the time frame
-lucidchaind tx gov submit-proposal ~/tmp_workarea/json/slash-proposal.json  --from validator --chain-id my-testnet-1 -y
+lucidchaind tx gov submit-proposal ~/tmp_workarea/json/sidechain-slash-proposal.json  --from validator --chain-id my-testnet-1 -y
 sleep 7
 PID=$(lucidchaind q gov proposals -o json | jq -r '.proposals[-1].id')
 lucidchaind tx gov vote "$PID" yes --from validator --chain-id my-testnet-1 -y
