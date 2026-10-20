@@ -54,11 +54,11 @@ message Checkpoint {
   // Optional off-chain pointer (IPFS CID, URI). Covered by the signatures, not verified on-chain.
   string data_pointer = 12;
 
-  // Reserved for Tier 2 (attestations) and Tier 3 (validity proofs).
-  reserved 13 to 20;
+  // Tier 3 (PROVEN) anchor.
+  ZkAnchor zk_anchor = 13;
 
-  // TODO: bump it up to 13-20 range after testing since these are reserved specifically for tier 2 and 3 
-  ZkAnchor zk_anchor = 21;
+  // 14 to 20 are held for tier 2 and 3 additions.
+  reserved 14 to 20;
 
 }
 

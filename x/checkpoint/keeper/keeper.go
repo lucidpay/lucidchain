@@ -194,6 +194,15 @@ func (k Keeper) SubmitCheckpoint(ctx context.Context, msg *types.MsgSubmitCheckp
 			"message uses version %d, sidechain is at %d", msg.SignerSetVersion, sc.SignerSetVersion)
 	}
 
+	// PROVEN sidechains must anchor every checkpoint so it can be proven in
+	// x/proofs. Lower tiers may still send an anchor, but don't have to.
+	// Checked before chaining and signature verification, so a missing anchor
+	// costs no ML-DSA verification gas.
+	if sc.Tier == sidechaintypes.AssuranceTier_ASSURANCE_TIER_PROVEN && msg.ZkAnchor == nil {
+		return nil, errorsmod.Wrapf(types.ErrZkAnchorRequired,
+			"sidechain %q is PROVEN, every checkpoint needs a zk_anchor", sc.Id)
+	}
+
 	if err := k.checkChaining(ctx, msg); err != nil {
 		return nil, err
 	}

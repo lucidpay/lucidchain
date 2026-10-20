@@ -144,6 +144,7 @@ func TestSubmitAttestation_ConflictCheckFailsClosed(t *testing.T) {
 	f.sidechains.m[testSidechain] = sidechaintypes.Sidechain{
 		Id:         testSidechain,
 		Operator:   f.sidechainOwnerS,
+		Tier:       sidechaintypes.AssuranceTier_ASSURANCE_TIER_ATTESTED, // added
 		SignerKeys: []*codectypes.Any{{TypeUrl: sdk.MsgTypeURL(&ed25519.PubKey{})}},
 	}
 

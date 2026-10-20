@@ -35,5 +35,6 @@ var (
 	ErrInvalidGenesis          = errorsmod.Register(ModuleName, 26, "invalid genesis state")
 	ErrConflictOfInterest      = errorsmod.Register(ModuleName, 27, "attestor conflicts with sidechain owner")
 	ErrSidechainNotFound       = errorsmod.Register(ModuleName, 28, "sidechain not found")
+	ErrSidechainTierTooLow     = errorsmod.Register(ModuleName, 29, "sidechain tier is too low for attestations")
 	ErrInvalidSigner           = errorsmod.Register(ModuleName, 1100, "expected gov account as only signer for proposal message")
 )

@@ -19,4 +19,5 @@ var (
 	ErrThresholdNotMet     = errorsmod.Register(ModuleName, 9, "signature threshold not met")
 	ErrLimitExceeded       = errorsmod.Register(ModuleName, 10, "module limit exceeded")
 	ErrInvalidGenesis      = errorsmod.Register(ModuleName, 11, "invalid genesis state")
+	ErrZkAnchorRequired    = errorsmod.Register(ModuleName, 12, "zk_anchor is required for PROVEN sidechains")
 )

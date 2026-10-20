@@ -12,8 +12,8 @@ import (
 	errorsmod "cosmossdk.io/errors"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
-
 	"github.com/lucidpay/lucidchain/x/attestor/types"
+	sidechaintypes "github.com/lucidpay/lucidchain/x/sidechain/types"
 )
 
 // SubmitAttestation publishes a signed claim about an existing checkpoint.
@@ -87,6 +87,16 @@ func (ms msgServer) SubmitAttestation(ctx context.Context, msg *types.MsgSubmitA
 		}
 		return nil, err
 	}
+
+	// Attestations only apply to sidechains that registered for attestor
+	// sign-off: ATTESTED or higher. A NOTARIZED sidechain has no use for them.
+	// Checked before the conflict check and signature verification.
+	if sc.Tier < sidechaintypes.AssuranceTier_ASSURANCE_TIER_ATTESTED {
+		return nil, errorsmod.Wrapf(types.ErrSidechainTierTooLow,
+			"sidechain %q is %s, attestations need %s or higher",
+			sc.Id, sc.Tier, sidechaintypes.AssuranceTier_ASSURANCE_TIER_ATTESTED)
+	}
+
 	if err := ms.checkNoSidechainConflict(attestor, msg.Submitter, sc); err != nil {
 		return nil, err
 	}
