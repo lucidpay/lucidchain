@@ -138,26 +138,40 @@ lucidchaind keys show validator --address
 ### Check the validator's balance
 
 ```bash
-lucidchaind query bank balances <address>
+lucidchaind query bank balances $(lucidchaind keys show validator --address)
 ```
 
 ### Get to know the chain
 
 ```bash
 lucidchaind version
+```
 
+```bash
 lucidchaind query upgrade module-versions
+```
 
+```bash
 lucidchaind query auth module-account gov
+```
 
+```bash
 lucidchaind query consensus comet block-latest
+```
 
+```bash
 lucidchaind query bank total
+```
 
+```bash
 lucidchaind query sidechain -h
+```
 
+```bash
 lucidchaind tx sidechain -h
+```
 
+```bash
 lucidchaind tx sidechain register-sidechain -h
 ```
 
@@ -178,8 +192,6 @@ Write down the mnemonics so you can recover the keys in case they are deleted by
 ### Display the public keys
 
 ```bash
-lucidchaind keys show attestor-operator --pubkey
-
 lucidchaind keys show sidechainkey1 --pubkey
 
 lucidchaind keys show sidechainkey2 --pubkey
@@ -195,20 +207,6 @@ lucidchaind tx sidechain register-sidechain \
   --signer-keys "$(lucidchaind keys show sidechainkey1 --pubkey)" \
   --signer-keys "$(lucidchaind keys show sidechainkey2 --pubkey)" \
   --signer-keys "$(lucidchaind keys show sidechainkey3 --pubkey)" \
-  --signature-threshold 2 \
-  --checkpoint-interval-seconds 300 \
-  --metadata-uri https://example.org/meta.json \
-  --from validator --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5
-```
-
-#### Example
-
-```bash
-lucidchaind tx sidechain register-sidechain \
-  hospitality-platform-01 "Hospitality Platform" notarized 1000000stake \
-  --signer-keys '{"@type":"/cosmos.crypto.secp256k1.PubKey","key":"Aj3S0dAItEDqOpHm7lw2eU79vgigg29etjNMO0i+BgZF"}' \
-  --signer-keys '{"@type":"/cosmos.crypto.secp256k1.PubKey","key":"AsxltdpDXisuwLfiuSC0S5MzJ/EN1ATdzULinSEZZKjM"}' \
-  --signer-keys '{"@type":"/cosmos.crypto.secp256k1.PubKey","key":"Am9As0veC6DyLha69fjDFbeO7eUU78GQ7La0d474+T0Q"}' \
   --signature-threshold 2 \
   --checkpoint-interval-seconds 300 \
   --metadata-uri https://example.org/meta.json \
@@ -274,9 +272,11 @@ txhash: 3AA09EE67BCF0960D6F30FDEA10BE40365EE5C2B076FA427CB690ED2245320FA
 
 Run:
 
-```bash
-lucidchaind query tx 3AA09EE67BCF0960D6F30FDEA10BE40365EE5C2B076FA427CB690ED2245320FA # will show information about the registration
+```text
+lucidchaind query tx <txhash> # will show information about the registration
+```
 
+```bash
 lucidchaind query sidechain sidechains
 ```
 
@@ -311,17 +311,12 @@ sidechains:
 
 ## How to work with checkpoints
 
-Syntax:
-
-```bash
-lucidchaind tx checkpoint submit-checkpoint [sidechain-id] [lc-sequence] [state-root] [previous-checkpoint-hash] [record-count] [data-pointer] [signer-set-version] [flags]
-```
 
 > **Important:** These steps create a checkpoint with just a placeholder for the ZK anchor, which cannot be proved using ZKP. Example 2 can be proved.
 
 ### Example 1
 
-```bash
+```text
 # Syntax
 lucidchaind tx checkpoint submit-checkpoint \
   <sidechain-id> <lc-sequence> <state-root> ... \
@@ -348,7 +343,7 @@ export ZK_ROOT=$(printf '%064x' 7)   # test value; use your real MiMC root for r
 K1=$(lucidchaind keys export sidechainkey1 --unarmored-hex --unsafe)
 K2=$(lucidchaind keys export sidechainkey2 --unarmored-hex --unsafe)
 
-~/tools/signcheckpoint/signcheckpoint \
+OUT=$(~/tools/signcheckpoint/signcheckpoint \
   --chain-id my-testnet-1 \
   --sidechain-id hospitality-platform-01 \
   --lc-sequence 1 \
@@ -359,7 +354,18 @@ K2=$(lucidchaind keys export sidechainkey2 --unarmored-hex --unsafe)
   --signer-set-version 1 \
   --zk-records-root "$ZK_ROOT" \
   --zk-tree-depth 20 \
-  --key 0="$K1" --key 1="$K2"
+  --key 0="$K1" --key 1="$K2" 2>&1)
+
+export SIG0=$(printf '%s\n' "$OUT" | grep -o '{"signature":"[^"]*","signer_index":0}')
+export SIG1=$(printf '%s\n' "$OUT" | grep -o '{"signature":"[^"]*","signer_index":1}')
+export ZK_ANCHOR=$(printf '%s\n' "$OUT" | grep -o '{"records_root":[^}]*}')
+
+# sanity check: all three should print
+echo "$SIG0"; echo "$SIG1"; echo "$ZK_ANCHOR"
+
+unset K1 K2   # don't leave the private keys in your shell
+
+
 
 # take the signatures and add them to submit-checkpoint
 export STATE_ROOT=d841f966f8bf17d49335f4b134c2178fd5aca8244d46b8d5f9a5470338095b7b
@@ -368,10 +374,10 @@ export ZK_ROOT=$(printf '%064x' 7 | xxd -r -p | base64 -w0)   # test value; use 
 
 # NOTE: --zk-anchor is optional and nullable. But here it demonstrates how to use it
 lucidchaind tx checkpoint submit-checkpoint \
-  hospitality-platform-01 1 $STATE_ROOT_B64 "" 100 "ipfs://test-checkpoint-1" 1 \
-  --signatures '{"signature":"xWbozMDCDKXRAYugCVQXuWXlxeNdX4Gj814Nax4meeN1KURU1gxGTOflrIyX1Y/FI5sXvncru8ZlS3mxQmBQIQ==","signer_index":0}' \
-  --signatures '{"signature":"+hXNHk0IKTP/4X/30iAv8VZjErcp4nlUJ1AZaxnI509SMeNFr7P64vRJTLMxABkkrwFXAc1c9nf8IdPOfBwAoA==","signer_index":1}' \
-  --zk-anchor '{"records_root":"'"$ZK_ROOT"'","records_tree_depth":20,"scheme":"ZK_HASH_SCHEME_MIMC_BN254"}' \
+  hospitality-platform-01 1 "$STATE_ROOT_B64" "" 100 "ipfs://test-checkpoint-1" 1 \
+  --signatures "$SIG0" \
+  --signatures "$SIG1" \
+  --zk-anchor "$ZK_ANCHOR" \
   --from validator --chain-id my-testnet-1 \
   --gas auto --gas-adjustment 1.5 --gas-prices 0.025stake --yes
 ```
@@ -399,9 +405,13 @@ txhash: 058043461378E698B4168564CFBB30963EABB252FE1A2D2B81F3097D9D2F310F
 
 ```bash
 lucidchaind query checkpoint params
+```
 
+```bash
 lucidchaind query checkpoint checkpoint hospitality-platform-01 1
+```
 
+```bash
 lucidchaind query checkpoint latest-checkpoint hospitality-platform-01
 ```
 
@@ -423,11 +433,6 @@ checkpoint:
   state_root: TDlx18fsUYPdjmEg7o1UKP2otukHED7xLvYB6ya1D1w=
 ```
 
-```bash
-lucidchaind query checkpoint checkpoints hospitality-platform-01 --page-limit 10 --page-reverse
-
-lucidchaind query checkpoint -h
-```
 
 ### Example 2
 
@@ -479,20 +484,12 @@ python3 tools/zkgeo/build-batch.py --records ~/tmp_workarea/json/records.json --
 Look at the anchor the batch produces:
 
 ```bash
-go run ./cmd/batchroot -batch ~/tmp_workarea/json/batch.json -records-depth 5
-```
+BATCH_OUT=$(go run ./cmd/batchroot -batch ~/tmp_workarea/json/batch.json -records-depth 5)
+export STATE_ROOT=$(printf '%s\n' "$BATCH_OUT" | awk '/records_root \(hex\)/ {print $NF}')
 
-You should see something similar to this:
+# sanity check
+echo "$STATE_ROOT"
 
-```text
-record_count:       2
-records_tree_depth: 5
-records_root (hex): 05852543a19218143ceda094cc7615c4b58f116bcadd6336c4333bcd6a913ea5
-records_root (b64): BYUlQ6GSGBQ87aCUzHYVxLWPEWvK3WM2xDM7zWqRPqU=
-```
-
-```bash
-export STATE_ROOT=05852543a19218143ceda094cc7615c4b58f116bcadd6336c4333bcd6a913ea5
 export K1=$(lucidchaind keys export sidechainkey1 --unarmored-hex --unsafe)
 export K2=$(lucidchaind keys export sidechainkey2 --unarmored-hex --unsafe)
 
@@ -724,6 +721,8 @@ lucidchaind tx attestor register-attestor \
   --credential-uri https://example.org/acme.json \
   --from attestor-operator --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
 
+sleep 4 #wait for block creation
+
 lucidchaind query attestor attestor acme   # status should be ATTESTOR_STATUS_PENDING
 ```
 
@@ -845,7 +844,7 @@ lucidchaind keys show challenger -a      # the address
 # IMPORTANT: fund the wallet
 lucidchaind tx bank send validator $(lucidchaind keys show challenger -a) 5000000stake \
   --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
-
+sleep 4 # wait for block creation
 # pull the attestation id for the next command
 export ATTESTATION_ID=$(lucidchaind query attestor checkpoint-attestations hospitality-platform-01 2 -o json | jq -r '.attestations[0].id')
 
