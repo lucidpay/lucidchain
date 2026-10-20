@@ -52,6 +52,16 @@ func (am AppModule) AutoCLIOptions() *autocliv1.ModuleOptions {
 					Short:          "Update a sidechain",
 					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "id"}}},
 				{
+					RpcMethod: "UpgradeSidechain",
+					Use:       "upgrade-tier [id] [new-tier] [additional-bond]",
+					Short:     "Raise a sidechain's assurance tier (operator only)",
+					PositionalArgs: []*autocliv1.PositionalArgDescriptor{
+						{ProtoField: "id"},
+						{ProtoField: "new_tier"},
+						{ProtoField: "additional_bond"},
+					},
+				},
+				{
 					RpcMethod:      "InitiateSidechainExit",
 					Use:            "exit [id]",
 					Short:          "Initiate the exit process for a sidechain",

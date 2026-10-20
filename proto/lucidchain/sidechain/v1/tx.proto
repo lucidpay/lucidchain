@@ -32,6 +32,12 @@ service Msg {
   // UpdateSidechain changes name, metadata and checkpoint interval. Operator only.
   rpc UpdateSidechain(MsgUpdateSidechain) returns (MsgUpdateSidechainResponse);
 
+  // UpgradeSidechain raises a sidechain's assurance tier (NOTARIZED -> ATTESTED
+  // -> PROVEN), topping up the bond to the new tier's minimum. Operator only.
+  // Allowed in PENDING, ACTIVE and SUSPENDED; rejected for SLASHED and EXITED.
+  // Tiers can only go up; downgrades are not supported.
+  rpc UpgradeSidechain(MsgUpgradeSidechain) returns (MsgUpgradeSidechainResponse);
+
   // InitiateSidechainExit deregisters the sidechain; the bond is returned
   // after exit_cooldown_seconds. Operator only.
   rpc InitiateSidechainExit(MsgInitiateSidechainExit) returns (MsgInitiateSidechainExitResponse);
@@ -100,6 +106,32 @@ message MsgUpdateSidechain {
   uint64 checkpoint_interval_seconds = 5;
 }
 message MsgUpdateSidechainResponse {}
+
+message MsgUpgradeSidechain {
+  option (cosmos.msg.v1.signer) = "operator";
+
+  string operator = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  string id = 2;
+  AssuranceTier new_tier = 3;
+
+  // Extra bond escrowed on top of the existing bond. Must use the sidechain's
+  // bond denom. May be zero if the existing bond already covers the new tier.
+  cosmos.base.v1beta1.Coin additional_bond = 4 [
+    (gogoproto.nullable) = false,
+    (amino.dont_omitempty) = true
+  ];
+}
+
+message MsgUpgradeSidechainResponse {
+  AssuranceTier previous_tier = 1;
+  AssuranceTier new_tier = 2;
+  // Total bond held after the upgrade.
+  cosmos.base.v1beta1.Coin bond = 3 [
+    (gogoproto.nullable) = false,
+    (amino.dont_omitempty) = true
+  ];
+}
+
 
 message MsgInitiateSidechainExit {
   option (cosmos.msg.v1.signer) = "operator";

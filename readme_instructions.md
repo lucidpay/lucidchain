@@ -309,6 +309,20 @@ sidechains:
   tier: ASSURANCE_TIER_NOTARIZED
 ```
 
+## How to upgrade a sidechain
+
+```bash
+
+lucidchaind tx sidechain upgrade-tier hospitality-platform-01 attested 4000000stake \
+  --from validator --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5 --yes -o json | tee /tmp/upgrade.json
+sleep 6
+lucidchaind query tx $(jq -r .txhash /tmp/upgrade.json) | grep -E "^code|raw_log|sidechain_tier_upgraded|previous_tier|new_tier"
+lucidchaind query sidechain sidechain hospitality-platform-01 | grep -E "tier|status|amount"
+
+```
+
+
+
 ## How to work with checkpoints
 
 
