@@ -74,9 +74,8 @@ var (
 		{Account: govtypes.ModuleName, Permissions: []string{authtypes.Burner}},
 		{Account: ibctransfertypes.ModuleName, Permissions: []string{authtypes.Minter, authtypes.Burner}},
 		{Account: icatypes.ModuleName},
-		// TODO: (before launch): attestor currently only burns (keeper.go:289). Narrow to
 		// Burner only unless the finished module really needs Minter or Staking.
-		{Account: attestormoduletypes.ModuleName, Permissions: []string{authtypes.Minter, authtypes.Burner, authtypes.Staking}},
+		{Account: attestormoduletypes.ModuleName, Permissions: []string{authtypes.Burner}},
 		// checkpoint and proofs only send fees from the submitter to fee_collector.
 		{Account: checkpointmoduletypes.ModuleName},
 		{Account: proofsmoduletypes.ModuleName},

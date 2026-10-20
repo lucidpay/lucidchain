@@ -201,6 +201,8 @@ lucidchaind keys show sidechainkey3 --pubkey
 
 ### Register the sidechain
 
+Register and deposit 1000000stake (bond value)
+
 ```bash
 lucidchaind tx sidechain register-sidechain \
   hospitality-platform-01 "Hospitality Platform" notarized 1000000stake \
@@ -311,6 +313,8 @@ sidechains:
 
 ## How to upgrade a sidechain
 
+Upgrade to attested and deposit 4000000stake on top of existing 1000000stake  = 5000000stake (required bond value)
+
 ```bash
 
 lucidchaind tx sidechain upgrade-tier hospitality-platform-01 attested 4000000stake \
@@ -321,6 +325,15 @@ lucidchaind query sidechain sidechain hospitality-platform-01 | grep -E "tier|st
 
 ```
 
+Upgrade to proven  and deposit 5000000stake on top of exisitng 4000000stake on top of existing 1000000stake  = 10000000stake (required bond value)
+
+```bash
+lucidchaind tx sidechain upgrade-tier hospitality-platform-01 proven 5000000stake \
+  --from validator --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5 --yes -o json | tee /tmp/upgrade.json
+sleep 6
+lucidchaind query tx $(jq -r .txhash /tmp/upgrade.json) | grep -E "^code|raw_log|sidechain_tier_upgraded|previous_tier|new_tier"
+lucidchaind query sidechain sidechain hospitality-platform-01 | grep -E "tier|status|amount"
+```
 
 
 ## How to work with checkpoints
