@@ -155,7 +155,7 @@ A sidechain declares a tier at registration and can raise it later with `MsgUpgr
 
 **What the upgrade does not check.** It is gated by bond only. It does not require an attestor to exist for `ATTESTED`, and it does not require anything from `x/proofs` for `PROVEN`. A tier's requirements are enforced where they are used (table above), so an operator can pay for a tier that nothing currently serves; the cost to the operator is its own locked bond. A check for attestor availability needs a `domain` on the sidechain and is left for later (§8).
 
-**Operator order for `PROVEN`.** The anchor is covered by the checkpoint signatures, so a checkpoint signed without one cannot be fixed afterwards. Update the off-chain signer to include anchors first (anchors are accepted at any tier), then upgrade.
+**Operator order for `PROVEN`.** The anchor is covered by the checkpoint signatures, so a checkpoint signed without one cannot be fixed afterwards. Update the off-chain signer to include anchors and to derive `state_root` from them first (anchors are accepted at any tier), then upgrade.
 
 ```bash
 # <tier> is the short enum name: notarized | attested | proven
@@ -209,7 +209,7 @@ Message fields: `submitter`, `sidechain_id`, `lc_sequence`, `state_root`, `previ
 
 Handler logic, in order. The handler runs in a cached context, so any failure aborts the whole message — no partial state changes:
 
-1. **Bound the message.** Validate the submitter address, load params, and check the per-field limits (`record_count`, `data_pointer` size, `state_root` size, number and total bytes of signatures) and the shape of the optional `zk_anchor`.
+1. **Bound the message.** Validate the submitter address, load params, and check the per-field limits (`record_count`, `data_pointer` size, `state_root` size, number and total bytes of signatures) and the shape of the optional `zk_anchor`. **One checkpoint, one record set:** if `zk_anchor` is present, `record_count ≤ 2^records_tree_depth` and `state_root` must equal `SHA-256("lucidchain/checkpoint/v1/state-root\0" ‖ scheme(1 byte) ‖ records_root(32) ‖ records_tree_depth(1 byte) ‖ record_count(8 bytes, big-endian))`. The Tier 1 root and the Tier 3 anchor therefore commit to the same records, and a proof verified against the anchor is a proof about the records under the state root. Checkpoints without an anchor keep an operator-defined `state_root`. Test vector: scheme 1, root `0x00…01`, depth 5, count 3 → `62daea805d87aec991f46a0b887bdb9337bd53a92a565604831dda49cc3ec137`; `tools/signcheckpoint -derive-state-root` computes it and `submit-checkpoint-from-batch.sh` applies it. Genesis import applies the same rule.
 2. **Resolve sidechain.** Call `sidechainKeeper.GetSidechain(sidechain_id)`. Fail if not found.
 3. **Check status and signer set.** Fail unless sidechain status is `ACTIVE`, and unless `signer_set_version` equals the sidechain's current version.
 4. **Check tier requirements.** If the sidechain's tier is `PROVEN`, `zk_anchor` must be present; fail with `ErrZkAnchorRequired` otherwise. This runs before signature verification, so a missing anchor costs no verification gas (§3.8).
@@ -240,7 +240,7 @@ The encoding is consensus-critical, so it is fixed here: standard proto3 marshal
 
 ### 3.5 Merkle inclusion proofs (off-chain)
 
-The on-chain `state_root` is a Merkle root over a batch of off-chain records, computed by the sidechain (or its edge aggregators, for high-volume IoT sources). The module does not verify individual records — only the root. A relying party who wants to prove a specific record was included:
+For a checkpoint **without** a `zk_anchor`, the on-chain `state_root` is a Merkle root over a batch of off-chain records, computed by the sidechain (or its edge aggregators, for high-volume IoT sources). For a checkpoint **with** a `zk_anchor`, `state_root` is the binding hash defined in §3.3 step 1 and inclusion proofs are made against `zk_anchor.records_root` (MiMC-BN254, the same tree the circuits use) instead. The module does not verify individual records — only the root. A relying party who wants to prove a specific record was included:
 
 1. Obtains the original record and its Merkle path from the sidechain operator (or its data store per `data_pointer`).
 2. Recomputes the root by hashing up the path.
@@ -262,7 +262,7 @@ The fee is `base_fee + per_record_fee * record_count`, both in the same denom, a
 ### 3.8 Tier-dependent requirements
 
 - **`PROVEN` sidechains must anchor every checkpoint.** A checkpoint without a `zk_anchor` is rejected with `ErrZkAnchorRequired`, and nothing is stored or charged.
-- **Lower tiers are unchanged.** `NOTARIZED` and `ATTESTED` sidechains may include an anchor but are not required to. Whenever an anchor is present it is validated (supported hash scheme, a 32-byte canonical field-element `records_root`, `records_tree_depth` within range).
+- **Lower tiers are unchanged.** `NOTARIZED` and `ATTESTED` sidechains may include an anchor but are not required to. Whenever an anchor is present it is validated (supported hash scheme, a 32-byte canonical field-element `records_root`, `records_tree_depth` within range) and bound to the checkpoint: `state_root` must be derived from it and `record_count` must fit the tree (§3.3 step 1). So "PROVEN" means the state root is the one the proof covers, not merely that an anchor is attached.
 - **Forward-only.** The tier is read live from the sidechain record through the `SidechainKeeper`, not copied. After a sidechain is upgraded to `PROVEN`, the next checkpoint needs an anchor; checkpoints accepted earlier are unchanged and stay valid.
 - **Anchors are signed.** `zk_anchor` is part of the checkpoint sign document, so it is bound by the signatures and by `checkpoint_hash`. Signers must add it before the sidechain upgrades to `PROVEN`.
 - **The anchor is what proofs bind to.** `x/proofs` can bind a proof's public inputs to the anchor's `records_root` (§5.4), so a `PROVEN` sidechain's anchored checkpoints are the ones that can carry such a proof.

@@ -9,7 +9,7 @@
 #   K1, K2          signer private keys, hex (signer indexes 0 and 1); K3 optional (index 2)
 # Optional (defaults shown):
 #   BATCH=$PWD/batch.json   RECORDS_DEPTH=5 (must match the circuit)
-#   SC=hospitality-platform-01   SEQ=<latest+1>   STATE_ROOT=<sha256 of the batch, DEV ONLY>
+#   SC=hospitality-platform-01   SEQ=<latest+1>   (state_root is derived from the anchor)
 #   POINTER=ipfs://test-checkpoint-<SEQ>   SIGNER_SET_VERSION=1
 #   FROM=validator   CHAIN_ID=my-testnet-1   GAS_PRICES=0.025stake
 #   SIGN=$HOME/tools/signcheckpoint/signcheckpoint   BIN=lucidchaind
@@ -42,7 +42,8 @@ for tool in jq go base64 xxd awk sha256sum "$BIN"; do
 done
 [[ -f "$BATCH" ]] || fail "batch file not found: $BATCH"
 [[ -f "$ROOT/cmd/batchroot/main.go" ]] || fail "cmd/batchroot not found under ROOT=$ROOT"
-if [[ ! -x "$SIGN" ]]; then
+# Rebuild when the binary is missing or predates the -derive-state-root flag.
+if [[ ! -x "$SIGN" ]] || ! "$SIGN" -h 2>&1 | grep -q -- '-derive-state-root'; then
   echo "building signcheckpoint -> $SIGN"
   mkdir -p "$(dirname "$SIGN")"
   (cd "$ROOT" && go build -o "$SIGN" ./tools/signcheckpoint)
@@ -73,11 +74,15 @@ if [[ "$SEQ" != "1" && -z "$PREV_B64" ]]; then fail "sequence $SEQ needs a previ
 PREV_HEX=""
 if [[ -n "$PREV_B64" ]]; then PREV_HEX="$(printf '%s' "$PREV_B64" | base64 -d | xxd -p -c 256)"; fi
 
-# 3. State root: required in real use; the default is a dev placeholder.
-if [[ -z "${STATE_ROOT:-}" ]]; then
-  STATE_ROOT="$(sha256sum "$BATCH" | cut -d' ' -f1)"
-  echo "warning: STATE_ROOT not set; using sha256 of the batch (dev only)" >&2
+# 3. State root. With a zk anchor the chain requires state_root to be DERIVED
+#    from the anchor and the record count (one checkpoint, one record set), so
+#    it is computed here; a user-supplied STATE_ROOT would be rejected.
+if [[ -n "${STATE_ROOT:-}" ]]; then
+  echo "warning: STATE_ROOT ignored; anchored checkpoints use the derived state root" >&2
 fi
+STATE_ROOT="$("$SIGN" --derive-state-root --print-state-root \
+  --zk-records-root "$ROOT_HEX" --zk-tree-depth "$RECORDS_DEPTH" --record-count "$COUNT")"
+echo "state_root (derived from anchor): $STATE_ROOT"
 [[ "$STATE_ROOT" =~ ^[0-9a-fA-F]{64}$ ]] || fail "STATE_ROOT must be 32 bytes of hex (64 digits, no 0x)"
 STATE_ROOT_B64="$(printf '%s' "$STATE_ROOT" | xxd -r -p | base64 | tr -d '\n')"
 POINTER="${POINTER:-ipfs://test-checkpoint-$SEQ}"

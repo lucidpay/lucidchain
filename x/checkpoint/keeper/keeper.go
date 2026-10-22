@@ -303,7 +303,12 @@ func validateSubmission(msg *types.MsgSubmitCheckpoint, p types.Params) error {
 		return errorsmod.Wrapf(types.ErrLimitExceeded,
 			"%d total signature bytes, max %d", total, p.MaxSignatureBytesPerCheckpoint)
 	}
-	return types.ValidateZkAnchor(msg.ZkAnchor)
+	if err := types.ValidateZkAnchor(msg.ZkAnchor); err != nil {
+		return err
+	}
+	// One checkpoint, one record set: with an anchor present the state root is
+	// derived from it and the count must fit the tree (finding N5).
+	return types.ValidateAnchorBinding(msg.ZkAnchor, msg.StateRoot, msg.RecordCount)
 }
 
 // checkChaining enforces lc_sequence == latest+1 and the previous-hash link.

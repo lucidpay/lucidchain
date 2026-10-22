@@ -20,7 +20,7 @@ func (k Keeper) InitGenesis(ctx context.Context, genState types.GenesisState) er
 	}
 
 	for _, cp := range genState.Checkpoints {
-		if err := types.ValidateZkAnchor(cp.ZkAnchor); err != nil {
+		if err := types.ValidateAnchorBinding(cp.ZkAnchor, cp.StateRoot, cp.RecordCount); err != nil {
 			return errorsmod.Wrapf(err, "genesis checkpoint %s/%d", cp.SidechainId, cp.LcSequence)
 		}
 

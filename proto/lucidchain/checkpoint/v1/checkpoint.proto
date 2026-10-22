@@ -20,8 +20,12 @@ message Checkpoint {
   // Must equal the previous checkpoint's lc_sequence + 1 (no gaps, no reordering).
   uint64 lc_sequence = 2;
 
-  // Merkle root (or equivalent state commitment) of the batch of records
-  // this checkpoint covers, as computed off-chain by the sidechain.
+  // State commitment of the batch of records this checkpoint covers. Without
+  // a zk_anchor it is an operator-defined Merkle root and inclusion proofs
+  // are made against it. With a zk_anchor it MUST equal
+  // SHA-256("lucidchain/checkpoint/v1/state-root\0" || scheme(1) ||
+  // records_root(32) || records_tree_depth(1) || record_count(8, BE)) and
+  // inclusion proofs are made against zk_anchor.records_root (MiMC) instead.
   bytes state_root = 3;
 
   // Hash of the immediately preceding checkpoint for this sidechain,
