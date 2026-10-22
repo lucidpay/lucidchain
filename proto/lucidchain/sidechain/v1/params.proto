@@ -42,4 +42,9 @@ message Params {
   // (permissionless registration, bond is the only gate). When false, they
   // are PENDING until governance calls ActivateSidechain.
   bool auto_activate = 6;
+
+  // Gas charged per signature verified on a signer-set rotation
+  // (MsgUpdateSidechainSigners.current_set_signatures). ML-DSA-65 verification
+  // is far more expensive than ed25519; price it like checkpoint signatures.
+  uint64 rotation_signature_gas = 7;
 }

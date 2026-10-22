@@ -26,7 +26,11 @@ service Msg {
   rpc ActivateSidechain(MsgActivateSidechain) returns (MsgActivateSidechainResponse);
 
   // UpdateSidechainSigners replaces the signer keys and threshold and bumps
-  // signer_set_version. Operator only.
+  // signer_set_version. Requires the operator AND signatures from the CURRENT
+  // signer set at its current threshold over a SignerRotationSignDoc, so a
+  // single account key can never replace the keys that finalize checkpoints.
+  // Allowed while SUSPENDED (compromised keys must be rotatable without a
+  // governance resume); refused for SLASHED and EXITED.
   rpc UpdateSidechainSigners(MsgUpdateSidechainSigners) returns (MsgUpdateSidechainSignersResponse);
 
   // UpdateSidechain changes name, metadata and checkpoint interval. Operator only.
@@ -82,8 +86,21 @@ message MsgActivateSidechain {
   option (cosmos.msg.v1.signer) = "authority";
   string authority = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
   string id = 2;
+  // Optional. When non-zero, activation is refused unless the sidechain's
+  // signer_set_version still equals this value, so the operator cannot swap
+  // the signer set between a governance proposal being submitted and
+  // executed. Proposals should always set it.
+  uint64 expected_signer_set_version = 3;
 }
 message MsgActivateSidechainResponse {}
+
+// SignerSetSignature is one signature by a member of the CURRENT signer set
+// (identified by its index in Sidechain.signer_keys) over
+// SignerRotationSignBytes(SignerRotationSignDoc).
+message SignerSetSignature {
+  uint32 signer_index = 1;
+  bytes signature = 2;
+}
 
 message MsgUpdateSidechainSigners {
   option (cosmos.msg.v1.signer) = "operator";
@@ -92,6 +109,14 @@ message MsgUpdateSidechainSigners {
   repeated google.protobuf.Any signer_keys = 3
       [(cosmos_proto.accepts_interface) = "cosmos.crypto.PubKey"];
   uint32 signature_threshold = 4;
+  // Approval of the rotation by the CURRENT signer set: at least
+  // Sidechain.signature_threshold valid signatures from distinct current
+  // signers over the SignerRotationSignDoc for this rotation.
+  repeated SignerSetSignature current_set_signatures = 5 [(gogoproto.nullable) = false];
+  // Last block height at which this rotation may be executed. Part of the
+  // signed doc, so an approval gathered for a planned rotation cannot be kept
+  // in a drawer and used months later. Required (> 0).
+  uint64 not_after_height = 6;
 }
 message MsgUpdateSidechainSignersResponse {
   uint64 signer_set_version = 1; // the new version
