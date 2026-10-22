@@ -2,9 +2,11 @@ package keeper
 
 import (
 	"context"
+	"encoding/hex"
 	"time"
 
 	errorsmod "cosmossdk.io/errors"
+	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
@@ -130,6 +132,13 @@ func (ms msgServer) ActivateSidechain(ctx context.Context, msg *types.MsgActivat
 		return nil, errorsmod.Wrapf(types.ErrInvalidSidechainState,
 			"sidechain %q is %s, only PENDING sidechains can be activated", sc.Id, sc.Status)
 	}
+	// Governance activates the signer set it reviewed, not one swapped in
+	// between proposal and execution.
+	if msg.ExpectedSignerSetVersion != 0 && msg.ExpectedSignerSetVersion != sc.SignerSetVersion {
+		return nil, errorsmod.Wrapf(types.ErrInvalidSidechainState,
+			"sidechain %q signer set is at version %d, proposal expected %d",
+			sc.Id, sc.SignerSetVersion, msg.ExpectedSignerSetVersion)
+	}
 
 	now := sdkCtx.BlockTime()
 	sc.Status = types.SidechainStatus_SIDECHAIN_STATUS_ACTIVE
@@ -146,7 +155,22 @@ func (ms msgServer) ActivateSidechain(ctx context.Context, msg *types.MsgActivat
 // signer_set_version. Checkpoints already stored keep the version they were
 // signed under; checkpoints in flight signed under the old version are
 // rejected by x/checkpoint, so rotate between checkpoints.
+//
+// Authorisation is two-sided: the operator account must sign the transaction
+// AND the CURRENT signer set must approve the rotation at its current
+// threshold (current_set_signatures over the SignerRotationSignDoc). Without
+// the second condition the operator's single account key — classical
+// secp256k1 by default — could replace the post-quantum signer keys and
+// finalize checkpoints alone, which defeats the purpose of the threshold.
+// Rotation stays possible while SUSPENDED: the current-set approval is what
+// stops an operator-alone takeover, and a suspended sidechain with
+// compromised keys must be able to rotate them out without waiting for a
+// governance resume. SLASHED and EXITED are terminal and cannot rotate.
+// Every approval carries not_after_height, so an approval gathered for a
+// planned rotation expires instead of lingering.
 func (ms msgServer) UpdateSidechainSigners(ctx context.Context, msg *types.MsgUpdateSidechainSigners) (*types.MsgUpdateSidechainSignersResponse, error) {
+	sdkCtx := sdk.UnwrapSDKContext(ctx)
+
 	params, err := ms.Params.Get(ctx)
 	if err != nil {
 		return nil, err
@@ -171,17 +195,83 @@ func (ms msgServer) UpdateSidechainSigners(ctx context.Context, msg *types.MsgUp
 	if err := types.ValidateSignerSet(msg.SignerKeys, msg.SignatureThreshold, params); err != nil {
 		return nil, err
 	}
+	if msg.NotAfterHeight == 0 {
+		return nil, errorsmod.Wrap(types.ErrInvalidRequest, "not_after_height is required")
+	}
+	if height := uint64(sdkCtx.BlockHeight()); height > msg.NotAfterHeight {
+		return nil, errorsmod.Wrapf(types.ErrRotationNotApproved,
+			"approval expired: not_after_height %d, current height %d", msg.NotAfterHeight, height)
+	}
+
+	// The current signer set must approve its own replacement.
+	signBytes, err := types.SignerRotationSignBytes(
+		types.RotationSignDocFor(sdkCtx.ChainID(), sc, msg.SignerKeys, msg.SignatureThreshold, msg.NotAfterHeight))
+	if err != nil {
+		return nil, errorsmod.Wrap(types.ErrInvalidRequest, err.Error())
+	}
+	approvers, err := ms.verifyRotationApproval(sdkCtx, sc, params, signBytes, msg.CurrentSetSignatures)
+	if err != nil {
+		return nil, err
+	}
 
 	sc.SignerKeys = msg.SignerKeys
 	sc.SignatureThreshold = msg.SignatureThreshold
 	sc.SignerSetVersion++
+	sc.LastRotationApproverBitmap = approvers
 	if err := ms.Sidechains.Set(ctx, sc.Id, sc); err != nil {
 		return nil, err
 	}
 
-	emit(sdk.UnwrapSDKContext(ctx), "sidechain_signers_updated",
-		attr("sidechain_id", sc.Id), attr("signer_set_version", uitoa(sc.SignerSetVersion)))
+	emit(sdkCtx, "sidechain_signers_updated",
+		attr("sidechain_id", sc.Id),
+		attr("signer_set_version", uitoa(sc.SignerSetVersion)),
+		attr("approved_by_bitmap", hex.EncodeToString(approvers)))
 	return &types.MsgUpdateSidechainSignersResponse{SignerSetVersion: sc.SignerSetVersion}, nil
+}
+
+// verifyRotationApproval checks that at least sc.SignatureThreshold distinct
+// members of the CURRENT signer set signed signBytes. It returns the approver
+// bitmap (bit i set = signer i approved), which is emitted so a relying party
+// can audit continuity of control across rotations. Any invalid, duplicate or
+// out-of-range signature rejects the whole message.
+func (ms msgServer) verifyRotationApproval(
+	ctx sdk.Context,
+	sc types.Sidechain,
+	params types.Params,
+	signBytes []byte,
+	sigs []types.SignerSetSignature,
+) ([]byte, error) {
+	threshold := max(sc.SignatureThreshold, 1)
+	if uint32(len(sigs)) < threshold {
+		return nil, errorsmod.Wrapf(types.ErrRotationNotApproved,
+			"%d current-set signatures supplied, threshold is %d", len(sigs), threshold)
+	}
+
+	n := len(sc.SignerKeys)
+	bitmap := make([]byte, (n+7)/8)
+	for _, s := range sigs {
+		idx := int(s.SignerIndex)
+		if idx >= n {
+			return nil, errorsmod.Wrapf(types.ErrRotationNotApproved,
+				"signer_index %d out of range (%d current signer keys)", idx, n)
+		}
+		if bitmap[idx/8]&(byte(1)<<(idx%8)) != 0 {
+			return nil, errorsmod.Wrapf(types.ErrRotationNotApproved,
+				"duplicate signature for signer_index %d", idx)
+		}
+		pk, ok := sc.SignerKeys[idx].GetCachedValue().(cryptotypes.PubKey)
+		if !ok {
+			return nil, errorsmod.Wrapf(types.ErrRotationNotApproved,
+				"current signer key %d is not an unpacked public key", idx)
+		}
+		ctx.GasMeter().ConsumeGas(params.RotationSignatureGas, "signer rotation approval verification")
+		if !pk.VerifySignature(signBytes, s.Signature) {
+			return nil, errorsmod.Wrapf(types.ErrRotationNotApproved,
+				"signature from signer_index %d failed verification", idx)
+		}
+		bitmap[idx/8] |= byte(1) << (idx % 8)
+	}
+	return bitmap, nil
 }
 
 // UpdateSidechain changes the name, metadata URI and checkpoint interval. Operator only.

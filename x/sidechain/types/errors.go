@@ -22,4 +22,5 @@ var (
 	ErrInvalidSlashAmount    = errorsmod.Register(ModuleName, 12, "invalid slash amount")
 	ErrInvalidSlashFraction  = errorsmod.Register(ModuleName, 13, "invalid slash fraction")
 	ErrNothingToSlash        = errorsmod.Register(ModuleName, 14, "sidechain has no bond to slash")
+	ErrRotationNotApproved   = errorsmod.Register(ModuleName, 15, "signer rotation not approved by the current signer set")
 )

@@ -716,14 +716,50 @@ func TestSuspendAndResume(t *testing.T) {
 // signer rotation and updates
 // ---------------------------------------------------------------------------
 
+// approve attaches current-set approval signatures to a rotation message. With
+// no indices it signs with the first `threshold` members of the CURRENT set;
+// with indices it signs with exactly those current-set positions. Current
+// signer keys are matched back to the fixture's private keys by public key.
+func (f *fixture) approve(t *testing.T, m *types.MsgUpdateSidechainSigners, idx ...int) {
+	t.Helper()
+	sc := f.get(t, m.Id)
+	if m.NotAfterHeight == 0 {
+		m.NotAfterHeight = uint64(f.ctx.BlockHeight()) + 100
+	}
+	bz, err := types.SignerRotationSignBytes(types.RotationSignDocFor(f.ctx.ChainID(), sc, m.SignerKeys, m.SignatureThreshold, m.NotAfterHeight))
+	require.NoError(t, err)
+	if len(idx) == 0 {
+		for i := 0; i < int(sc.SignatureThreshold); i++ {
+			idx = append(idx, i)
+		}
+	}
+	m.CurrentSetSignatures = nil
+	for _, i := range idx {
+		pk, ok := sc.SignerKeys[i].GetCachedValue().(cryptotypes.PubKey)
+		require.True(t, ok)
+		var priv *ed25519.PrivKey
+		for _, cand := range f.signers {
+			if cand.PubKey().Equals(pk) {
+				priv = cand
+			}
+		}
+		require.NotNil(t, priv, "current signer %d is not a fixture key", i)
+		sig, err := priv.Sign(bz)
+		require.NoError(t, err)
+		m.CurrentSetSignatures = append(m.CurrentSetSignatures, types.SignerSetSignature{SignerIndex: uint32(i), Signature: sig})
+	}
+}
+
 func TestUpdateSidechainSigners(t *testing.T) {
 	updateMsg := func(f *fixture, t *testing.T, threshold uint32, idx ...int) *types.MsgUpdateSidechainSigners {
-		return &types.MsgUpdateSidechainSigners{
+		m := &types.MsgUpdateSidechainSigners{
 			Operator:           f.operatorS,
 			Id:                 testID,
 			SignerKeys:         f.keyAnys(t, idx...),
 			SignatureThreshold: threshold,
 		}
+		f.approve(t, m) // approved by the current set at its threshold
+		return m
 	}
 
 	t.Run("rotation bumps the version", func(t *testing.T) {
@@ -746,7 +782,7 @@ func TestUpdateSidechainSigners(t *testing.T) {
 		require.Equal(t, uint64(3), resp.SignerSetVersion)
 	})
 
-	t.Run("allowed while PENDING and SUSPENDED", func(t *testing.T) {
+	t.Run("allowed while PENDING and SUSPENDED, with approval", func(t *testing.T) {
 		f := newFixture(t)
 		f.register(t)
 		_, err := f.msgServer.UpdateSidechainSigners(f.ctx, updateMsg(f, t, 1, 0, 1))
@@ -755,7 +791,7 @@ func TestUpdateSidechainSigners(t *testing.T) {
 		f.activate(t, testID)
 		f.setStatus(t, testID, types.SidechainStatus_SIDECHAIN_STATUS_SUSPENDED)
 		_, err = f.msgServer.UpdateSidechainSigners(f.ctx, updateMsg(f, t, 1, 0))
-		require.NoError(t, err)
+		require.NoError(t, err, "compromised keys must be rotatable without waiting for a governance resume")
 	})
 
 	t.Run("failures change nothing", func(t *testing.T) {
@@ -1326,9 +1362,11 @@ func TestGovernanceOnlyMessagesRejectOtherAuthorities(t *testing.T) {
 func TestOperatorOnlyMessagesRejectOtherSigners(t *testing.T) {
 	f := newActiveFixture(t)
 
-	_, err := f.msgServer.UpdateSidechainSigners(f.ctx, &types.MsgUpdateSidechainSigners{
+	m := &types.MsgUpdateSidechainSigners{
 		Operator: f.govS, Id: testID, SignerKeys: f.keyAnys(t, 0), SignatureThreshold: 1,
-	})
+	}
+	f.approve(t, m) // even a fully approved rotation needs the operator
+	_, err := f.msgServer.UpdateSidechainSigners(f.ctx, m)
 	require.ErrorIs(t, err, types.ErrUnauthorized, "governance is not the operator")
 
 	_, err = f.msgServer.UpdateSidechain(f.ctx, &types.MsgUpdateSidechain{
