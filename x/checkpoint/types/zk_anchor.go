@@ -23,7 +23,9 @@ func ValidateZkAnchor(a *ZkAnchor) error {
 	if a == nil {
 		return nil
 	}
-	if a.Scheme != ZkHashScheme_ZK_HASH_SCHEME_MIMC_BN254 {
+	// DeriveStateRoot encodes the scheme on one byte; widen the preimage before
+	// adding a scheme id above 255.
+	if a.Scheme != ZkHashScheme_ZK_HASH_SCHEME_MIMC_BN254 || a.Scheme > 255 {
 		return errorsmod.Wrap(ErrInvalidCheckpoint, "unsupported zk hash scheme")
 	}
 	if len(a.RecordsRoot) != 32 {

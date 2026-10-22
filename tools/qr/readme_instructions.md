@@ -324,6 +324,8 @@ First build the signatures. Make sure you have the following folder structure in
  and the binary signcheckpoint is in it ("chmod +x signcheckpoint"), then run the code below.
  To build the binary, run this from the repository folder:
 
+> Rotating signers (`update-signers`) needs approvals from the current set: `tools/signrotation` handles ML-DSA-65 keys too (it infers the key type from the exported length) and takes the new keys as the `keys show --pubkey` JSON. With a zk anchor, `tools/qr/signcheckpoint` derives `state_root` with `--derive-state-root`, like the classical tool.
+>
 > `tools/qr/signcheckpoint` signs with ML-DSA-65. `lucidchaind keys export --unarmored-hex --unsafe` returns the 4032-byte packed private key (8064 hex characters), which the tool reads directly. Each signature is checked against its own public key before it is printed. Anchor flags are omitted on purpose.
 
 cd go/src/github.com/lucidpay/lucidchain

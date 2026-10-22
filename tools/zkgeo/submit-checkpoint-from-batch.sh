@@ -42,7 +42,8 @@ for tool in jq go base64 xxd awk sha256sum "$BIN"; do
 done
 [[ -f "$BATCH" ]] || fail "batch file not found: $BATCH"
 [[ -f "$ROOT/cmd/batchroot/main.go" ]] || fail "cmd/batchroot not found under ROOT=$ROOT"
-if [[ ! -x "$SIGN" ]]; then
+# Rebuild when the binary is missing or predates the -derive-state-root flag.
+if [[ ! -x "$SIGN" ]] || ! "$SIGN" -h 2>&1 | grep -q -- '-derive-state-root'; then
   echo "building signcheckpoint -> $SIGN"
   mkdir -p "$(dirname "$SIGN")"
   (cd "$ROOT" && go build -o "$SIGN" ./tools/signcheckpoint)

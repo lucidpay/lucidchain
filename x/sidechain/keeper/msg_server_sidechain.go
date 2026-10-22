@@ -242,6 +242,12 @@ func (ms msgServer) verifyRotationApproval(
 	sigs []types.SignerSetSignature,
 ) ([]byte, error) {
 	threshold := max(sc.SignatureThreshold, 1)
+	// Defence in depth: a store that skipped Migrate1to2 decodes the param as
+	// 0, which would make every approval verification gas-free.
+	gas := params.RotationSignatureGas
+	if gas == 0 {
+		gas = types.DefaultRotationSignatureGas
+	}
 	if uint32(len(sigs)) < threshold {
 		return nil, errorsmod.Wrapf(types.ErrRotationNotApproved,
 			"%d current-set signatures supplied, threshold is %d", len(sigs), threshold)
@@ -264,7 +270,7 @@ func (ms msgServer) verifyRotationApproval(
 			return nil, errorsmod.Wrapf(types.ErrRotationNotApproved,
 				"current signer key %d is not an unpacked public key", idx)
 		}
-		ctx.GasMeter().ConsumeGas(params.RotationSignatureGas, "signer rotation approval verification")
+		ctx.GasMeter().ConsumeGas(gas, "signer rotation approval verification")
 		if !pk.VerifySignature(signBytes, s.Signature) {
 			return nil, errorsmod.Wrapf(types.ErrRotationNotApproved,
 				"signature from signer_index %d failed verification", idx)

@@ -213,3 +213,18 @@ func TestActivate_ExpectedSignerSetVersion(t *testing.T) {
 	})
 	require.NoError(t, err)
 }
+
+// Defence in depth (review follow-up): a store that skipped Migrate1to2 decodes
+// rotation_signature_gas as 0. Approval verification must still cost gas.
+func TestN9_ZeroGasParamStillChargesDefault(t *testing.T) {
+	f := newActiveFixture(t)
+	f.setParamsUnchecked(t, func(p *types.Params) { p.RotationSignatureGas = 0 })
+
+	m := rotationTo(f, f.keyAnys(t, 0, 1, 2), 2)
+	f.approve(t, m, 0, 1)
+	before := f.ctx.GasMeter().GasConsumed()
+	_, err := f.msgServer.UpdateSidechainSigners(f.ctx, m)
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, f.ctx.GasMeter().GasConsumed()-before, 2*types.DefaultRotationSignatureGas,
+		"two approvals must cost at least two default verifications even with the param at 0")
+}
