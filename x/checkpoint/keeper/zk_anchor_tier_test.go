@@ -45,11 +45,18 @@ func (f *fixture) setTier(tier sidechaintypes.AssuranceTier) {
 // sign doc that includes it, with signers 0 and 1.
 func (f *fixture) anchoredMsg(t *testing.T, seq uint64, prev []byte, anchor *types.ZkAnchor) *types.MsgSubmitCheckpoint {
 	t.Helper()
+	// With an anchor the state root is not free: it is derived from the anchor
+	// and the record count (finding N5). Malformed anchors keep an arbitrary
+	// root; they are rejected before the binding check runs.
+	stateRoot := root(0x02)
+	if anchor != nil && types.ValidateZkAnchor(anchor) == nil {
+		stateRoot = types.DeriveStateRoot(anchor, 5)
+	}
 	msg := &types.MsgSubmitCheckpoint{
 		Submitter:              f.submitterS,
 		SidechainId:            testSidechain,
 		LcSequence:             seq,
-		StateRoot:              root(0x02),
+		StateRoot:              stateRoot,
 		PreviousCheckpointHash: prev,
 		RecordCount:            5,
 		DataPointer:            "ipfs://example",
