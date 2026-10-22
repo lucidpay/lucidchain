@@ -1,4 +1,4 @@
-# Verifier wire protocol, version 1
+# Verifier wire protocol, version 2 (vsock transport)
 
 Single source of truth for the Go adapter (`x/proofs/verifiers/pq.go`) and the
 Rust guest (`pq-verifier-guest`). Change this file first, then both sides, and
@@ -11,7 +11,7 @@ carries requests one at a time, in order. All integers are little-endian.
 
 | Offset       | Size         | Field           | Rule                                     |
 |--------------|--------------|-----------------|------------------------------------------|
-| 0            | 1            | `version`       | must be `1`                              |
+| 0            | 1            | `version`       | must be `2`                              |
 | 1            | 32           | `vk_id`         | must be in the guest's compiled-in table |
 | 33           | 4            | `pub_len`       | `<= 260` (`4 + 4*64`)                    |
 | 37           | 4            | `proof_len`     | `<= 524288` (512 KiB)                    |
@@ -34,6 +34,11 @@ significant first.
 |--------|------|--------------|
 | 0      | 1    | `status`     |
 | 1      | 32   | `image_hash` |
+| 33     | 16   | `digest`     |
+
+`digest` is the first 16 bytes of SHA-256 over the complete request frame
+exactly as sent (version through proof). The host recomputes it; a mismatch is
+a stream desync and a verifier fault. Total response length: 49 bytes.
 
 | `status`      | Meaning     | Host treatment          |
 |---------------|-------------|-------------------------|
@@ -69,3 +74,11 @@ keeper must halt the node rather than record a verdict.
 
 The two `vk_id` allowlists must be identical. A `vk_id` the Go side accepts but
 the guest does not is a fault (deployment error), not a rejected proof.
+
+## In-process (wazero) transport
+
+The WASM transport does not use this wire protocol's response: the host calls
+`verify_frame(ptr, len)` on the same request frame and receives a status
+`u32` (0/1/2 = verdict; 3 = guest refused the request, a verifier fault). There
+is no `image_hash` or `digest`; the host pins sha256 of the embedded module at
+startup instead. Both transports share the request frame and `verify.rs`.

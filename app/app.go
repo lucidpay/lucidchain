@@ -1,6 +1,11 @@
 package app
 
 import (
+	"context"
+	"errors"
+	"sync"
+	"time"
+
 	clienthelpers "cosmossdk.io/client/v2/helpers"
 	"cosmossdk.io/core/appmodule"
 	"cosmossdk.io/depinject"
@@ -44,6 +49,7 @@ import (
 	attestormodulekeeper "github.com/lucidpay/lucidchain/x/attestor/keeper"
 	checkpointmodulekeeper "github.com/lucidpay/lucidchain/x/checkpoint/keeper"
 	proofsmodulekeeper "github.com/lucidpay/lucidchain/x/proofs/keeper"
+	proofstypes "github.com/lucidpay/lucidchain/x/proofs/types"
 	proofsverifiers "github.com/lucidpay/lucidchain/x/proofs/verifiers"
 	sidechainmodulekeeper "github.com/lucidpay/lucidchain/x/sidechain/keeper"
 )
@@ -121,10 +127,37 @@ func AppConfig() depinject.Config {
 			map[string]module.AppModuleBasic{
 				genutiltypes.ModuleName: genutil.NewAppModuleBasic(genutiltypes.DefaultMessageValidator),
 			},
-			// proof verifier implementations compiled into the binary
-			proofsverifiers.Default(),
 		),
+		// proof verifier implementations: native gnark verifiers plus the
+		// WASM-backed PQ verifier. Provide (not Supply) so it only runs when the
+		// proofs keeper actually needs the map.
+		depinject.Provide(ProvideProofVerifiers),
 	)
+}
+
+var (
+	closersMu sync.Mutex
+	closers   []func() error
+)
+
+// ProvideProofVerifiers builds the proof_system_id -> verifier map. It must be
+// exported: depinject rejects unexported providers. A returned error makes
+// depinject.Inject fail, and New panics on that, so the node never starts with
+// a PQ verifier that does not match the pinned build.
+func ProvideProofVerifiers() (map[string]proofstypes.ProofVerifier, error) {
+	m, closeFn, err := proofsverifiers.DefaultWithPQ(context.Background(), proofsverifiers.PQWasmConfig{
+		MaxInstances: 16,
+		Timeout:      5 * time.Second, // measured worst case ~61 ms; tune on your slowest validator
+		MemoryPages:  256,             // 16 MiB; measured need ~3.2 MiB
+		VKIDs:        proofsverifiers.PQAllowedVKIDs,
+	})
+	if err != nil {
+		return nil, err
+	}
+	closersMu.Lock()
+	closers = append(closers, closeFn)
+	closersMu.Unlock()
+	return m, nil
 }
 
 // New returns a reference to an initialized App.
@@ -227,6 +260,20 @@ func New(
 	}
 
 	return app
+}
+
+// Close shuts down the app and then the in-process PQ verifier runtime(s).
+func (app *App) Close() error {
+	err := app.App.Close()
+
+	closersMu.Lock()
+	cs := closers
+	closers = nil
+	closersMu.Unlock()
+	for _, c := range cs {
+		err = errors.Join(err, c())
+	}
+	return err
 }
 
 // LegacyAmino returns App's amino codec.

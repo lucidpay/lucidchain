@@ -9,7 +9,8 @@
 #[cfg(all(feature = "insecure-accept-all", not(debug_assertions)))]
 compile_error!("the `insecure-accept-all` feature must never be used in a release build");
 
-use crate::protocol::{MAX_PROOF_BYTES, STATUS_INVALID, STATUS_MALFORMED, STATUS_VALID, VKID_LEN};
+pub use crate::consts::VKID_LEN;
+use crate::consts::{MAX_PROOF_BYTES, STATUS_INVALID, STATUS_MALFORMED, STATUS_VALID};
 
 /// BabyBear modulus, 2^31 - 2^27 + 1. Must match the Go adapter.
 pub const BABYBEAR_MODULUS: u32 = 2_013_265_921;
@@ -19,8 +20,6 @@ pub const MAX_PUBLIC_VALUES: usize = 64;
 /// vk_ids this image can verify. Populated when the fixed statement's AIR and
 /// pinned FRI parameters exist; the vk_id is the hash committing to all of
 /// them. Must equal the allowlist compiled into the Go binary.
-#[cfg_attr(feature = "insecure-accept-all", allow(dead_code))]
-const KNOWN_VK_IDS: &[[u8; VKID_LEN]] = &[];
 
 /// A deterministic answer about a well-formed request.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -80,7 +79,7 @@ fn is_known_vk(id: &[u8; VKID_LEN]) -> bool {
     }
     #[cfg(not(feature = "insecure-accept-all"))]
     {
-        KNOWN_VK_IDS.iter().any(|k| k == id)
+        *id == av_zone::config::vk_id()
     }
 }
 
@@ -113,8 +112,13 @@ fn run_verifier(_: &[u8; VKID_LEN], _: &[u32], _: &[u8]) -> Result<Verdict, Veri
 }
 
 #[cfg(not(feature = "insecure-accept-all"))]
-fn run_verifier(_: &[u8; VKID_LEN], _: &[u32], _: &[u8]) -> Result<Verdict, VerifyError> {
-    Err(VerifyError::NotImplemented)
+fn run_verifier(_: &[u8; VKID_LEN], values: &[u32], proof: &[u8]) -> Result<Verdict, VerifyError> {
+    use av_zone::proof::{verify_bytes, Verdict as V};
+    Ok(match verify_bytes(values, proof) {
+        V::Valid => Verdict::Valid,
+        V::Invalid => Verdict::Invalid,
+        V::Malformed => Verdict::Malformed,
+    })
 }
 
 #[cfg(test)]

@@ -50,6 +50,9 @@ where
             Err(e) => return Err(format!("protocol: {e}")),
         };
 
+        // Computed before `req` moves into the blocking task.
+        let digest = req.digest();
+
         // Verification is CPU-bound: keep it off the async workers.
         let job = spawn_blocking(move || verify(&req.vk_id, &req.public_inputs, &req.proof));
         let verdict = match timeout(cfg.verify_timeout, job).await {
@@ -59,7 +62,7 @@ where
             Ok(Ok(Ok(v))) => v,
         };
 
-        write_response(&mut stream, verdict.status(), &cfg.image_hash, cfg.io_timeout)
+        write_response(&mut stream, verdict.status(), &cfg.image_hash, &digest, cfg.io_timeout)
             .await
             .map_err(|e| format!("protocol: {e}"))?;
     }
@@ -127,10 +130,10 @@ mod tests {
 
         for _ in 0..3 {
             client.write_all(&request(&[9, 9, 9])).await.unwrap();
-            let mut resp = [0u8; 33];
+            let mut resp = [0u8; 49];
             client.read_exact(&mut resp).await.unwrap();
             assert_eq!(resp[0], crate::protocol::STATUS_VALID);
-            assert_eq!(&resp[1..], &[0xAA; 32]);
+            assert_eq!(&resp[1..33], &[0xAA; 32]);
         }
         drop(client);
         assert!(task.await.unwrap().is_ok(), "clean close is not an error");

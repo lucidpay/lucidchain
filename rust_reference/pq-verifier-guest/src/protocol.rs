@@ -2,7 +2,8 @@
 //! x/proofs/verifiers/pq.go must agree with every constant here.
 //!
 //! Request:  version u8 | vk_id [32] | pub_len u32 LE | proof_len u32 LE | pub | proof
-//! Response: status u8 | image_hash [32]
+//! Response: status u8 | image_hash [32] | digest [16]
+//!           digest = first 16 bytes of SHA-256 over the complete request frame
 //!
 //! Any framing violation (bad version, length above its cap, short read,
 //! timeout) is a connection-level error: the caller closes the connection
@@ -15,17 +16,14 @@ use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use tokio::time::timeout;
 
 pub const VERSION: u8 = 2;
-pub const VKID_LEN: usize = 32;
+pub use crate::consts::{MAX_PROOF_BYTES, STATUS_INVALID, STATUS_MALFORMED, STATUS_VALID, VKID_LEN};
 pub const HASH_LEN: usize = 32;
+/// Length of the request digest echoed in every response (stream-desync check).
+pub const DIGEST_LEN: usize = 16;
 
 /// 4-byte count + up to 64 four-byte field elements (matches maxPQPublicValues in Go).
 pub const MAX_PUBLIC_INPUT_BYTES: usize = 4 + 4 * 64;
-/// Matches the maxProofBytes the Go adapter is constructed with.
-pub const MAX_PROOF_BYTES: usize = 512 * 1024;
 
-pub const STATUS_VALID: u8 = 0;
-pub const STATUS_INVALID: u8 = 1;
-pub const STATUS_MALFORMED: u8 = 2;
 
 #[derive(Debug)]
 pub struct Request {
@@ -60,6 +58,26 @@ impl std::error::Error for ProtocolError {}
 impl From<io::Error> for ProtocolError {
     fn from(e: io::Error) -> Self {
         Self::Io(e)
+    }
+}
+
+impl Request {
+    /// First DIGEST_LEN bytes of SHA-256 over the exact request frame as sent
+    /// (version | vk_id | pub_len | proof_len | pub | proof). The host recomputes
+    /// it and treats a mismatch as a stream desync.
+    pub fn digest(&self) -> [u8; DIGEST_LEN] {
+        use sha2::{Digest, Sha256};
+        let mut h = Sha256::new();
+        h.update([VERSION]);
+        h.update(self.vk_id);
+        h.update((self.public_inputs.len() as u32).to_le_bytes());
+        h.update((self.proof.len() as u32).to_le_bytes());
+        h.update(&self.public_inputs);
+        h.update(&self.proof);
+        let full = h.finalize();
+        let mut out = [0u8; DIGEST_LEN];
+        out.copy_from_slice(&full[..DIGEST_LEN]);
+        out
     }
 }
 
@@ -116,11 +134,13 @@ pub async fn write_response<W: AsyncWrite + Unpin>(
     w: &mut W,
     status: u8,
     image_hash: &[u8; HASH_LEN],
+    digest: &[u8; DIGEST_LEN],
     io_timeout: Duration,
 ) -> Result<(), ProtocolError> {
-    let mut out = [0u8; 1 + HASH_LEN];
+    let mut out = [0u8; 1 + HASH_LEN + DIGEST_LEN];
     out[0] = status;
-    out[1..].copy_from_slice(image_hash);
+    out[1..1 + HASH_LEN].copy_from_slice(image_hash);
+    out[1 + HASH_LEN..].copy_from_slice(digest);
     match timeout(io_timeout, async {
         w.write_all(&out).await?;
         w.flush().await
@@ -163,6 +183,23 @@ mod tests {
         assert_eq!(req.proof, vec![9, 8]);
     }
 
+    #[test]
+    fn digest_matches_known_sha256_of_the_frame() {
+        // Self-consistency only (same crate on both sides). The independent check is
+        // the Go VsockTransport integration test, which recomputes the digest itself.
+        let req = Request { vk_id: [7; VKID_LEN], public_inputs: vec![1, 2, 3], proof: vec![9, 8] };
+        let frame = frame(VERSION, 7, 3, 2, &[1, 2, 3, 9, 8]);
+        assert_eq!(frame.len(), 1 + 32 + 8 + 5);
+        let expect = {
+            use sha2::{Digest, Sha256};
+            let d = Sha256::digest(&frame);
+            let mut o = [0u8; DIGEST_LEN];
+            o.copy_from_slice(&d[..DIGEST_LEN]);
+            o
+        };
+        assert_eq!(req.digest(), expect);
+    }
+
     #[tokio::test]
     async fn clean_eof_is_none() {
         assert!(parse(vec![]).await.unwrap().is_none());
@@ -171,8 +208,8 @@ mod tests {
     #[tokio::test]
     async fn rejects_bad_version() {
         assert!(matches!(
-            parse(frame(2, 0, 0, 0, &[])).await,
-            Err(ProtocolError::BadVersion(2))
+            parse(frame(VERSION - 1, 0, 0, 0, &[])).await,
+            Err(ProtocolError::BadVersion(v)) if v == VERSION - 1
         ));
     }
 
