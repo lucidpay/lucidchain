@@ -37,6 +37,8 @@ func main() {
 	version := flag.Uint64("signer-set-version", 1, "signer set version")
 	zkRoot := flag.String("zk-records-root", "", "records root, 32-byte hex (optional)")
 	zkDepth := flag.Uint("zk-tree-depth", 0, "records tree depth (required with -zk-records-root)")
+	derive := flag.Bool("derive-state-root", false, "derive state_root from the zk anchor and record count (required by the chain when an anchor is present); overrides -state-root")
+	printRoot := flag.Bool("print-state-root", false, "with -derive-state-root: print the derived state_root (hex) and exit")
 	var keys keyList
 	flag.Var(&keys, "key", "signer as <index>=<private key hex>; repeat per signer")
 	flag.Parse()
@@ -57,6 +59,21 @@ func main() {
 		}
 		must(types.ValidateZkAnchor(anchor)) // fail early, off-chain
 	}
+	if *printRoot && !*derive {
+		must(fmt.Errorf("-print-state-root requires -derive-state-root"))
+	}
+	if *derive {
+		if anchor == nil {
+			must(fmt.Errorf("-derive-state-root needs -zk-records-root and -zk-tree-depth"))
+		}
+		sr = types.DeriveStateRoot(anchor, *records)
+		if *printRoot {
+			fmt.Println(hex.EncodeToString(sr))
+			return
+		}
+		fmt.Fprintf(os.Stderr, "derived state_root=%x\n", sr)
+	}
+	must(types.ValidateAnchorBinding(anchor, sr, *records)) // same rule the chain applies
 
 	signBytes, err := types.CheckpointSignBytes(&types.CheckpointSignDoc{
 		ChainId:                *chainID,

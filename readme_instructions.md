@@ -363,9 +363,15 @@ go build -o ~/tools/signcheckpoint/signcheckpoint ./tools/signcheckpoint
 
 chmod +x ./tools/zkgeo/submit-checkpoint-from-batch.sh
 
-export STATE_ROOT=d841f966f8bf17d49335f4b134c2178fd5aca8244d46b8d5f9a5470338095b7b
-export STATE_ROOT_B64=$(echo $STATE_ROOT | xxd -r -p | base64 -w0)
 export ZK_ROOT=$(printf '%064x' 7)   # test value; use your real MiMC root for real proofs
+
+# With a zk anchor the chain requires state_root to be derived from the anchor and the
+# record count (readme §3.3 step 1), so let the tool compute it instead of choosing one:
+export STATE_ROOT=$(~/tools/signcheckpoint/signcheckpoint \
+  --sidechain-id hospitality-platform-01 --record-count 100 \
+  --zk-records-root "$ZK_ROOT" --zk-tree-depth 20 \
+  --derive-state-root --print-state-root)
+export STATE_ROOT_B64=$(echo $STATE_ROOT | xxd -r -p | base64 -w0)
 
 K1=$(lucidchaind keys export sidechainkey1 --unarmored-hex --unsafe)
 K2=$(lucidchaind keys export sidechainkey2 --unarmored-hex --unsafe)
@@ -374,7 +380,7 @@ OUT=$(~/tools/signcheckpoint/signcheckpoint \
   --chain-id my-testnet-1 \
   --sidechain-id hospitality-platform-01 \
   --lc-sequence 1 \
-  --state-root "$STATE_ROOT" \
+  --derive-state-root \
   --previous-hash "" \
   --record-count 100 \
   --data-pointer "ipfs://test-checkpoint-1" \
@@ -394,9 +400,7 @@ unset K1 K2   # don't leave the private keys in your shell
 
 
 
-# take the signatures and add them to submit-checkpoint
-export STATE_ROOT=d841f966f8bf17d49335f4b134c2178fd5aca8244d46b8d5f9a5470338095b7b
-export STATE_ROOT_B64=$(echo $STATE_ROOT | xxd -r -p | base64 -w0)
+# take the signatures and add them to submit-checkpoint (STATE_ROOT_B64 is the derived root from above)
 export ZK_ROOT=$(printf '%064x' 7 | xxd -r -p | base64 -w0)   # test value; use your real MiMC root for real proofs
 
 # NOTE: --zk-anchor is optional and nullable. But here it demonstrates how to use it
@@ -512,10 +516,10 @@ Look at the anchor the batch produces:
 
 ```bash
 BATCH_OUT=$(go run ./cmd/batchroot -batch ~/tmp_workarea/json/batch.json -records-depth 5)
-export STATE_ROOT=$(printf '%s\n' "$BATCH_OUT" | awk '/records_root \(hex\)/ {print $NF}')
+export ZK_RECORDS_ROOT=$(printf '%s\n' "$BATCH_OUT" | awk '/records_root \(hex\)/ {print $NF}')
 
-# sanity check
-echo "$STATE_ROOT"
+# sanity check (this is the anchor's records root; the script derives state_root from it)
+echo "$ZK_RECORDS_ROOT"
 
 export K1=$(lucidchaind keys export sidechainkey1 --unarmored-hex --unsafe)
 export K2=$(lucidchaind keys export sidechainkey2 --unarmored-hex --unsafe)
@@ -551,7 +555,7 @@ SEQ=<new sequence> SCHEME=plonk BATCH=~/tmp_workarea/json/batch.json tools/zkgeo
 lucidchaind query proofs proofs-for-checkpoint --sidechain-id hospitality-platform-01 --checkpoint-sequence 2 -o json \
   | jq '.proofs[] | {proof_system_id, claim_id, verified_height}'
 
-  unset STATE_ROOT K1 K2
+  unset ZK_RECORDS_ROOT K1 K2
 ```
 
 You should see something similar to this:
