@@ -75,6 +75,12 @@ message Sidechain {
   google.protobuf.Timestamp last_checkpoint_at = 15
       [(gogoproto.stdtime) = true, (gogoproto.nullable) = true];
 
+  // Bitmap of the previous signer set's members that approved the most
+  // recent rotation (bit i = signer i of the outgoing set). Empty until the
+  // first rotation. Kept in state, not only in events, so continuity of
+  // control can be audited without an indexer.
+  bytes last_rotation_approver_bitmap = 22;
+
   // Set by InitiateExit.
   google.protobuf.Timestamp exit_requested_at = 16
       [(gogoproto.stdtime) = true, (gogoproto.nullable) = true];
@@ -97,3 +103,17 @@ message Sidechain {
 
 }
 
+// SignerRotationSignDoc is what the CURRENT signers sign to approve replacing
+// themselves. Sign bytes are SignerRotationDomain || proto.Marshal(doc), see
+// x/sidechain/types/rotation.go. Binding current_signer_set_version means an
+// approval is valid for exactly one rotation and cannot be replayed.
+message SignerRotationSignDoc {
+  string chain_id = 1;
+  string sidechain_id = 2;
+  uint64 current_signer_set_version = 3;
+  repeated google.protobuf.Any new_signer_keys = 4
+      [(cosmos_proto.accepts_interface) = "cosmos.crypto.PubKey"];
+  uint32 new_signature_threshold = 5;
+  // Expiry of the approval, as a block height (inclusive).
+  uint64 not_after_height = 6;
+}

@@ -20,6 +20,10 @@ const (
 	// MaxPeriodSeconds caps every duration in the module (10 years). It keeps
 	// time arithmetic far from overflow.
 	MaxPeriodSeconds uint64 = 10 * 365 * 24 * 60 * 60
+
+	// DefaultRotationSignatureGas mirrors the checkpoint module's per-signature
+	// gas. Benchmark ML-DSA-65 verification on the target hardware before launch.
+	DefaultRotationSignatureGas uint64 = 50_000
 )
 
 // DefaultParams returns the default module params. The bonds are placeholders:
@@ -36,6 +40,7 @@ func DefaultParams() Params {
 		MaxSignerKeys:                7,
 		AllowedPubkeyTypeUrls:        []string{"/cosmos.crypto.mldsa65.PubKey"},
 		AutoActivate:                 false,
+		RotationSignatureGas:         DefaultRotationSignatureGas,
 	}
 }
 
@@ -120,6 +125,9 @@ func (p Params) Validate() error {
 			return fmt.Errorf("duplicate allowed_pubkey_type_urls entry %q", u)
 		}
 		urls[u] = struct{}{}
+	}
+	if p.RotationSignatureGas == 0 {
+		return fmt.Errorf("rotation_signature_gas must be positive")
 	}
 	return nil
 }

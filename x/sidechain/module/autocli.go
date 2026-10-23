@@ -44,7 +44,7 @@ func (am AppModule) AutoCLIOptions() *autocliv1.ModuleOptions {
 				{
 					RpcMethod:      "UpdateSidechainSigners",
 					Use:            "update-signers [id]",
-					Short:          "Update the signers of a sidechain",
+					Short:          "Rotate the signer set; requires --current-set-signatures from the current set at threshold (see tools/signrotation)",
 					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "id"}}},
 				{
 					RpcMethod:      "UpdateSidechain",

@@ -84,6 +84,11 @@ func validateSidechainGenesis(sc Sidechain) error {
 		keys[raw] = struct{}{}
 	}
 
+	if len(sc.LastRotationApproverBitmap) > (n+7)/8 {
+		return genesisErr("sidechain %q: last_rotation_approver_bitmap is %d bytes, max %d for %d signer keys",
+			sc.Id, len(sc.LastRotationApproverBitmap), (n+7)/8, n)
+	}
+
 	if err := sc.Bond.Validate(); err != nil {
 		return genesisErr("sidechain %q: bond: %s", sc.Id, err)
 	}
