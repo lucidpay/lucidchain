@@ -118,8 +118,21 @@ func init() {
 	}
 }
 
-// AppConfig returns the default app config.
-func AppConfig() depinject.Config {
+// AppConfig returns the app config used by a running node (start, export, tests
+// that execute transactions). It includes the WASM-backed PQ verifier.
+func AppConfig() depinject.Config { return appConfigWith(ProvideProofVerifiers) }
+
+// CLIAppConfig is for root.go only: same modules, no wasm runtime. Never use it
+// for anything that executes transactions.
+func CLIAppConfig() depinject.Config { return appConfigWith(ProvideProofVerifiersCLI) }
+
+// ProvideProofVerifiersCLI never verifies anything; autocli only needs the
+// dependency graph to build.
+func ProvideProofVerifiersCLI() map[string]proofstypes.ProofVerifier {
+	return proofsverifiers.Default()
+}
+
+func appConfigWith(provider any) depinject.Config {
 	return depinject.Configs(
 		appConfig,
 		depinject.Supply(
@@ -128,10 +141,7 @@ func AppConfig() depinject.Config {
 				genutiltypes.ModuleName: genutil.NewAppModuleBasic(genutiltypes.DefaultMessageValidator),
 			},
 		),
-		// proof verifier implementations: native gnark verifiers plus the
-		// WASM-backed PQ verifier. Provide (not Supply) so it only runs when the
-		// proofs keeper actually needs the map.
-		depinject.Provide(ProvideProofVerifiers),
+		depinject.Provide(provider),
 	)
 }
 

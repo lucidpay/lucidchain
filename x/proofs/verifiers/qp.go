@@ -194,9 +194,9 @@ func (v pqVerifier) CheckInputs(publicInputs []byte, expected []types.ExpectedIn
 }
 
 // pqNumPublic is the number of public values of the statement this binary's
-// vk_ids prove: the 16 binding limbs plus any extra values. SET THIS to match
+// vk_ids prove: 35 in total: the 16 binding limbs plus 19 statement values. SET THIS to match
 // your circuit. It is a stopgap until the count lives per vk_id in the allowlist.
-const pqNumPublic = 16
+const pqNumPublic = 35
 
 // PublicInputCount implements types.ProofVerifier.
 func (v pqVerifier) PublicInputCount(vkBytes []byte) (int, error) {

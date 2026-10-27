@@ -1013,6 +1013,87 @@ wait for the voting period to finish (60s) then check the status
 lucidchaind query attestor attestor kyc-attestor-01 | grep status
 ```
 
+
+## Register a ZKP verifier
+
+First increase the size of the proof bytes
+
+```bash
+export GOV_ADDRESS=$(lucidchaind query auth module-account gov -o json | jq -r '.account.value.address')
+cat << EOF > ~/tmp_workarea/json/increase-params.json
+{
+  "messages": [{
+    "@type": "/lucidchain.proofs.v1.MsgUpdateParams",
+    "authority": "$GOV_ADDRESS",
+    "params": {
+      "base_verification_fee": "0",
+      "fee_denom": "stake",
+      "max_proof_bytes": 524288,
+      "max_public_input_bytes": 4096,
+      "max_verification_key_bytes": 65536
+    }
+  }],
+  "metadata": "", "deposit": "10000000stake",
+  "title": "Raise max_proof_bytes", "summary": "PQ proofs are about 270-500 KB"
+}
+EOF
+
+lucidchaind tx gov submit-proposal ~/tmp_workarea/json/increase-params.json --from validator \
+  --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
+
+sleep 7   # long enough for inclusion in a block
+
+PID=$(lucidchaind query gov proposals -o json | jq -r '.proposals[-1].id')
+lucidchaind tx gov vote "$PID" yes --from validator --chain-id my-testnet-1 \
+  --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
+  
+sleep 35
+lucidchaind q gov proposal $ID -o json | jq '{status: .proposal.status, failed_reason: .proposal.failed_reason}'
+lucidchaind q proofs params
+
+```
+
+Next register the ZK Verifier
+
+```bash
+export BASE64_VK_ID=$(base64 -w0 x/proofs/verifiers/testdata/vkid.bin; echo)
+export GOV_ADDRESS=$(lucidchaind query auth module-account gov -o json | jq -r '.account.value.address')
+cat << EOF > ~/tmp_workarea/json/register-zk-verifier.json
+{
+  "messages": [{
+    "@type": "/lucidchain.proofs.v1.MsgRegisterVerifier",
+    "authority": "$GOV_ADDRESS",
+    "proof_system_id": "plonky3-babybear-v1",
+    "description": "av-zone PQ verifier",
+    "verification_key": "$BASE64_VK_ID",
+    "verification_gas": "1000000",
+    "claim_id": "av-zone",
+    "input_layout": []
+  }],
+  "metadata": "",
+  "deposit": "10000000stake",
+  "title": "Register PQ verifier",
+  "summary": "Register plonky3-babybear-v1 for claim av-zone"
+}
+EOF
+
+lucidchaind tx gov submit-proposal ~/tmp_workarea/json/register-zk-verifier.json --from validator \
+  --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
+
+sleep 7   # long enough for inclusion in a block
+
+PID=$(lucidchaind query gov proposals -o json | jq -r '.proposals[-1].id')
+lucidchaind tx gov vote "$PID" yes --from validator --chain-id my-testnet-1 \
+  --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
+
+```
+
+Wait for voting period to finish
+
+```bash
+lucidchaind q proofs verifiers
+```
+
 ## How to suspend a sidechain
 
 You will need to create a proposal file (`sidechain-suspension-proposal.json`).

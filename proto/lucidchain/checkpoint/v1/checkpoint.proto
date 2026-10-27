@@ -91,11 +91,12 @@ message CheckpointSignDoc {
 enum ZkHashScheme {
   ZK_HASH_SCHEME_UNSPECIFIED = 0;
   ZK_HASH_SCHEME_MIMC_BN254  = 1;
+  ZK_HASH_SCHEME_POSEIDON2_BABYBEAR = 2;  // records_root = 8 BabyBear limbs, u32 little-endian, each canonical (< 2013265921)
 }
 message ZkAnchor {
   option (gogoproto.equal) = true;
 
   ZkHashScheme scheme = 1;
-  bytes records_root  = 2;   // 32-byte big-endian BN254 Fr element, MUST be canonical (< r)
+  bytes records_root  = 2;   // 32 bytes. MIMC_BN254: big-endian BN254 Fr element, canonical (< r). POSEIDON2_BABYBEAR: 8 x u32 LE limbs, each canonical
   uint32 records_tree_depth = 3;
 }

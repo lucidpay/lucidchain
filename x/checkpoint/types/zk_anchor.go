@@ -16,6 +16,25 @@ const MaxRecordsTreeDepth = 64
 var Bn254Fr, _ = new(big.Int).SetString(
 	"21888242871839275222246405745257275088548364400416034343698204186575808495617", 10)
 
+// BabyBearModulus is 2^31 - 2^27 + 1, the field of the Poseidon2/BabyBear scheme.
+const BabyBearModulus uint32 = 2013265921
+
+// BabyBearRootLimbs decodes a Poseidon2/BabyBear records_root: 8 limbs, each a
+// u32 little-endian canonical field element (32 bytes in total).
+func BabyBearRootLimbs(root []byte) ([8]uint32, error) {
+	var out [8]uint32
+	if len(root) != 32 {
+		return out, errorsmod.Wrapf(ErrInvalidCheckpoint, "records_root is %d bytes, want 32", len(root))
+	}
+	for i := range out {
+		out[i] = binary.LittleEndian.Uint32(root[4*i:])
+		if out[i] >= BabyBearModulus {
+			return out, errorsmod.Wrapf(ErrInvalidCheckpoint, "records_root limb %d is not a canonical field element", i)
+		}
+	}
+	return out, nil
+}
+
 // ValidateZkAnchor checks an optional anchor. nil is valid (no anchor).
 // An empty non-nil anchor is rejected (scheme unspecified), so "no anchor"
 // has exactly one encoding in the sign bytes.
@@ -25,14 +44,20 @@ func ValidateZkAnchor(a *ZkAnchor) error {
 	}
 	// DeriveStateRoot encodes the scheme on one byte; widen the preimage before
 	// adding a scheme id above 255.
-	if a.Scheme != ZkHashScheme_ZK_HASH_SCHEME_MIMC_BN254 || a.Scheme > 255 {
+	switch a.Scheme {
+	case ZkHashScheme_ZK_HASH_SCHEME_MIMC_BN254:
+		if len(a.RecordsRoot) != 32 {
+			return errorsmod.Wrapf(ErrInvalidCheckpoint, "records_root is %d bytes, want 32", len(a.RecordsRoot))
+		}
+		if new(big.Int).SetBytes(a.RecordsRoot).Cmp(Bn254Fr) >= 0 {
+			return errorsmod.Wrap(ErrInvalidCheckpoint, "records_root is not a canonical field element")
+		}
+	case ZkHashScheme_ZK_HASH_SCHEME_POSEIDON2_BABYBEAR:
+		if _, err := BabyBearRootLimbs(a.RecordsRoot); err != nil {
+			return err
+		}
+	default:
 		return errorsmod.Wrap(ErrInvalidCheckpoint, "unsupported zk hash scheme")
-	}
-	if len(a.RecordsRoot) != 32 {
-		return errorsmod.Wrapf(ErrInvalidCheckpoint, "records_root is %d bytes, want 32", len(a.RecordsRoot))
-	}
-	if new(big.Int).SetBytes(a.RecordsRoot).Cmp(Bn254Fr) >= 0 {
-		return errorsmod.Wrap(ErrInvalidCheckpoint, "records_root is not a canonical field element")
 	}
 	if a.RecordsTreeDepth == 0 || a.RecordsTreeDepth > MaxRecordsTreeDepth {
 		return errorsmod.Wrapf(ErrInvalidCheckpoint, "records_tree_depth %d out of range [1, %d]",

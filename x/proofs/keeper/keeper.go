@@ -421,6 +421,19 @@ func (k Keeper) expectedInputs(layout []types.InputBinding, cp checkpointtypes.C
 			}
 		case types.InputSource_INPUT_SOURCE_CHECKPOINT_RECORD_COUNT:
 			v = new(big.Int).SetUint64(cp.RecordCount)
+		case types.InputSource_INPUT_SOURCE_CHECKPOINT_RECORDS_ROOT_BABYBEAR_LIMB:
+			a := cp.ZkAnchor
+			if a == nil || a.Scheme != checkpointtypes.ZkHashScheme_ZK_HASH_SCHEME_POSEIDON2_BABYBEAR {
+				return nil, errorsmod.Wrap(types.ErrCheckpointNotFound, "checkpoint has no Poseidon2-BabyBear zk anchor")
+			}
+			limbs, err := checkpointtypes.BabyBearRootLimbs(a.RecordsRoot)
+			if err != nil {
+				return nil, errorsmod.Wrap(types.ErrInvalidRequest, err.Error())
+			}
+			if b.Limb > 7 {
+				return nil, errorsmod.Wrap(types.ErrInvalidRequest, "root limb index must be 0..7")
+			}
+			v = new(big.Int).SetUint64(uint64(limbs[b.Limb]))
 		case types.InputSource_INPUT_SOURCE_FIXED_VALUE:
 			v = new(big.Int).SetBytes(b.Value)
 		default:
@@ -434,11 +447,17 @@ func (k Keeper) expectedInputs(layout []types.InputBinding, cp checkpointtypes.C
 // scalarField returns the proof system's scalar field modulus.
 // Add other curves here before registering verifiers for them.
 func scalarField(system string) (*big.Int, bool) {
-	if strings.HasSuffix(system, "-bn254") {
+	switch {
+	case strings.HasSuffix(system, "-bn254"):
 		return checkpointtypes.Bn254Fr, true
+	case strings.HasPrefix(system, "plonky3-babybear-"):
+		return babyBearModulus, true
 	}
 	return nil, false
 }
+
+// babyBearModulus is 2^31 - 2^27 + 1, the field of the plonky3-babybear systems.
+var babyBearModulus = big.NewInt(2013265921)
 
 // validateSubmission applies the stateless format and size limits.
 func validateSubmission(msg *types.MsgSubmitProof, p types.Params) error {
@@ -602,6 +621,10 @@ func validateLayout(system string, layout []types.InputBinding, width, numPublic
 		}
 		seen[b.Index] = struct{}{}
 
+		if b.Source != types.InputSource_INPUT_SOURCE_CHECKPOINT_RECORDS_ROOT_BABYBEAR_LIMB && b.Limb != 0 {
+			return errorsmod.Wrap(types.ErrInvalidRequest, "limb is only allowed for the BabyBear root limb source")
+		}
+
 		switch b.Source {
 		case types.InputSource_INPUT_SOURCE_CHECKPOINT_RECORDS_ROOT:
 			// MiMC-BN254 root: only meaningful for BN254 proof systems.
@@ -615,6 +638,17 @@ func validateLayout(system string, layout []types.InputBinding, width, numPublic
 		case types.InputSource_INPUT_SOURCE_CHECKPOINT_RECORD_COUNT:
 			if len(b.Value) != 0 {
 				return errorsmod.Wrap(types.ErrInvalidRequest, "value is only allowed for FIXED_VALUE")
+			}
+		case types.InputSource_INPUT_SOURCE_CHECKPOINT_RECORDS_ROOT_BABYBEAR_LIMB:
+			if !strings.HasPrefix(system, "plonky3-babybear-") {
+				return errorsmod.Wrapf(types.ErrInvalidRequest,
+					"babybear root limb source requires a plonky3-babybear system, got %q", system)
+			}
+			if len(b.Value) != 0 {
+				return errorsmod.Wrap(types.ErrInvalidRequest, "value is only allowed for FIXED_VALUE")
+			}
+			if b.Limb > 7 {
+				return errorsmod.Wrap(types.ErrInvalidRequest, "root limb index must be 0..7")
 			}
 		case types.InputSource_INPUT_SOURCE_FIXED_VALUE:
 			if len(b.Value) == 0 || len(b.Value) > 32 {
@@ -641,7 +675,7 @@ func sameLayout(a, b []types.InputBinding) bool {
 		return false
 	}
 	for i := range a {
-		if a[i].Index != b[i].Index || a[i].Source != b[i].Source || !bytes.Equal(a[i].Value, b[i].Value) {
+		if a[i].Index != b[i].Index || a[i].Source != b[i].Source || !bytes.Equal(a[i].Value, b[i].Value) || a[i].Limb != b[i].Limb {
 			return false
 		}
 	}

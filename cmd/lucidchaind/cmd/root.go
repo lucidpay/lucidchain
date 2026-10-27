@@ -28,7 +28,7 @@ func NewRootCmd() *cobra.Command {
 	)
 
 	if err := depinject.Inject(
-		depinject.Configs(app.AppConfig(),
+		depinject.Configs(app.CLIAppConfig(),
 			depinject.Supply(log.NewNopLogger()),
 			depinject.Provide(
 				ProvideClientContext,

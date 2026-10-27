@@ -19,6 +19,7 @@ enum InputSource {
   INPUT_SOURCE_CHECKPOINT_RECORDS_ROOT = 1;  // checkpoint.zk_anchor.records_root
   INPUT_SOURCE_CHECKPOINT_RECORD_COUNT = 2;  // checkpoint.record_count
   INPUT_SOURCE_FIXED_VALUE = 3;              // a constant set at registration
+  INPUT_SOURCE_CHECKPOINT_RECORDS_ROOT_BABYBEAR_LIMB = 4; // limb InputBinding.limb of a Poseidon2/BabyBear zk_anchor.records_root
 }
 
 message InputBinding {
@@ -27,6 +28,7 @@ message InputBinding {
   uint32 index = 1;       // position in the public inputs (0-based)
   InputSource source = 2; // where the expected value comes from
   bytes value = 3;        // only for FIXED_VALUE: canonical big-endian
+  uint32 limb = 4;        // only for ..._BABYBEAR_LIMB: which of the 8 root limbs (0..7)
 }
 
 
