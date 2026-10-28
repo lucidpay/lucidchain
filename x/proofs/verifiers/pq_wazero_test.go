@@ -29,7 +29,7 @@ func newWasm(t testing.TB, inst int, timeout time.Duration, pages uint32) (*Wasm
 	vk := fx(t, "vkid.bin")
 	var id [VKIDLen]byte
 	copy(id[:], vk)
-	return tr, NewPQ(tr, WasmImageHash(), [][VKIDLen]byte{id}, PQWireMaxProofBytes), vk
+	return tr, NewPQ(tr, [][VKIDLen]byte{id}, PQWireMaxProofBytes), vk
 }
 
 func TestWasmRealProofs(t *testing.T) {
@@ -45,16 +45,9 @@ func TestWasmRealProofs(t *testing.T) {
 		if err := v.Verify(vk, pub, proof); err != nil {
 			t.Fatal(err)
 		}
-		t.Logf("n=%s verify(warm)=%v", n, time.Since(start))
+		// Every call now uses a fresh instance, so "second" is not "warm" any more.
+		t.Logf("n=%s verify(second, fresh instance)=%v", n, time.Since(start))
 	}
-}
-
-func TestWasmMemoryHighWater(t *testing.T) {
-	tr, v, vk := newWasm(t, 1, 60*time.Second, 1024)
-	if err := v.Verify(vk, fx(t, "pub_16384.bin"), fx(t, "proof_16384.bin")); err != nil {
-		t.Fatal(err)
-	}
-	t.Logf("guest memory after 2^14-row verify: %.1f MiB", float64(tr.MemoryBytes())/(1<<20))
 }
 
 func TestWasmRejectionsAreNotFaults(t *testing.T) {
@@ -85,15 +78,24 @@ func TestWasmRejectionsAreNotFaults(t *testing.T) {
 }
 
 func TestWasmSelfCheck(t *testing.T) {
-	tr, _, vk := newWasm(t, 1, 60*time.Second, 1024)
-	var id [VKIDLen]byte
-	copy(id[:], vk)
-	if err := PQSelfCheck(tr, WasmImageHash(), [][VKIDLen]byte{id}); err != nil {
+	tr, _, _ := newWasm(t, 1, 60*time.Second, 1024)
+	if err := PQSelfCheck(tr, DefaultKnownAnswers()); err != nil {
 		t.Fatal(err)
 	}
-	// an allowlisted id the guest does not know must fail the self-check
-	if err := PQSelfCheck(tr, WasmImageHash(), [][VKIDLen]byte{{9}}); err == nil {
+
+	// a vk_id the guest does not know is a fault, so the self-check must fail
+	unknown := DefaultKnownAnswers()
+	unknown[0].VKID = [VKIDLen]byte{9}
+	if err := PQSelfCheck(tr, unknown); err == nil {
 		t.Fatal("unknown vk_id passed self-check")
+	}
+
+	// a known answer that is NOT a valid proof must fail the self-check
+	corrupt := DefaultKnownAnswers()
+	corrupt[0].Proof = bytes.Clone(corrupt[0].Proof)
+	corrupt[0].Proof[len(corrupt[0].Proof)/2] ^= 0x01
+	if err := PQSelfCheck(tr, corrupt); err == nil {
+		t.Fatal("corrupted known answer passed self-check")
 	}
 }
 
@@ -139,7 +141,7 @@ func TestWasmTimeoutIsAFaultAndRecovers(t *testing.T) {
 		t.Fatal("expected timeout")
 	}
 	t.Logf("timeout error: %v", err)
-	// the transport must still work afterwards (instance was discarded, not reused)
+	// the transport must still work afterwards (every call uses a fresh instance)
 	tr.timeout = 60 * time.Second
 	resp, err := tr.Verify(req)
 	if err != nil || resp.Status != StatusValid {
@@ -156,5 +158,25 @@ func TestWasmMemoryCapIsAFault(t *testing.T) {
 		t.Fatal("expected failure with starved memory")
 	} else {
 		t.Logf("starved-memory error: %v", err)
+	}
+}
+
+// Queueing must not count against the execution timeout: with one slot and a
+// timeout comfortably above one verify, several callers must all succeed.
+func TestWasmQueueingDoesNotTimeOut(t *testing.T) {
+	_, v, vk := newWasm(t, 1, 5*time.Second, 1024)
+	pub, proof := fx(t, "pub_256.bin"), fx(t, "proof_256.bin")
+	var wg sync.WaitGroup
+	errs := make(chan error, 8)
+	for i := 0; i < 8; i++ {
+		wg.Add(1)
+		go func() { defer wg.Done(); errs <- v.Verify(vk, pub, proof) }()
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 }

@@ -97,6 +97,12 @@ fn main() {
     let proof = prove_trip(&st, &samples, &entropy).unwrap_or_else(|e| die(format!("cannot prove: {e:?}")));
 
     let vals = st.to_values();
+
+    use av_zone::proof::{verify_bytes, Verdict};
+    if verify_bytes(&vals, &proof) != Verdict::Valid {
+        die("self-check: the proof just built does not verify");
+    }
+    
     let mut pubs = (vals.len() as u32).to_le_bytes().to_vec();
     for v in &vals {
         pubs.extend_from_slice(&v.to_le_bytes());

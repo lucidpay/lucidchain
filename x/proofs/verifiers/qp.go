@@ -4,8 +4,7 @@ package verifiers
 //
 // This does not verify anything itself. It validates and canonicalizes
 // everything on the Go side (key id, public inputs, binding, size limits),
-// then asks an isolated Rust verifier (running in a microVM, reached over
-// vsock) for a verdict. The proof system is hash-based (FRI/STARK, e.g.
+// then asks an isolated Rust verifier (running in Wazero) for a verdict. The proof system is hash-based (FRI/STARK, e.g.
 // Plonky3 over BabyBear), so there is no pairing or elliptic-curve assumption.
 //
 // Encodings:
@@ -24,9 +23,7 @@ package verifiers
 // │  cosmos node (Go)                                     │
 // │   x/proofs keeper                                     │
 // │     ├─ verdict cache  key=(image_hash, proof_hash)    │
-// │     └─ VerifierClient ──vsock──▶ microVM(s)           │
-// │                                  ├ read-only rootfs   │
-// │                                  ├ no network/disk    │
+// │     └─ VerifierClient ────▶ Wazero                    │
 // │                                  └ Rust verifier svc  │
 // └───────────────────────────────────────────────────────┘
 
@@ -75,14 +72,9 @@ type PQRequest struct {
 // PQResponse is the verifier's answer. ImageHash identifies the verifier image
 // that produced the verdict and must equal the pinned hash.
 type PQResponse struct {
-	Status    Status
-	ImageHash [32]byte
+	Status Status
 }
 
-// PQTransport carries one request to the isolated verifier. Any error it
-// returns (crash, timeout, vsock failure, bad framing) is treated as a
-// verifier fault, never as a verdict. Implementations must not retry with a
-// different image and must not synthesize a verdict.
 type PQTransport interface {
 	Verify(req PQRequest) (PQResponse, error)
 }
@@ -105,7 +97,7 @@ var _ types.ProofVerifier = pqVerifier{}
 //
 //	m := verifiers.Default()
 //	m[verifiers.PQBabyBear] = verifiers.NewPQ(transport, imageHash, vkIDs, 512<<10)
-func NewPQ(transport PQTransport, imageHash [32]byte, vkIDs [][VKIDLen]byte, maxProofBytes int) types.ProofVerifier {
+func NewPQ(transport PQTransport, vkIDs [][VKIDLen]byte, maxProofBytes int) types.ProofVerifier {
 	// run some sanity code first, so we don't panic in the middle of a fuzz run.
 	if maxProofBytes < 1 || maxProofBytes > PQWireMaxProofBytes {
 		panic(fmt.Sprintf("verifiers: maxProofBytes %d outside [1, %d]", maxProofBytes, PQWireMaxProofBytes))
@@ -118,31 +110,7 @@ func NewPQ(transport PQTransport, imageHash [32]byte, vkIDs [][VKIDLen]byte, max
 	for _, id := range vkIDs {
 		set[id] = struct{}{}
 	}
-	return pqVerifier{transport: transport, imageHash: imageHash, vkIDs: set, maxProofBytes: maxProofBytes}
-}
-
-// PQSelfCheck probes the guest once per allowlisted vk_id with a junk proof.
-// A healthy guest answers INVALID or MALFORMED. Anything else (no answer,
-// VALID, wrong image) means the deployment is wrong and the node must not
-// start, instead of halting on the first real proof.
-func PQSelfCheck(tr PQTransport, imageHash [32]byte, vkIDs [][VKIDLen]byte) error {
-	pub, err := PQPublicInputs(types.Binding{}, nil)
-	if err != nil {
-		return err
-	}
-	for _, id := range vkIDs {
-		resp, err := tr.Verify(PQRequest{VKID: id, PublicInputs: pub, Proof: []byte{0}})
-		if err != nil {
-			return fmt.Errorf("self-check vk_id %x: %w", id[:4], err)
-		}
-		if resp.ImageHash != imageHash {
-			return fmt.Errorf("self-check vk_id %x: image %x does not match pinned %x", id[:4], resp.ImageHash, imageHash)
-		}
-		if resp.Status != StatusInvalid && resp.Status != StatusMalformed {
-			return fmt.Errorf("self-check vk_id %x: junk proof got status %d", id[:4], resp.Status)
-		}
-	}
-	return nil
+	return pqVerifier{transport: transport, vkIDs: set, maxProofBytes: maxProofBytes}
 }
 
 // ValidateKey implements types.ProofVerifier.
@@ -227,10 +195,6 @@ func (v pqVerifier) Verify(vkBytes, publicInputs, proof []byte) error {
 	resp, err := v.transport.Verify(PQRequest{VKID: id, PublicInputs: publicInputs, Proof: proof})
 	if err != nil {
 		return fmt.Errorf("%w: %v", types.ErrVerifierFault, err)
-	}
-	if resp.ImageHash != v.imageHash {
-		return fmt.Errorf("%w: verifier image %x does not match pinned image %x",
-			types.ErrVerifierFault, resp.ImageHash, v.imageHash)
 	}
 
 	switch resp.Status {

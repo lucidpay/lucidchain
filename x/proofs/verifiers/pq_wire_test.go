@@ -1,6 +1,7 @@
 package verifiers
 
 import (
+	"bytes"
 	"context"
 	"testing"
 	"time"
@@ -50,5 +51,12 @@ func TestDefaultWithPQ_RefusesUnknownVKID(t *testing.T) {
 	cfg.VKIDs = [][VKIDLen]byte{{9}}
 	if _, _, err := DefaultWithPQ(context.Background(), cfg); err == nil {
 		t.Fatal("must refuse when the allowlist has an id the guest does not know")
+	}
+}
+
+func TestSelfCheckFilesMatchFixtures(t *testing.T) {
+	if !bytes.Equal(selfCheckProof, fx(t, "proof_256.bin")) ||
+		!bytes.Equal(selfCheckPub, fx(t, "pub_256.bin")) {
+		t.Fatal("wasm/embed/selfcheck_* differ from testdata/*_256.bin; recopy them")
 	}
 }

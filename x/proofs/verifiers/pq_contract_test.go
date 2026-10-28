@@ -50,7 +50,7 @@ func TestWasmReuseDoesNotChangeOutcomes(t *testing.T) {
 		}
 		var id [VKIDLen]byte
 		copy(id[:], vk)
-		fresh := class(NewPQ(tr, WasmImageHash(), [][VKIDLen]byte{id}, PQWireMaxProofBytes).Verify(vk, c.pub, c.proof))
+		fresh := class(NewPQ(tr, [][VKIDLen]byte{id}, PQWireMaxProofBytes).Verify(vk, c.pub, c.proof))
 		_ = tr.Close()
 
 		if gotReused != fresh {

@@ -6,7 +6,8 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
-	"sync"
+	"runtime"
+	"sync/atomic"
 	"time"
 
 	"github.com/tetratelabs/wazero"
@@ -16,74 +17,87 @@ import (
 //go:embed wasm/embed/pq_verifier.wasm
 var pqVerifierWasm []byte
 
-// The guest imports nothing (no WASI, no host functions) and exports
-// memory, alloc, dealloc and verify_frame. It has no _initialize or _start.
-
-type wasmInstance struct {
-	mod                 api.Module
-	alloc, free, verify api.Function
-}
-
-// WasmTransport is a PQTransport that runs the verifier in-process under wazero.
-type WasmTransport struct {
-	rt        wazero.Runtime
-	compiled  wazero.CompiledModule
-	imageHash [32]byte
-	timeout   time.Duration
-	slots     chan struct{}      // bounds concurrent calls
-	idle      chan *wasmInstance // warm instances
-
-	mu     sync.Mutex
-	closed bool
-}
-
-var _ PQTransport = (*WasmTransport)(nil)
+// The guest imports nothing (no WASI, no host functions) and exports exactly
+// memory, alloc and verify_frame. It has no _start or _initialize.
+//
+// Design rules, each one closing a consensus hazard:
+//   - Fresh instance per call. Wasm memory only grows, so a reused instance
+//     makes "does this request hit the page limit" depend on history, and a
+//     restarted node could disagree with a long-running one at the margin.
+//   - Queueing is NOT part of the timeout. Only execution is timed, so a
+//     busy validator cannot fault on valid traffic.
+//   - Every error (trap, timeout, OOM, bad exit status) is a fault, never a
+//     verdict. The caller maps it to types.ErrVerifierFault.
+//   - The embedded module must match the pinned hash, checked here, so no
+//     construction path can skip it.
 
 // WasmImageHash is sha256 of the embedded guest.
 func WasmImageHash() [32]byte { return sha256.Sum256(pqVerifierWasm) }
 
+// WasmTransport is a PQTransport that runs the verifier in-process under wazero.
+type WasmTransport struct {
+	rt       wazero.Runtime
+	compiled wazero.CompiledModule
+	timeout  time.Duration // execution only, per call
+	slots    chan struct{} // bounds concurrent instances (and so memory)
+	closed   atomic.Bool
+}
+
+var _ PQTransport = (*WasmTransport)(nil)
+
 // NewWasmTransport compiles the embedded guest. memoryPages caps guest memory
-// (64 KiB per page).
+// (64 KiB per page); timeout bounds one execution, not the wait for a slot.
 func NewWasmTransport(ctx context.Context, maxInstances int, timeout time.Duration, memoryPages uint32) (*WasmTransport, error) {
 	if maxInstances < 1 || timeout <= 0 || memoryPages < 1 {
 		return nil, errors.New("maxInstances, timeout and memoryPages must be positive")
 	}
-	cfg := wazero.NewRuntimeConfig().
+	if err := CheckWasmPin(); err != nil {
+		return nil, err
+	}
+	// The interpreter is deterministic but orders of magnitude slower; a node on
+	// it would fault on real proofs. Refuse instead of limping.
+	if runtime.GOARCH != "amd64" && runtime.GOARCH != "arm64" {
+		return nil, fmt.Errorf("wazero compiler engine is not supported on %s", runtime.GOARCH)
+	}
+
+	cfg := wazero.NewRuntimeConfigCompiler().
+		WithCoreFeatures(api.CoreFeaturesV2). // explicit: anything newer (e.g. relaxed SIMD) fails to compile
 		WithCloseOnContextDone(true).
 		WithMemoryLimitPages(memoryPages)
 	rt := wazero.NewRuntimeWithConfig(ctx, cfg)
+
 	compiled, err := rt.CompileModule(ctx, pqVerifierWasm)
 	if err != nil {
 		_ = rt.Close(ctx)
 		return nil, fmt.Errorf("compile verifier: %w", err)
 	}
-	if n := len(compiled.ImportedFunctions()); n != 0 {
+	if err := checkShape(compiled); err != nil {
 		_ = rt.Close(ctx)
-		return nil, fmt.Errorf("verifier module unexpectedly imports %d functions", n)
+		return nil, err
 	}
 	return &WasmTransport{
-		rt: rt, compiled: compiled, imageHash: WasmImageHash(), timeout: timeout,
+		rt: rt, compiled: compiled, timeout: timeout,
 		slots: make(chan struct{}, maxInstances),
-		idle:  make(chan *wasmInstance, maxInstances),
 	}, nil
 }
 
-func (t *WasmTransport) newInstance() (*wasmInstance, error) {
-	// Background ctx: instantiation must not be tied to one request's deadline.
-	mod, err := t.rt.InstantiateModule(context.Background(), t.compiled,
-		wazero.NewModuleConfig().WithName("").WithStartFunctions())
-	if err != nil {
-		return nil, fmt.Errorf("instantiate verifier: %w", err)
+func checkShape(m wazero.CompiledModule) error {
+	if n := len(m.ImportedFunctions()); n != 0 {
+		return fmt.Errorf("verifier module imports %d functions, want 0", n)
 	}
-	in := &wasmInstance{mod: mod,
-		alloc:  mod.ExportedFunction("alloc"),
-		free:   mod.ExportedFunction("dealloc"),
-		verify: mod.ExportedFunction("verify_frame")}
-	if in.alloc == nil || in.free == nil || in.verify == nil {
-		_ = mod.Close(context.Background())
-		return nil, errors.New("verifier module is missing required exports")
+	if n := len(m.ImportedMemories()); n != 0 {
+		return fmt.Errorf("verifier module imports %d memories, want 0", n)
 	}
-	return in, nil
+	fns := m.ExportedFunctions()
+	for _, name := range []string{"alloc", "verify_frame"} {
+		if _, ok := fns[name]; !ok {
+			return fmt.Errorf("verifier module is missing export %q", name)
+		}
+	}
+	if _, ok := m.ExportedMemories()["memory"]; !ok {
+		return errors.New("verifier module does not export memory")
+	}
+	return nil
 }
 
 // Verify implements PQTransport. Every error is an infrastructure fault.
@@ -94,63 +108,57 @@ func (t *WasmTransport) Verify(req PQRequest) (PQResponse, error) {
 	if len(req.Proof) > PQWireMaxProofBytes {
 		return PQResponse{}, fmt.Errorf("proof is %d bytes, wire limit is %d", len(req.Proof), PQWireMaxProofBytes)
 	}
-	frame := encodeRequest(req)
+	if t.closed.Load() {
+		return PQResponse{}, errors.New("transport is closed")
+	}
+
+	// Wait for a slot with no deadline: slots are released after a bounded
+	// execution, and time spent queued must not count against the request.
+	t.slots <- struct{}{}
+	defer func() { <-t.slots }()
 
 	ctx, cancel := context.WithTimeout(context.Background(), t.timeout)
 	defer cancel()
 
-	select {
-	case t.slots <- struct{}{}:
-		defer func() { <-t.slots }()
-	case <-ctx.Done():
-		return PQResponse{}, fmt.Errorf("waiting for a verifier instance: %w", ctx.Err())
-	}
-
-	t.mu.Lock()
-	closed := t.closed
-	t.mu.Unlock()
-	if closed {
-		return PQResponse{}, errors.New("transport is closed")
-	}
-
-	var in *wasmInstance
-	select {
-	case in = <-t.idle:
-	default:
-		var err error
-		if in, err = t.newInstance(); err != nil {
-			return PQResponse{}, err
-		}
-	}
-
-	status, err := in.call(ctx, frame)
+	mod, err := t.rt.InstantiateModule(ctx, t.compiled,
+		wazero.NewModuleConfig().WithName("").WithStartFunctions())
 	if err != nil {
-		_ = in.mod.Close(context.Background()) // never reuse after a trap or timeout
+		return PQResponse{}, fmt.Errorf("instantiate verifier: %w", err)
+	}
+	defer func() { _ = mod.Close(context.Background()) }() // discarded after every call
+
+	status, err := callGuest(ctx, mod, req)
+	if err != nil {
 		return PQResponse{}, err
 	}
-	select {
-	case t.idle <- in:
-	default:
-		_ = in.mod.Close(context.Background())
-	}
-	return PQResponse{Status: status, ImageHash: t.imageHash}, nil
+	return PQResponse{Status: status}, nil
 }
 
-func (in *wasmInstance) call(ctx context.Context, frame []byte) (Status, error) {
-	res, err := in.alloc.Call(ctx, uint64(len(frame)))
+func callGuest(ctx context.Context, mod api.Module, req PQRequest) (Status, error) {
+	total := wireHeaderLen + len(req.PublicInputs) + len(req.Proof)
+
+	res, err := mod.ExportedFunction("alloc").Call(ctx, uint64(total))
 	if err != nil {
 		return 0, fmt.Errorf("guest alloc: %w", err)
 	}
 	ptr := uint32(res[0])
-	if !in.mod.Memory().Write(ptr, frame) {
+	if ptr == 0 {
+		return 0, errors.New("guest alloc refused the request size")
+	}
+
+	// Write header, public inputs and proof straight into guest memory: no
+	// intermediate frame buffer.
+	mem := mod.Memory()
+	hdr := frameHeader(req)
+	pubAt := ptr + wireHeaderLen
+	proofAt := pubAt + uint32(len(req.PublicInputs))
+	if !mem.Write(ptr, hdr[:]) || !mem.Write(pubAt, req.PublicInputs) || !mem.Write(proofAt, req.Proof) {
 		return 0, errors.New("guest memory write out of range")
 	}
-	out, err := in.verify.Call(ctx, uint64(ptr), uint64(len(frame)))
+
+	out, err := mod.ExportedFunction("verify_frame").Call(ctx, uint64(ptr), uint64(total))
 	if err != nil {
 		return 0, fmt.Errorf("guest verify: %w", err)
-	}
-	if _, err := in.free.Call(ctx, uint64(ptr), uint64(len(frame))); err != nil {
-		return 0, fmt.Errorf("guest dealloc: %w", err)
 	}
 	if out[0] > uint64(StatusMalformed) {
 		return 0, fmt.Errorf("guest refused the request (status %d)", out[0])
@@ -158,21 +166,9 @@ func (in *wasmInstance) call(ctx context.Context, frame []byte) (Status, error) 
 	return Status(out[0]), nil
 }
 
-// MemoryBytes reports the current size of a warm instance's memory (diagnostic).
-func (t *WasmTransport) MemoryBytes() uint32 {
-	select {
-	case in := <-t.idle:
-		n := in.mod.Memory().Size()
-		t.idle <- in
-		return n
-	default:
-		return 0
-	}
-}
-
+// Close makes later calls fail and releases the runtime. Calls in flight error
+// out as faults, which is acceptable at shutdown.
 func (t *WasmTransport) Close() error {
-	t.mu.Lock()
-	t.closed = true
-	t.mu.Unlock()
+	t.closed.Store(true)
 	return t.rt.Close(context.Background())
 }

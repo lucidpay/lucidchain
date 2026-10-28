@@ -189,10 +189,9 @@ LucidChain treats quantum resistance as a staged, honestly scoped property rathe
 - **Faults are never verdicts.** A crash, timeout or transport failure is an infrastructure fault that halts the node, as in the existing design. Only the verifier's own answer can reject a proof. Proof size is capped before the verifier is called, so it cannot be used to amplify load.
 - **Startup self-check.** At startup the node sends a junk proof for every allowlisted `vk_id`. A healthy verifier answers invalid or malformed. Anything else stops the node from starting, instead of halting it on the first real proof.
 
-Two transports to the isolated verifier exist behind one interface:
+One transport to the isolated verifier exist behind one interface:
 
-1. **MicroVM over vsock.** The verifier runs as a Rust service in a microVM with a read-only root file system and no network or disk, reached from the validator host over vsock.
-2. **In-process WebAssembly.** The verifier, compiled to WebAssembly, runs under the wazero runtime. The module imports nothing (no WASI, no host functions). The transport caps concurrent calls and guest memory, enforces a per-call timeout, and discards an instance after any trap or timeout instead of reusing it.
+1. **In-process WebAssembly.** The verifier, compiled to WebAssembly, runs under the wazero runtime. The module imports nothing (no WASI, no host functions). The transport caps concurrent calls and guest memory, enforces a per-call timeout, and discards an instance after any trap or timeout instead of reusing it.
 
 The WebAssembly transport is tested with real proofs at 2^8 and 2^14 rows. The tests confirm that tampered, truncated and padded proofs are deterministic rejections rather than faults, and that a timeout or starved memory is a fault from which the transport recovers. Which transport ships is not yet decided.
 

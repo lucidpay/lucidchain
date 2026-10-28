@@ -4,33 +4,35 @@ version = "0.1.0"
 edition = "2021"
 rust-version = "1.85"
 
+# rlib stays so native tests and the flip/differential harness can call
+# `wasm::serve_frame` directly; the wasm module is the cdylib.
 [lib]
 name = "pq_verifier_guest"
 path = "src/lib.rs"
-crate-type = ["rlib", "cdylib"]
-
-[[bin]]
-name = "pq-verifier-guest"
-path = "src/main.rs"
-required-features = ["vsock"]
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+# Verifier only. Once av-zone gates proving behind a `prover` feature (see the
+# review notes), add `default-features = false` here.
 av-zone = { path = "../av-zone" }
-tokio = { version = "1", default-features = false, features = ["rt-multi-thread", "net", "io-util", "time", "sync"], optional = true }
-tokio-vsock = { version = "0.5", optional = true }
-# Only for the vsock response digest (SHA-256 of the request frame). Not in the wasm build.
-sha2 = { version = "0.10", default-features = false, optional = true }
-
-[dev-dependencies]
-tokio = { version = "1", default-features = false, features = ["rt-multi-thread", "macros", "net", "io-util", "time", "sync"] }
 
 [features]
-default = ["vsock"]
-vsock = ["dep:tokio", "dep:tokio-vsock", "dep:sha2"]
+# Test-only mock. Never enable in a build that ships.
 insecure-accept-all = []
 
-[profile.release]
-panic = "abort"
-lto = true
-codegen-units = 1
-overflow-checks = true
+# NOTE: Cargo ignores [profile.*] in a workspace member. Put this block in the
+# WORKSPACE ROOT Cargo.toml, and keep a CI check that the built wasm really
+# came from these settings.
+#
+# [profile.release]
+# opt-level = 3
+# lto = "fat"
+# codegen-units = 1
+# panic = "abort"
+# debug = false
+# strip = "symbols"
+# overflow-checks = true
+#
+# Measure before relaxing: dependencies only (own crates keep the checks)
+# [profile.release.package."*"]
+# overflow-checks = false

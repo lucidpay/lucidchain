@@ -561,37 +561,51 @@ lucidchaind query proofs proofs-for-checkpoint --sidechain-id hospitality-platfo
 You should see something similar to this:
 
 ```text
-pagination:
-  total: "2"
-proofs:
-- binding: br3wyQb3gvjlQN/8LLIrW9MOpQNLJxK64r6v0Teyky4=
-  checkpoint_hash: a4N9ViAmzubkNDnYaY0NpnkF/hBVKafGqAgrS1rMTkE=
-  checkpoint_sequence: "1"
-  claim_id: geofence.v1
-  id: d3ccd1dc31e6accd20028e460b95680483523c9ecc6e088592ba8bd2ed7f71fe
-  proof: kKEVFzKRjgpg4jZ3GIwVdQFAkUSkULB5S2iB276pb5aU/KL9+F7tyOoIOg2H2F3JnqSdNO3IJhwuvwRECdeDzgtvOTCRrc6PS6GVsHwePYAagUQrd4ly37GJPGur48QOoE5pXBnnF0LR9QnVvGlEjingj+iDbQ00LBhu6S/+y88AAAABy5Chiyhs12bV7qsNLeozLUh8kt1l8hvJ9v/Tst1/11bfIoDSMfCfKqxCck5ofIW3GLhCzfFchOyfHOduen8DVg==
-  proof_system_id: groth16-bn254
-  public_inputs: AAAABwAAAAAAAAAHAAAAAAAAAAAAAAAAAAAAAG698MkG94L45UDf/CyyK1sAAAAAAAAAAAAAAAAAAAAA0w6lA0snErrivq/RN7KTLgWFJUOhkhgUPO2glMx2FcS1jxFryt1jNsQzO81qkT6lKWPF3FkkrBXuimDeCZY0KjJ2QWctyrcWgDtELVGTjA0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAasz38wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABqzRQTAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAI=
-  sidechain_id: hospitality-platform-01
-  submitter: cosmos18yem5p78w8efrx6dvc45dufjntvq0j6kng2ce0
-  verified: true
-  verified_at: "2026-10-16T14:21:58.257008984Z"
-  verified_height: "109"
-  verifier_version: 1
-- binding: br3wyQb3gvjlQN/8LLIrW9MOpQNLJxK64r6v0Teyky4=
-  checkpoint_hash: a4N9ViAmzubkNDnYaY0NpnkF/hBVKafGqAgrS1rMTkE=
-  checkpoint_sequence: "1"
-  claim_id: geofence.v1
-  id: fb4a238f92ae1dce9f5b3bda48bd4747a7e63f2e2f0cd562a07d484214f5b729
-  proof: xqh3+c+hEg0dWuh+gCtnEOmzkGG5mN6+8AVWIuzMommu4tWpgmOxMcZtjPtmQFubzXPTp4sz5QsjmSh0/AJFMce5d9XTbI0Us/yZanhPaIOHfrVyMF9fQPa/AxFMZgNMh9zi1hR9DODh8P0e7QvbJsns/Dm11Z/cLzLWEM9NQEjFzoh6vqcGzqmg9w8/H7NyN/QX9NZdc6YkGV4/hWllq5x0Jiz1MLXYUhae+qyYGjVsg8Kbe01Seop+9pfxDspdoc12A8ieQxK03aLbWSdd0Wm3IWj6ftnZuzzgC0Du2KreS3JRDnM0Mc4rugTaFa46K60TwlhtNZb39JeWAzQDbgAAAAcLcdjo79f3mhIfOOTyAA+vYsCHOox/GzGBKsoYkfjOMh9ptSUjoyRIlXV3GRBdm68ihyxlU/2nhFvAcwZzSELjDFqfDY5SKzSkQDq42O1zHjP13OQ6ZXjNFblLetrKvq4flNaquHlCPrUPf7hojFAIg2zn1uUtl6sWag5J+zAl5xmSzP/cY02uHMFYORiLm+xQQK52rij2WoMjs7BgsKsUKp3DPl9UQA6GPl8G5oNaSH7lcyMhr3B23otuT0UMhLwPYdPbmt18CyXo0iNPif7+bY+2MyAZ4TJPWITiCYDEF5N3vvFVP5i2cb5qmrKKiHSkmbCKlsTyF6e5QdjL8Uv+L4aMLDBzA0zs9V9T7bEeQMyyXKBSjnYgxqJCHbRpwVcAAAABreE7an8GrsAKMIvmucoxkmnBNJPpHl9tkZ+q//UeqAg=
-  proof_system_id: plonk-bn254
-  public_inputs: AAAABwAAAAAAAAAHAAAAAAAAAAAAAAAAAAAAAG698MkG94L45UDf/CyyK1sAAAAAAAAAAAAAAAAAAAAA0w6lA0snErrivq/RN7KTLgWFJUOhkhgUPO2glMx2FcS1jxFryt1jNsQzO81qkT6lKWPF3FkkrBXuimDeCZY0KjJ2QWctyrcWgDtELVGTjA0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAasz38wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABqzRQTAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAI=
-  sidechain_id: hospitality-platform-01
-  submitter: cosmos18yem5p78w8efrx6dvc45dufjntvq0j6kng2ce0
-  verified: true
-  verified_at: "2026-10-16T14:25:35.753168091Z"
-  verified_height: "152"
-  verifier_version: 1
+{
+  "proof_system_id": "groth16-bn254",
+  "claim_id": "geofence.v1",
+  "verified_height": "41"
+}
+{
+  "proof_system_id": "plonk-bn254",
+  "claim_id": "geofence.v1",
+  "verified_height": "46"
+}
+
+```
+
+### Example 3 - Tier 3 quantum resistant 
+
+```bash
+cd ~/go/src/github.com/lucidpay/lucidchain
+
+chmod +x ./tools/prove/*.sh
+
+CARGO_TARGET_DIR=$HOME/tools/av-zone-prove/target \
+  cargo build --release \
+  --manifest-path rust_reference/av-zone/Cargo.toml --bin av-zone-prove
+
+export PROVER=$HOME/tools/av-zone-prove/target/release/av-zone-prove
+
+./tools/prove/make-demo-spec.sh 256 > /tmp/trip.txt
+
+export SC=hospitality-platform-01
+export SEQ=2
+export CLAIM=av-zone
+export SYSTEM=plonky3-babybear-v1
+export FROM=validator
+export CHAIN_ID=my-testnet-1
+export SPEC=/tmp/trip.txt
+export OUT=/tmp/pq-out
+export GAS_PRICES=0.025stake       # as in your checkpoint command
+export VERIFY_GAS=1000000
+
+./tools/prove/prove-and-submit-pq.sh
+
+# Wait for block creation then
+
+lucidchaind q tx <txhash> -o json | jq '{code, raw_log}'
+
 ```
 
 ## How to work with attestors
@@ -1091,7 +1105,7 @@ lucidchaind tx gov vote "$PID" yes --from validator --chain-id my-testnet-1 \
 Wait for voting period to finish
 
 ```bash
-lucidchaind q proofs verifiers
+lucidchaind q proofs verifiers | grep proof_system_id
 ```
 
 ## How to suspend a sidechain

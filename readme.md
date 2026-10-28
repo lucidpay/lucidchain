@@ -495,13 +495,13 @@ A prover's workflow is therefore: read the checkpoint, call `Binding` for the cl
 
 The `zk_anchor` is coupled to the same curve: its only supported scheme today is `ZK_HASH_SCHEME_MIMC_BN254`, with a `records_root` that must be a canonical BN254 scalar-field element. The `scheme` field is the extension point for a different commitment scheme when the proof system changes.
 
-**Planned: Rust code in a microVM over vsock.** The intended direction is to move to Rust code running in a microVM, which the node reaches over vsock. This draft does not specify it yet, including which parts of the pipeline would move: verification inside the consensus path, or only proving and aggregation outside it. If verification moves, the design must settle these consensus-critical points before it replaces the gnark verifiers:
+**Planned: Rust code in WASM container.** The design must settle these consensus-critical points before it replaces the gnark verifiers:
 
 - **Determinism.** Every validator must reach the same accept or reject result for the same inputs, on every platform and version.
 - **Gas and limits.** Cost must be metered and bounded, with a hard timeout, so a proof cannot stall block processing.
 - **Failure behaviour.** The current code already separates a verdict from an infrastructure fault (§5.4): a fault is never reported as an invalid proof, and during block execution it halts the affected node rather than letting it diverge. A microVM that is slow, crashed or unreachable would be such a fault, so timeouts and recovery must be specified. It must also be possible to tell "the verifier crashed on this malformed input" (a deterministic rejection, the same on every node) from "the microVM is unavailable on this node" (a fault). If a crafted proof could crash the microVM on every validator and be classified as a fault, a single transaction could halt the whole chain.
 - **Verifier identity and upgrades.** The exact verifier build (for example a pinned image hash) must be fixed by a governance or software-upgrade path so all validators run the identical version. This replaces the §5.3 property that verification code is compiled into the node binary.
-- **Interface.** The encoding of `verification_key`, `public_inputs` and `proof` across vsock, and the isolation between the node and the microVM, must be specified. The seam is already narrow: the keeper depends only on the `ProofVerifier` interface (§5.3), so a microVM-backed implementation would implement that interface without changes to the keeper.
+
 
 ## 6. Cross-module interaction diagram
 
@@ -557,7 +557,7 @@ The `zk_anchor` is coupled to the same curve: its only supported scheme today is
 - No attestor-availability check at upgrade time. The original idea (at least one available attestor for the sidechain's declared domain before moving to `ATTESTED`) needs a `domain` field on `Sidechain` and a dependency from `x/sidechain` on `x/attestor`, which would create a dependency cycle. For now `ATTESTED` is enforced where it is used, in `x/attestor`.
 - No per-checkpoint attestation or proof requirement beyond the anchor. An `ATTESTED` sidechain's checkpoints are accepted whether or not any attestor has signed them.
 - No retroactive tier re-check. A governance increase of `min_bond_by_tier`, or a slash, does not downgrade a sidechain or force a top-up.
-- Tier 3 is not quantum-resistant yet. The current gnark verifiers over BN254 rely on classical assumptions (§5.7). A migration is planned to Rust code in a microVM reached over vsock, but that architecture is not specified in this draft.
+- Tier 3 both quantum-resistant and not quantum-resistant support. The current gnark verifiers over BN254 rely on classical assumptions (§5.7). A new implementation in process for Rust code compiled to WASM runing in Wazero.
 - No other proof systems beyond the current gnark-based verifiers are specified; adding one still means a coordinated software upgrade (§5.3), and the likely target use cases (geofence compliance, AML thresholds, etc.) will drive which are needed.
 - No slashing conditions beyond bond math are finalized for `x/sidechain` — the exact fault conditions for `MsgSlashSidechain` (e.g. two conflicting checkpoints at the same sequence, signed by the registered keys) need a dedicated fraud-detection spec before mainnet.
 - Verification gas is set per registration in `x/proofs`, but the values and the flat `base_verification_fee` are placeholders pending real gas benchmarks on validator hardware.
