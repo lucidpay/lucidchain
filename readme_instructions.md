@@ -603,8 +603,11 @@ export VERIFY_GAS=1000000
 ./tools/prove/prove-and-submit-pq.sh
 
 # Wait for block creation then
+sleep 3
 
-lucidchaind q tx <txhash> -o json | jq '{code, raw_log}'
+export TXHASH=$(cat /tmp/pq-out/txhash)
+lucidchaind q tx "$TXHASH" -o json | jq '{code, raw_log, height, gas_wanted, gas_used}'
+
 
 ```
 
