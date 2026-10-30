@@ -1,0 +1,14 @@
+# Cargo build output (can be several GB)
+/target/
+
+# Editor and OS noise
+.idea/
+.vscode/
+*.swp
+
+# Local profiling and fuzzing output
+*.profraw
+*.profdata
+/fuzz/target/
+/fuzz/corpus/
+/fuzz/artifacts/

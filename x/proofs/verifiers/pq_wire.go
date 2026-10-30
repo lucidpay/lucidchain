@@ -13,16 +13,16 @@ import (
 // build (see rust_reference/BUILD.md). Change it only when you deliberately ship
 // a new guest, in the same commit that replaces pq_verifier.wasm AND the
 // wasm/embed/selfcheck_*.bin known-answer files.
-const pqWasmPinnedImageHex = "e044af832818f80a1162bb842f3cbd59986aa36fdff802ad7a6c49dbcbb9bed0"
+const pqWasmPinnedImageHex = "f1b6ef7bcb221e68dd574b34e708950a59e597b4aacd84c2d69c9e52ea6bc654"
 
 // PQWasmPinnedImage is the decoded pin. A var (not const) only so tests can
 // simulate a mismatch; production code must never assign it.
 var PQWasmPinnedImage = mustHex32(pqWasmPinnedImageHex)
 
 // PQAllowedVKIDs is the vk_id allowlist for plonky3-babybear-v1: the golden
-// vk_id of av-zone.core.v0 (av-zone/tests/av_zone.rs: GOLDEN_VK_ID).
+// vk_id of av-zone.core.v0.1 (av-zone/tests/av_zone.rs: GOLDEN_VK_ID).
 var PQAllowedVKIDs = [][VKIDLen]byte{
-	mustHex32("b6bf25e504350b1a471abf6939a5e89ba2cf531e46ed058c7e60e4a99386e8c6"),
+	mustHex32("ef25151007bf8be445eb00db51455355aa692ca74053b083e525f3e8fa8071ee"),
 }
 
 func mustHex32(s string) [32]byte {

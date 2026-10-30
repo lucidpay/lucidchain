@@ -232,4 +232,26 @@ fn vk_id_is_stable() {
     assert_eq!(hex, GOLDEN_VK_ID, "vk_id changed: a constant or the AIR version changed");
 }
 
-const GOLDEN_VK_ID: &str = "b6bf25e504350b1a471abf6939a5e89ba2cf531e46ed058c7e60e4a99386e8c6";
+#[test]
+fn probe_changed_zone_id_verdicts() {
+    for t_start in [1_000_000u32, 26_000_000, MAX_TIME - 1_000] {
+        let (st, samples) = scenario_at(t_start, N);
+        let bytes = prove_trip(&st, &samples, &ENTROPY).unwrap();
+        let mut v = st.to_values();
+        v[PV_ZONE_ID] += 1;
+        println!("t_start={t_start}: zone_id+1 -> {:?}", verify_bytes(&v, &bytes));
+    }
+}
+
+/// Like `scenario`, but with a chosen window start (seconds since the protocol
+/// epoch), so tests can use realistic and near-cap times.
+fn scenario_at(t_start: u32, n: usize) -> (Statement, Vec<Sample>) {
+    let samples: Vec<Sample> = (0..n as u32)
+        .map(|i| Sample { x: 1500 + (i * 7) % 1000, y: 1500 + (i * 13) % 1000, t: t_start + 2 + 3 * i })
+        .collect();
+    let t_end = samples.last().unwrap().t + 5;
+    (square(t_start, t_end), samples)
+}
+
+const GOLDEN_VK_ID: &str = "ef25151007bf8be445eb00db51455355aa692ca74053b083e525f3e8fa8071ee";
+

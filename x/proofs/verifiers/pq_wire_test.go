@@ -3,6 +3,7 @@ package verifiers
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"testing"
 	"time"
 )
@@ -55,8 +56,40 @@ func TestDefaultWithPQ_RefusesUnknownVKID(t *testing.T) {
 }
 
 func TestSelfCheckFilesMatchFixtures(t *testing.T) {
-	if !bytes.Equal(selfCheckProof, fx(t, "proof_256.bin")) ||
-		!bytes.Equal(selfCheckPub, fx(t, "pub_256.bin")) {
-		t.Fatal("wasm/embed/selfcheck_* differ from testdata/*_256.bin; recopy them")
+	pairs := []struct {
+		name    string
+		got     []byte
+		fixture string
+	}{
+		{"selfcheck_proof", selfCheckProof, "proof_256_rt.bin"},
+		{"selfcheck_pub", selfCheckPub, "pub_256_rt.bin"},
+		{"selfcheck_cap_proof", selfCheckCapProof, "proof_256_cap.bin"},
+		{"selfcheck_cap_pub", selfCheckCapPub, "pub_256_cap.bin"},
 	}
+	for _, p := range pairs {
+		if !bytes.Equal(p.got, fx(t, p.fixture)) {
+			t.Errorf("wasm/embed/%s differs from testdata/%s; recopy it", p.name, p.fixture)
+		}
+	}
+}
+
+func TestDebugMutationTable(t *testing.T) {
+	tr, err := NewWasmTransport(context.Background(), 2, 5*time.Second, 256)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tr.Close()
+	ka := DefaultKnownAnswers()[0]
+	row := ""
+	for i := 0; i < 35; i++ {
+		bad := bytes.Clone(ka.Pub)
+		bad[4+4*i] ^= 1
+		r, err := tr.Verify(PQRequest{VKID: ka.VKID, PublicInputs: bad, Proof: ka.Proof})
+		if err != nil {
+			row += "F"
+			continue
+		}
+		row += fmt.Sprint(r.Status)
+	}
+	t.Logf("WASM   %s", row)
 }

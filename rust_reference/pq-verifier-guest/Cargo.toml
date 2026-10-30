@@ -20,19 +20,3 @@ av-zone = { path = "../av-zone" }
 # Test-only mock. Never enable in a build that ships.
 insecure-accept-all = []
 
-# NOTE: Cargo ignores [profile.*] in a workspace member. Put this block in the
-# WORKSPACE ROOT Cargo.toml, and keep a CI check that the built wasm really
-# came from these settings.
-#
-# [profile.release]
-# opt-level = 3
-# lto = "fat"
-# codegen-units = 1
-# panic = "abort"
-# debug = false
-# strip = "symbols"
-# overflow-checks = true
-#
-# Measure before relaxing: dependencies only (own crates keep the checks)
-# [profile.release.package."*"]
-# overflow-checks = false

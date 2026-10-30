@@ -1,9 +1,8 @@
 //! The verification layer: a total function from (vk_id, public inputs, proof)
 //! to a verdict or a fault.
 //!
-//! FAIL CLOSED: until the real Plonky3 verifier is linked in, every request
-//! ends in `VerifyError::NotImplemented`, which closes the connection and makes
-//! the host halt. A mock that accepts everything exists only behind the
+//! UnknownVkId is returned as a fault (status 3) and everything else is a verdict.
+//! A mock that accepts everything exists only behind the
 //! `insecure-accept-all` feature and cannot be compiled into a release build.
 
 #[cfg(all(feature = "insecure-accept-all", not(debug_assertions)))]

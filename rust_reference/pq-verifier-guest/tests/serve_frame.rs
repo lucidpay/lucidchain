@@ -64,3 +64,39 @@ fn real_proof_through_the_wasm_framing_layer() {
     // pq self-check shaped request (16 values, 1-byte proof): Malformed
     assert_eq!(serve_frame(&frame(2, &vk, &encode_pub(&[0u32; 16]), &[0])), 2);
 }
+
+#[test]
+fn embedded_selfcheck_files_native() {
+    let dir = std::env::var("EMBED")
+        .unwrap_or_else(|_| "../../x/proofs/verifiers/wasm/embed".into());
+    let vk = vk_id();
+    for (proof_f, pub_f) in [
+        ("selfcheck_proof.bin", "selfcheck_pub.bin"),
+        ("selfcheck_cap_proof.bin", "selfcheck_cap_pub.bin"),
+    ] {
+        let proof = std::fs::read(format!("{dir}/{proof_f}")).unwrap();
+        let pubs = std::fs::read(format!("{dir}/{pub_f}")).unwrap();
+        let mut bad = pubs.clone();
+        bad[4 + 4 * 16] += 1; // zone_id low byte
+        println!(
+            "{proof_f}: valid={} zone_id+1={}",
+            serve_frame(&frame(2, &vk, &pubs, &proof)),
+            serve_frame(&frame(2, &vk, &bad, &proof)),
+        );
+    }
+}
+
+#[test]
+fn embedded_mutation_table_native() {
+    let dir = "../../x/proofs/verifiers/wasm/embed";
+    let vk = vk_id();
+    let proof = std::fs::read(format!("{dir}/selfcheck_proof.bin")).unwrap();
+    let pubs = std::fs::read(format!("{dir}/selfcheck_pub.bin")).unwrap();
+    let mut row = String::new();
+    for i in 0..35 {
+        let mut bad = pubs.clone();
+        bad[4 + 4 * i] ^= 1; // low bit of public value i
+        row.push_str(&format!("{}", serve_frame(&frame(2, &vk, &bad, &proof))));
+    }
+    println!("NATIVE {row}");
+}

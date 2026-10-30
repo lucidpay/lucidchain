@@ -113,12 +113,12 @@ pub fn verifier_config() -> Config {
 /// Identity of this verifier: a hash over everything that determines which
 /// statements verify. Bump `VERSION` whenever the AIR's constraints change;
 /// the numeric constants below are folded in automatically.
-pub const VERSION: &str = "av-zone.core.v0";
+pub const VERSION: &str = "av-zone.core.v0.1";
 
 pub fn vk_descriptor() -> String {
     format!(
         "{VERSION}|p3=0.8.0|field=babybear|challenge=ext4|hash=keccak256|zk=hiding({NUM_RANDOM_CODEWORDS})\
-|K={K}|coord_bits={COORD_BITS}|edge_bits={EDGE_BITS}|gap_bits={GAP_BITS}|time_bits={TIME_BITS}\
+|K={K}|coord_bits={COORD_BITS}|edge_bits={EDGE_BITS}|gap_bits={GAP_BITS}|max_time={MAX_TIME}\
 |binding_limbs={BINDING_LIMBS}|public_values={NUM_PUBLIC_VALUES}|cols={}\
 |fri(log_blowup={LOG_BLOWUP},final={LOG_FINAL_POLY_LEN},arity={MAX_LOG_ARITY},queries={NUM_QUERIES},\
 batch_pow={BATCH_POW_BITS},commit_pow={COMMIT_POW_BITS},query_pow={QUERY_POW_BITS})\

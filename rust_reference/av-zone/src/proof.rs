@@ -1,7 +1,7 @@
 //! Proving and verification entry points.
 //!
-//! `verify_bytes` is the function the microVM guest calls. It is a total
-//! function: every input yields a verdict or a clean error, never a panic.
+//! `verify_bytes` is the function the wasm guest calls (via
+//! `pq-verifier-guest`). It is a total
 
 use p3_uni_stark::{prove, verify, Proof, VerificationError};
 

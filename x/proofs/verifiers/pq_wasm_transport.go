@@ -17,19 +17,10 @@ import (
 //go:embed wasm/embed/pq_verifier.wasm
 var pqVerifierWasm []byte
 
-// The guest imports nothing (no WASI, no host functions) and exports exactly
-// memory, alloc and verify_frame. It has no _start or _initialize.
-//
-// Design rules, each one closing a consensus hazard:
-//   - Fresh instance per call. Wasm memory only grows, so a reused instance
-//     makes "does this request hit the page limit" depend on history, and a
-//     restarted node could disagree with a long-running one at the margin.
-//   - Queueing is NOT part of the timeout. Only execution is timed, so a
-//     busy validator cannot fault on valid traffic.
-//   - Every error (trap, timeout, OOM, bad exit status) is a fault, never a
-//     verdict. The caller maps it to types.ErrVerifierFault.
-//   - The embedded module must match the pinned hash, checked here, so no
-//     construction path can skip it.
+// The guest imports exactly four wasi_snapshot_preview1 functions, which the
+// host answers with capability-free stubs (see pq_wasm_shims.go), and exports
+// exactly memory, alloc and verify_frame. It has no _start or _initialize, and
+// WithStartFunctions() ensures none would be run anyway.
 
 // WasmImageHash is sha256 of the embedded guest.
 func WasmImageHash() [32]byte { return sha256.Sum256(pqVerifierWasm) }
@@ -66,6 +57,11 @@ func NewWasmTransport(ctx context.Context, maxInstances int, timeout time.Durati
 		WithMemoryLimitPages(memoryPages)
 	rt := wazero.NewRuntimeWithConfig(ctx, cfg)
 
+	if err := registerGuestShims(ctx, rt); err != nil {
+		_ = rt.Close(ctx)
+		return nil, fmt.Errorf("register guest shims: %w", err)
+	}
+
 	compiled, err := rt.CompileModule(ctx, pqVerifierWasm)
 	if err != nil {
 		_ = rt.Close(ctx)
@@ -82,22 +78,58 @@ func NewWasmTransport(ctx context.Context, maxInstances int, timeout time.Durati
 }
 
 func checkShape(m wazero.CompiledModule) error {
-	if n := len(m.ImportedFunctions()); n != 0 {
-		return fmt.Errorf("verifier module imports %d functions, want 0", n)
+	imps := m.ImportedFunctions()
+	if len(imps) != len(guestImports) {
+		return fmt.Errorf("verifier module imports %d functions, want %d", len(imps), len(guestImports))
+	}
+	seen := make(map[string]bool, len(imps))
+	for _, f := range imps {
+		mod, name, _ := f.Import()
+		want, ok := guestImports[name]
+		if mod != shimModule || !ok || seen[name] ||
+			!sameTypes(f.ParamTypes(), want.params) || !sameTypes(f.ResultTypes(), want.results) {
+			return fmt.Errorf("verifier module has unexpected import %s.%s", mod, name)
+		}
+		seen[name] = true
 	}
 	if n := len(m.ImportedMemories()); n != 0 {
 		return fmt.Errorf("verifier module imports %d memories, want 0", n)
 	}
+
+	// Exactly these exports: a stray _start or _initialize is a spec violation.
 	fns := m.ExportedFunctions()
-	for _, name := range []string{"alloc", "verify_frame"} {
-		if _, ok := fns[name]; !ok {
+	if len(fns) != 2 {
+		return fmt.Errorf("verifier module exports %d functions, want 2", len(fns))
+	}
+	for name, want := range map[string]importSig{
+		"alloc":        {[]api.ValueType{i32}, []api.ValueType{i32}},
+		"verify_frame": {[]api.ValueType{i32, i32}, []api.ValueType{i32}},
+	} {
+		f, ok := fns[name]
+		if !ok {
 			return fmt.Errorf("verifier module is missing export %q", name)
 		}
+		if !sameTypes(f.ParamTypes(), want.params) || !sameTypes(f.ResultTypes(), want.results) {
+			return fmt.Errorf("verifier export %q has the wrong signature", name)
+		}
 	}
-	if _, ok := m.ExportedMemories()["memory"]; !ok {
-		return errors.New("verifier module does not export memory")
+	mems := m.ExportedMemories()
+	if _, ok := mems["memory"]; !ok || len(mems) != 1 {
+		return errors.New("verifier module must export exactly one memory, named \"memory\"")
 	}
 	return nil
+}
+
+func sameTypes(a, b []api.ValueType) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }
 
 // Verify implements PQTransport. Every error is an infrastructure fault.

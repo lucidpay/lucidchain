@@ -56,7 +56,7 @@ Fiat-Shamir transform (quantum random oracle model) has not been done and
 needs a cryptographer. Generic quantum collision search against a 256-bit hash
 costs roughly 2^85, which bounds the Merkle commitments.
 
-`vk_id` = `b6bf25e504350b1a471abf6939a5e89ba2cf531e46ed058c7e60e4a99386e8c6`
+`vk_id` = `ef25151007bf8be445eb00db51455355aa692ca74053b083e525f3e8fa8071ee`
 (a golden test pins it; any constant change alters it).
 
 ## Build requirements
@@ -83,10 +83,8 @@ toolchain and drop the workaround. The prover must be given real OS entropy
 ## Not done yet
 
 1. Stage 2: trip-commitment binding (see above).
-2. Wiring `proof::verify_bytes` into `pq-verifier-guest::run_verifier` and the
-   Go allowlist.
-3. Aggregation: a 270-330 KB proof per 256+ samples will not fit per-vehicle on
+2. Aggregation: a 270-330 KB proof per 256+ samples will not fit per-vehicle on
    chain. Recursion or batching is required.
-4. A cross-CPU determinism test (Plonky3's Keccak uses architecture-specific
+3. A cross-CPU determinism test (Plonky3's Keccak uses architecture-specific
    packed code; it should match the generic path bit for bit, but prove it on
    every CPU class your validators use).

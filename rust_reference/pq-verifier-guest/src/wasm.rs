@@ -1,4 +1,4 @@
-//! The guest's only entry point. Framing and dispatch; no I/O, no tokio.
+//! The guest's only entry point. Framing and dispatch; no I/O.
 //! The exported symbols exist only on wasm32.
 //!
 //! ABI (host side: pq_wasm_transport.go). The host instantiates a FRESH module

@@ -19,7 +19,12 @@ pub const COORD_BITS: usize = 14; // coordinates are integers in [0, 2^14)
 pub const EDGE_BITS: usize = 29; // cross products lie in [0, 2^29) when inside
 pub const GAP_BITS: usize = 4;
 pub const MAX_GAP: u32 = 1 << GAP_BITS; // consecutive samples at most 16 s apart
-pub const TIME_BITS: u32 = 30; // window bounds are < 2^30 so time never wraps the field
+/// Longest chain the AIR can prove: 16 (lead) + 16 * 2^14 (gaps) + 16 (trail)
+/// seconds, under 2^19. Keeping the window this far below the modulus means the
+/// time chain can never wrap around the field.
+pub const TIME_MARGIN: u32 = 1 << 19;
+/// Exclusive upper bound for t_start and t_end (seconds since the protocol epoch).
+pub const MAX_TIME: u32 = MODULUS - TIME_MARGIN;
 pub const BINDING_LIMBS: usize = 16; // 16 x 16-bit limbs, same as the Go adapter
 
 pub const PV_ZONE_ID: usize = BINDING_LIMBS;
@@ -71,7 +76,7 @@ impl Statement {
             return Err(StatementError::BindingLimbTooLarge);
         }
         let (t_start, t_end) = (v[PV_T_START], v[PV_T_END]);
-        if t_start >= 1 << TIME_BITS || t_end >= 1 << TIME_BITS || t_end < t_start {
+        if t_start >= MAX_TIME || t_end >= MAX_TIME || t_end < t_start {
             return Err(StatementError::TimeOutOfRange);
         }
         let mut polygon = [(0u32, 0u32); K];
@@ -236,7 +241,7 @@ mod tests {
         assert_eq!(Statement::from_values(&v), Err(StatementError::BindingLimbTooLarge));
 
         let mut v = ok.clone();
-        v[PV_T_START] = 1 << TIME_BITS;
+        v[PV_T_START] = MAX_TIME;
         assert_eq!(Statement::from_values(&v), Err(StatementError::TimeOutOfRange));
 
         let mut v = ok.clone();
