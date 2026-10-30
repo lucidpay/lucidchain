@@ -36,5 +36,6 @@ var (
 	ErrConflictOfInterest      = errorsmod.Register(ModuleName, 27, "attestor conflicts with sidechain owner")
 	ErrSidechainNotFound       = errorsmod.Register(ModuleName, 28, "sidechain not found")
 	ErrSidechainTierTooLow     = errorsmod.Register(ModuleName, 29, "sidechain tier is too low for attestations")
+	ErrRotationNotApproved     = errorsmod.Register(ModuleName, 30, "signer rotation not approved by the current signer set")
 	ErrInvalidSigner           = errorsmod.Register(ModuleName, 1100, "expected gov account as only signer for proposal message")
 )

@@ -75,6 +75,12 @@ message Attestor {
   // NEW: set by InitiateAttestorExit.
   google.protobuf.Timestamp exit_requested_at = 14 [(gogoproto.stdtime) = true, (gogoproto.nullable) = true];
   google.protobuf.Timestamp bond_return_at = 15 [(gogoproto.stdtime) = true, (gogoproto.nullable) = true];
+
+  // Bitmap of the previous signer set's members that approved the most
+  // recent rotation (bit i = signer i of the outgoing set). Empty until the
+  // first rotation. Kept in state, not only in events, so continuity of
+  // control can be audited without an indexer.
+  bytes last_rotation_approver_bitmap = 16;
 }
 
 // AttestationSchema defines the shape and scope of a claim attestors can make.
@@ -194,3 +200,18 @@ message Dispute {
   string rationale_uri = 10;
 }
 
+// AttestorRotationSignDoc is what the CURRENT signers of an attestor sign to
+// approve replacing themselves. Sign bytes are AttestorRotationDomain ||
+// proto.Marshal(doc), see x/attestor/types/rotation.go. Binding
+// current_signer_set_version means an approval is valid for exactly one
+// rotation and cannot be replayed.
+message AttestorRotationSignDoc {
+  string chain_id = 1;
+  string attestor_id = 2;
+  uint64 current_signer_set_version = 3;
+  repeated google.protobuf.Any new_signer_keys = 4
+      [(cosmos_proto.accepts_interface) = "cosmos.crypto.PubKey"];
+  uint32 new_signature_threshold = 5;
+  // Expiry of the approval, as a block height (inclusive).
+  uint64 not_after_height = 6;
+}

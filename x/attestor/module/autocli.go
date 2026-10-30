@@ -63,6 +63,8 @@ func (am AppModule) AutoCLIOptions() *autocliv1.ModuleOptions {
 					Skip:      true, // skipped because authority gated
 				},
 				{RpcMethod: "SubmitAttestation", Skip: true}, // hand-written in client/cli
+				{RpcMethod: "UpdateAttestorSigners",
+					Short: "Rotate an attestor's signer set; requires --current-set-signatures from the current set at threshold (see tools/signrotation -attestor-id)"},
 				{RpcMethod: "RaiseDispute",
 					Use:   "raise-dispute [attestation-id] [evidence-uri] [bond-amount]",
 					Short: "Challenge an active attestation within its dispute window",
