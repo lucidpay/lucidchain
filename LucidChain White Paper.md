@@ -1,6 +1,6 @@
 # LucidChain: A Public Assurance Layer for Private Chains
 
-Technical White Paper · Draft v0.4 · October 2026
+Technical White Paper · Draft v0.6 · October 2026
 
 Based on the LucidChain technical specification, Draft v0.4
 
@@ -173,8 +173,6 @@ LucidChain treats quantum resistance as a staged, honestly scoped property rathe
 
 **What this costs.** ML-DSA-65 public keys are 1,952 bytes and signatures are 3,309 bytes. Transactions are larger, and the first transaction from an account writes its public key to state and needs more gas. Checkpoints are capped at 7 signatures and 24,000 signature bytes, which is exactly enough for seven ML-DSA-65 signatures.
 
-**What is not yet quantum-resistant.** Tier 3 is the one part of the chain still being migrated. The original verifiers use Groth16 and PLONK over the BN254 curve, whose security rests on elliptic-curve pairing assumptions that a large quantum computer could break. After such a break, a forged proof could pass verification. The ZK anchor is coupled to the same curve (MiMC over BN254). A hash-based replacement is in progress (below).
-
 **How the two modes are handled.** The reference tooling provides two modes that never share state:
 
 - A **classical development mode** that includes the BN254 verifiers, so Tier 3 can be exercised end to end.
@@ -185,22 +183,20 @@ LucidChain treats quantum resistance as a staged, honestly scoped property rathe
 - **Go validates, Rust decides.** A Go adapter checks and canonicalizes everything it can: the key, the public inputs, the checkpoint binding and the size limits. Only then does it ask an isolated verifier for a verdict: valid, invalid or malformed.
 - **Keys are identifiers, not key material.** A verification key is a 32-byte `vk_id` that commits to the circuit, the field, the hash, the FRI parameters, the public-input layout and the verifier version. The parameters live in the pinned verifier image, never in the proof. Each `vk_id` must be on an allowlist compiled into the node binary.
 - **One encoding per input.** Public inputs are a count followed by canonical BabyBear field elements, and trailing bytes are rejected. The first 16 elements are the checkpoint binding, split into 16-bit limbs.
-- **Pinned verifier image.** Every verdict carries the hash of the image that produced it. A mismatch with the pinned hash is a fault, not a rejection, so all validators run the identical verifier.
-- **Faults are never verdicts.** A crash, timeout or transport failure is an infrastructure fault that halts the node, as in the existing design. Only the verifier's own answer can reject a proof. Proof size is capped before the verifier is called, so it cannot be used to amplify load.
-- **Startup self-check.** At startup the node sends a junk proof for every allowlisted `vk_id`. A healthy verifier answers invalid or malformed. Anything else stops the node from starting, instead of halting it on the first real proof.
+- **Pinned verifier image.** The verifier is a single WebAssembly module embedded in the node binary. At startup the node checks its SHA-256 against a pinned hash and refuses to start on a mismatch, so all validators run the identical verifier.
+- **Hash-based anchor binding.** A hash-based anchor scheme now binds each proof to the checkpoint's records root. The binding rule no longer assumes BN254 or any other elliptic-curve construction.
+- **Faults are never verdicts.** A trap, timeout, memory-limit breach or instantiation failure is an infrastructure fault that halts the node, as in the existing design. Only the verifier's own answer can reject a proof. Proof size is capped at 524,288 bytes (512 KiB) before the verifier is called, so it cannot be used to amplify load. The largest proof the pinned parameters accept (2^14 trace rows) is about 515,000 bytes, so the cap leaves little headroom.
+- **Startup self-check.** At startup the node runs known-answer proofs for every allowlisted `vk_id` through the real module. A genuine proof must verify. The same proof with one byte flipped must not. A changed public value must be rejected as invalid, and a window end outside the statement's time range must be malformed. Anything else stops the node from starting, instead of halting it on the first real proof.
 
-One transport to the isolated verifier exist behind one interface:
+**Transport.** The transport decision is made: the verifier is compiled to WebAssembly and runs in-process under the wazero runtime. The earlier alternative, a separate microVM reached over vsock, has been removed. The module's only imports are four stub functions that grant no capability (an empty environment, discarded output, and an exit call that counts as a fault). It has no access to files, clocks, randomness or the network, and the host checks the exact import and export set at startup. The transport caps concurrent calls and guest memory, enforces a per-call execution timeout that excludes time spent queueing, and uses a fresh instance for every call, discarding it afterwards.
 
-1. **In-process WebAssembly.** The verifier, compiled to WebAssembly, runs under the wazero runtime. The module imports nothing (no WASI, no host functions). The transport caps concurrent calls and guest memory, enforces a per-call timeout, and discards an instance after any trap or timeout instead of reusing it.
-
-The WebAssembly transport is tested with real proofs at 2^8 and 2^14 rows. The tests confirm that tampered, truncated and padded proofs are deterministic rejections rather than faults, and that a timeout or starved memory is a fault from which the transport recovers. Which transport ships is not yet decided.
+The WebAssembly transport is tested with real proofs at 2^8 and 2^14 rows. The tests confirm that tampered, truncated and padded proofs are deterministic rejections rather than faults, and that a timeout or starved memory is a fault from which the transport recovers.
 
 **What remains before the Proven tier can be enabled in quantum-resistant mode:**
 
 - **Circuits and key metadata.** The number of public values is a stopgap constant in the adapter and should be held per `vk_id`.
-- **A hash-based anchor scheme.** The current anchor, and the rule that binds a proof to the records root, assume BN254. The new verifier compares each expected value with a single BabyBear element, so a 32-byte records root cannot be bound directly.
 - **Deterministic limits.** Timeouts are wall-clock, which can differ between validators. Verification cost also needs a deterministic bound (Section 11).
-- **Gas and size limits.** Verification gas must be benchmarked, and the proof-size cap must be raised well above the current 8,192 bytes, because hash-based proofs are much larger.
+- **Gas.** Verification gas must be benchmarked on validator hardware. The proof-size cap has already been raised from 8,192 to 524,288 bytes (512 KiB) to fit hash-based proofs.
 
 Proofs accepted before a quantum break remain timestamped on-chain records. Proofs submitted after one could not be trusted. This is the reason Tier 3 is described as conditional on its proof system.
 
@@ -255,40 +251,20 @@ The following are illustrative. They draw on the examples used in the specificat
 
 **High-volume sensor data.** IoT and smart-city sources can aggregate very large numbers of readings at the edge and anchor a single root per interval, with a per-checkpoint limit of one million records in the reference configuration.
 
-## 11. Limitations and Open Items
-
-The specification is explicit about what is unfinished. Readers should weigh the following.
-
-1. **Tier 3 quantum resistance is in progress.** The Groth16 and PLONK verifiers are not quantum-resistant, and the hash-based replacement is not yet enabled. In quantum-resistant mode the Proven tier stays disabled until it is (Section 7).
-2. **Slashing conditions for sidechains are not finalized.** The mechanics of slashing exist, but the fault conditions that justify it (for example, two conflicting checkpoints at the same sequence signed by registered keys) need a dedicated fraud-detection specification before mainnet.
-3. **Centralized interim authorities.** Dispute resolution, attestor activation and slashing are governance actions. There is no decentralized arbitration yet.
-4. **Placeholder economics.** Verification gas, the proof base fee and checkpoint fees are placeholders pending benchmarks.
-5. **No tier downgrades, and no retroactive tier re-check.** A slash or a minimum-bond increase does not force a top-up, and a slashed Proven sidechain keeps its tier label even though it stops checkpointing.
-6. **No attestor-availability check at upgrade.** An operator can pay for the Attested tier even if no attestor currently serves its domain. Fixing this needs a domain field on sidechains and would create a module dependency cycle that must be resolved first.
-7. **Attestations to inactive sidechains.** Whether attestations should require the sidechain to be `ACTIVE` is an open decision.
-8. **No raw-data validation.** No module inspects sidechain data. The chain proves integrity and timing of commitments, not the truth of what was committed. Garbage in, notarized garbage out. Truthfulness is the job of attestors and proofs.
-9. **Data availability is off-chain.** The data pointer is an unverified reference. If an operator stops serving the underlying data, the commitment remains but cannot be opened.
-10. **HSM-backed attestor keys.** The Cosmos SDK keyring has no native HSM backend, and remote-signing support for application-level signatures is still maturing. This does not affect the protocol, but it should be settled operationally before onboarding the first real attestor, particularly a regulator.
-11. **Account-key enforcement.** In the current quantum-resistant guide, classical account keys are not rejected at the transaction level. Until an ante handler enforces it, key-type discipline is operational.
-12. **No IBC integration yet.** Events are designed to make light-client integration straightforward later.
-13. **The utility token's stabilization mechanism is not specified.** This paper does not say how the utility token holds its value (for example reserve backing, algorithmic control or a managed peg), who issues or redeems it, or what happens if it loses its peg. These choices define the token's risk profile, and stable-value tokens can attract specific regulation in some jurisdictions. Both need legal review.
-14. **Fee and bond denominations are not yet aligned with the two-token design.** The reference specification denominates checkpoint fees and bonds in a single bond denomination. Moving fees to the utility token, and fixing which module charges in which token, is a specification change still to be made.
-15. **Verifier limits are wall-clock.** In the reference code a verifier timeout is a fault that halts the node. Wall-clock timeouts can differ between validators, so verification cost also needs a deterministic bound (by proof and trace size, or by metering), with a timeout margin large enough that honest nodes never disagree.
-
-## 12. Roadmap
+## 11. Roadmap
 
 The items below follow from the specification's stated plans. They are directions, not dated commitments.
 
 - **Fraud-proof specification** for sidechain slashing, ahead of mainnet.
 - **Gas benchmarking** of ML-DSA-65 and proof verification on validator hardware.
-- **Quantum-resistant proving (in progress):** finish the hash-based verifier. Remaining work: circuits and per-key public-value counts, a hash-based anchor scheme, larger proof-size limits, deterministic verification bounds, and a choice between the microVM and in-process transports. Then register the verifier and enable the Proven tier in quantum-resistant mode.
+- **Quantum-resistant proving (in progress):** Remaining work: per-key public-value counts, deterministic verification bounds and gas benchmarks. The hash-based anchor scheme, the 512 KiB proof-size cap and the in-process WebAssembly transport are done. 
 - **Two-token design:** specify the utility token's stabilization mechanism, align fee and bond denominations, and review the regulatory position.
 - **Attestor operations:** HSM-backed key custody, and an attestor-availability mechanism.
 - **Decentralized dispute arbitration,** once dispute volume justifies it.
 - **IBC light-client wiring** to let other chains consume checkpoints.
 - **Additional proof claims,** driven by demand (geofencing and AML thresholds are the first candidates).
 
-## 13. Conclusion
+## 12. Conclusion
 
 Private ledgers need public accountability, and public chains do not need to see private data to provide it. LucidChain splits the problem cleanly. A minimal, quantum-resistant public chain finalizes compact commitments, and two optional layers of evidence, staked human attestation and cryptographic proof, can be added per sidechain according to how much assurance its counterparties need.
 
@@ -321,4 +297,4 @@ The design is deliberately narrow, and it is candid about its boundaries. The an
 | Signature verification gas | 50,000 | Placeholder |
 | Sidechain exit cooldown | 14 days | Reference configuration |
 | Example tier bonds | 1M / 5M / 10M staking-token units | Illustrative |
-| Max proof size (QR mode) | 8,192 bytes | To be raised well above this for hash-based proofs |
+| Max proof size (QR mode) | 524,288 bytes (512 KiB) | Raised from 8,192 for hash-based proofs |
