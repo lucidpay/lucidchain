@@ -14,6 +14,20 @@ cd
 
 ```
 
+### Quick build: no Rust or Ignite needed
+
+If you only want to run a node, you can skip the commands above. The compiled post-quantum verifier (`x/proofs/verifiers/wasm/embed/pq_verifier.wasm`) is committed to the repository and embedded into the node at build time, and its hash matches the pinned value in `x/proofs/verifiers/pq_wire.go`. You only need the Go compiler:
+
+```bash
+cd $HOME/go/src/github.com/lucidpay/lucidchain
+make install
+lucidchaind version
+```
+
+This installs `lucidchaind` into `$HOME/go/bin`, so make sure that folder is in your `PATH`. It produces the same binary as `ignite cosmos chain build`.
+
+You only need Rust (and `build_wasm.sh`) if you change the code under `rust_reference/`. A different Rust version can produce a different `.wasm` hash, and the script then rewrites `pqWasmPinnedImageHex`, so check `git diff` before committing. Ignite is only needed for tasks such as `make proto-gen`. The prebuilt Ignite binary needs a recent glibc (2.38 or newer) and will not run on older systems such as Ubuntu 20.04.
+
 ## Set up the work area
 
 Start by building your work area in your home directory after getting the source code.
