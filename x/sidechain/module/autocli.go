@@ -71,6 +71,7 @@ func (am AppModule) AutoCLIOptions() *autocliv1.ModuleOptions {
 				{RpcMethod: "SuspendSidechain", Skip: true},
 				{RpcMethod: "ResumeSidechain", Skip: true},
 				{RpcMethod: "SlashSidechain", Skip: true},
+				{RpcMethod: "SetSidechainMissedPolicy", Skip: true},
 			},
 		},
 	}

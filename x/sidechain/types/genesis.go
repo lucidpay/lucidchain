@@ -26,6 +26,9 @@ func (gs GenesisState) Validate() error {
 
 	seen := make(map[string]struct{}, len(gs.Sidechains))
 	for _, sc := range gs.Sidechains {
+		if err := ValidateMissedPolicyOverride(sc.MissedPolicyOverride); err != nil {
+			return genesisErr("sidechain %q: %s", sc.Id, err)
+		}
 		if err := ValidateID(sc.Id); err != nil {
 			return genesisErr("%s", err)
 		}

@@ -108,7 +108,7 @@ func (k Keeper) processExit(ctx sdk.Context, key collections.Pair[uint64, string
 	}
 
 	sc.Bond = zeroBond(sc.Bond)
-	if err := k.Sidechains.Set(ctx, sc.Id, sc); err != nil {
+	if err := k.SetSidechain(ctx, sc); err != nil {
 		return err
 	}
 	return k.ExitQueue.Remove(ctx, key)

@@ -68,7 +68,7 @@ func (k Keeper) slash(ctx context.Context, id string, amount math.Int, reason st
 	}
 	sc.SlashedAt = &now
 	sc.SlashReason = reason
-	if err := k.Sidechains.Set(ctx, sc.Id, sc); err != nil {
+	if err := k.SetSidechain(ctx, sc); err != nil {
 		return sdk.Coin{}, err
 	}
 

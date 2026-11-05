@@ -103,7 +103,7 @@ func (ms msgServer) RegisterSidechain(ctx context.Context, msg *types.MsgRegiste
 		MetadataUri:               msg.MetadataUri,
 		ActivatedAt:               activatedAt,
 	}
-	if err := ms.Sidechains.Set(ctx, sc.Id, sc); err != nil {
+	if err := ms.SetSidechain(ctx, sc); err != nil {
 		return nil, err
 	}
 
@@ -143,7 +143,7 @@ func (ms msgServer) ActivateSidechain(ctx context.Context, msg *types.MsgActivat
 	now := sdkCtx.BlockTime()
 	sc.Status = types.SidechainStatus_SIDECHAIN_STATUS_ACTIVE
 	sc.ActivatedAt = &now
-	if err := ms.Sidechains.Set(ctx, sc.Id, sc); err != nil {
+	if err := ms.SetSidechain(ctx, sc); err != nil {
 		return nil, err
 	}
 
@@ -218,7 +218,7 @@ func (ms msgServer) UpdateSidechainSigners(ctx context.Context, msg *types.MsgUp
 	sc.SignatureThreshold = msg.SignatureThreshold
 	sc.SignerSetVersion++
 	sc.LastRotationApproverBitmap = approvers
-	if err := ms.Sidechains.Set(ctx, sc.Id, sc); err != nil {
+	if err := ms.SetSidechain(ctx, sc); err != nil {
 		return nil, err
 	}
 
@@ -300,7 +300,7 @@ func (ms msgServer) UpdateSidechain(ctx context.Context, msg *types.MsgUpdateSid
 	sc.Name = msg.Name
 	sc.MetadataUri = msg.MetadataUri
 	sc.CheckpointIntervalSeconds = msg.CheckpointIntervalSeconds
-	if err := ms.Sidechains.Set(ctx, sc.Id, sc); err != nil {
+	if err := ms.SetSidechain(ctx, sc); err != nil {
 		return nil, err
 	}
 
@@ -345,7 +345,7 @@ func (ms msgServer) InitiateSidechainExit(ctx context.Context, msg *types.MsgIni
 	sc.Status = types.SidechainStatus_SIDECHAIN_STATUS_EXITED
 	sc.ExitRequestedAt = &now
 	sc.BondReturnAt = &returnAt
-	if err := ms.Sidechains.Set(ctx, sc.Id, sc); err != nil {
+	if err := ms.SetSidechain(ctx, sc); err != nil {
 		return nil, err
 	}
 	if err := ms.ExitQueue.Set(ctx, exitKey(returnAt, sc.Id)); err != nil {
@@ -373,7 +373,7 @@ func (ms msgServer) SuspendSidechain(ctx context.Context, msg *types.MsgSuspendS
 	}
 
 	sc.Status = types.SidechainStatus_SIDECHAIN_STATUS_SUSPENDED
-	if err := ms.Sidechains.Set(ctx, sc.Id, sc); err != nil {
+	if err := ms.SetSidechain(ctx, sc); err != nil {
 		return nil, err
 	}
 
@@ -396,7 +396,9 @@ func (ms msgServer) ResumeSidechain(ctx context.Context, msg *types.MsgResumeSid
 	}
 
 	sc.Status = types.SidechainStatus_SIDECHAIN_STATUS_ACTIVE
-	if err := ms.Sidechains.Set(ctx, sc.Id, sc); err != nil {
+	sc.MissedStrikes = 0
+	sc.OnTimeStreak = 0
+	if err := ms.SetSidechain(ctx, sc); err != nil {
 		return nil, err
 	}
 

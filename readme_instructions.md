@@ -90,6 +90,18 @@ jq '.app_state.sidechain.params.allowed_pubkey_type_urls += ["/cosmos.crypto.sec
   | .app_state.sidechain.params.auto_activate = true' "$G" > /tmp/g.json && mv /tmp/g.json "$G"
 ```
 
+### Set missed checkpoints policy
+```bash
+
+G=~/.lucidchain/config/genesis.json
+jq '.app_state.sidechain.params.missed_checkpoint_policy_by_tier = []
+  | .app_state.sidechain.params.missed_checkpoint_grace_seconds = "30"
+  | .app_state.sidechain.params.max_block_gap_seconds = "600"' "$G" > /tmp/g.json && mv /tmp/g.json "$G"
+unset G
+
+```
+
+
 ### Add the verifiers
 
 Add both Groth16 and PLONK.
@@ -338,6 +350,85 @@ sidechains:
   status: SIDECHAIN_STATUS_ACTIVE
   tier: ASSURANCE_TIER_NOTARIZED
 ```
+
+### Governance proposals (exempt sidechain, apply a custom policy, clear it):
+
+```bash
+export GOV_ADDRESS=$(lucidchaind query auth module-account gov -o json | jq -r '.account.value.address')
+
+# exempt: strikes are recorded, nothing is burned and it is never suspended
+cat << EOF > ~/tmp_workarea/json/sidechain-policy-exempt.json
+{
+  "messages": [{
+    "@type": "/lucidchain.sidechain.v1.MsgSetSidechainMissedPolicy",
+    "authority": "$GOV_ADDRESS",
+    "id": "hospitality-platform-01",
+    "policy": {
+      "action": "MISSED_CHECKPOINT_ACTION_NONE",
+      "grace_seconds": "3600",
+      "penalty_fraction": "0.000000000000000000",
+      "suspend_after_strikes": 0,
+      "strike_decay_checkpoints": 0
+    }
+  }],
+  "metadata": "", "deposit": "10000000stake",
+  "title": "Exempt hospitality-platform-01",
+  "summary": "Record missed checkpoints but do not penalize this sidechain."
+}
+EOF
+
+# custom: 1% per miss, suspend after 2 strikes, 2 hour grace
+#   "action": "MISSED_CHECKPOINT_ACTION_PENALIZE", "grace_seconds": "7200",
+#   "penalty_fraction": "0.010000000000000000", "suspend_after_strikes": 2,
+#   "strike_decay_checkpoints": 10
+
+# clear the override (back to the tier policy): omit the "policy" field
+
+
+lucidchaind tx gov submit-proposal ~/tmp_workarea/json/sidechain-policy-exempt.json --from validator \
+  --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
+
+sleep 7   # long enough for inclusion in a block
+
+PID=$(lucidchaind query gov proposals -o json | jq -r '.proposals[-1].id')
+lucidchaind tx gov vote "$PID" yes --from validator --chain-id my-testnet-1 \
+  --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
+
+```
+
+### Governance proposals (penalize sidechain)
+
+```bash
+
+export GOV_ADDRESS=$(lucidchaind query auth module-account gov -o json | jq -r '.account.value.address')
+cat << EOF > ~/tmp_workarea/json/sidechain-policy-penalize.json
+{
+  "messages": [{
+    "@type": "/lucidchain.sidechain.v1.MsgSetSidechainMissedPolicy",
+    "authority": "$GOV_ADDRESS",
+    "id": "hospitality-platform-01",
+    "policy": {
+      "action": "MISSED_CHECKPOINT_ACTION_PENALIZE",
+      "grace_seconds": "30",
+      "penalty_fraction": "0.010000000000000000",
+      "suspend_after_strikes": 2,
+      "strike_decay_checkpoints": 10
+    }
+  }],
+  "metadata": "", "deposit": "10000000stake",
+  "title": "Penalize hospitality-platform-01",
+  "summary": "Opt in to automatic missed-checkpoint penalties."
+}
+EOF
+lucidchaind tx gov submit-proposal ~/tmp_workarea/json/sidechain-policy-penalize.json --from validator --chain-id my-testnet-1 --yes
+sleep 7
+PID=$(lucidchaind query gov proposals -o json | jq -r '.proposals[-1].id')
+lucidchaind tx gov vote "$PID" yes --from validator --chain-id my-testnet-1 --yes
+
+
+```
+
+
 
 ## How to upgrade a sidechain
 

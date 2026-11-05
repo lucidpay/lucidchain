@@ -40,6 +40,13 @@ type Keeper struct {
 	// ExitQueue orders EXITED sidechains awaiting their bond return by
 	// (bond_return_at unix seconds, sidechain id).
 	ExitQueue collections.KeySet[collections.Pair[uint64, string]]
+
+	// DeadlineQueue orders ACTIVE sidechains by (next_deadline_at unix seconds, id).
+	DeadlineQueue collections.KeySet[collections.Pair[uint64, string]]
+
+	// LastBlockTime and ForgiveBefore implement the chain-outage guard.
+	LastBlockTime collections.Item[uint64]
+	ForgiveBefore collections.Item[uint64]
 }
 
 func NewKeeper(
@@ -75,6 +82,12 @@ func NewKeeper(
 			sb, types.ExitQueueKey, "exit_queue",
 			collections.PairKeyCodec(collections.Uint64Key, collections.StringKey),
 		),
+		DeadlineQueue: collections.NewKeySet(
+			sb, types.DeadlineQueueKey, "deadline_queue",
+			collections.PairKeyCodec(collections.Uint64Key, collections.StringKey),
+		),
+		LastBlockTime: collections.NewItem(sb, types.BlockTimeKey, "last_block_time", collections.Uint64Value),
+		ForgiveBefore: collections.NewItem(sb, types.ForgiveBeforeKey, "forgive_before", collections.Uint64Value),
 	}
 
 	schema, err := sb.Build()
@@ -123,15 +136,6 @@ func (k Keeper) GetSidechain(ctx context.Context, id string) (types.Sidechain, e
 // HasSidechain reports whether a sidechain id is registered.
 func (k Keeper) HasSidechain(ctx context.Context, id string) (bool, error) {
 	return k.Sidechains.Has(ctx, id)
-}
-
-// SetSidechain writes a sidechain record. Callers are responsible for
-// validating the record before storing it.
-func (k Keeper) SetSidechain(ctx context.Context, sc types.Sidechain) error {
-	if sc.Id == "" {
-		return errorsmod.Wrap(sdkerrors.ErrInvalidRequest, "sidechain id cannot be empty")
-	}
-	return k.Sidechains.Set(ctx, sc.Id, sc)
 }
 
 // loadSidechain returns a sidechain or the registered types.ErrSidechainNotFound.
@@ -192,7 +196,10 @@ func (k Keeper) RecordCheckpoint(
 	sc.LastCheckpointHash = hash
 	sc.LastCheckpointAt = &blockTime
 
-	return k.Sidechains.Set(ctx, id, sc)
+	if err := k.applyCheckpointLiveness(ctx, &sc, blockTime); err != nil {
+		return err
+	}
+	return k.SetSidechain(ctx, sc)
 }
 
 // ---------------------------------------------------------------------------

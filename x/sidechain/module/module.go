@@ -137,8 +137,9 @@ func (am AppModule) BeginBlock(_ context.Context) error {
 }
 
 // EndBlock contains the logic that is automatically triggered at the end of each block.
-// The end block implementation is optional.
 func (am AppModule) EndBlock(ctx context.Context) error {
-	// Return bonds whose exit cooldown has passed.
-	return am.keeper.ProcessExits(ctx)
+	if err := am.keeper.ProcessExits(ctx); err != nil {
+		return err
+	}
+	return am.keeper.ProcessMissedCheckpoints(ctx)
 }

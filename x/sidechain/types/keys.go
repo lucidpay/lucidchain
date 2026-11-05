@@ -25,4 +25,13 @@ var (
 
 	// ExitQueueKey orders exited sidechains by (bond_return_at unix seconds, id).
 	ExitQueueKey = collections.NewPrefix("sidechain/exit_queue/")
+
+	// DeadlineQueueKey orders ACTIVE sidechains by (next_deadline_at unix seconds, id).
+	DeadlineQueueKey = collections.NewPrefix("sidechain/deadline_queue/")
+
+	// BlockTimeKey holds the previous block's unix time, for the outage guard.
+	BlockTimeKey = collections.NewPrefix("sidechain/last_block_time/")
+
+	// ForgiveBeforeKey holds the unix time before which deadlines are forgiven.
+	ForgiveBeforeKey = collections.NewPrefix("sidechain/forgive_before/")
 )

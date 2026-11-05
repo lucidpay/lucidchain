@@ -98,7 +98,7 @@ func (ms msgServer) UpgradeSidechain(ctx context.Context, msg *types.MsgUpgradeS
 	previous := sc.Tier
 	sc.Tier = msg.NewTier
 	sc.Bond = newBond
-	if err := ms.Sidechains.Set(ctx, sc.Id, sc); err != nil {
+	if err := ms.SetSidechain(ctx, sc); err != nil {
 		return nil, err
 	}
 

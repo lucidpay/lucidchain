@@ -41,6 +41,7 @@ func DefaultParams() Params {
 		AllowedPubkeyTypeUrls:        []string{"/cosmos.crypto.mldsa65.PubKey"},
 		AutoActivate:                 false,
 		RotationSignatureGas:         DefaultRotationSignatureGas,
+		MaxBlockGapSeconds:           600,
 	}
 }
 
@@ -129,5 +130,10 @@ func (p Params) Validate() error {
 	if p.RotationSignatureGas == 0 {
 		return fmt.Errorf("rotation_signature_gas must be positive")
 	}
+
+	if err := p.validateMissedCheckpointPolicies(); err != nil {
+		return err
+	}
+
 	return nil
 }

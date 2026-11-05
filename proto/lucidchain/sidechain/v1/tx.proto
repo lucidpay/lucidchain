@@ -57,6 +57,9 @@ service Msg {
    // UpdateParams defines a (governance) operation for updating the module
   // parameters. The authority defaults to the x/gov module account.
   rpc UpdateParams(MsgUpdateParams) returns (MsgUpdateParamsResponse);
+
+  rpc SetSidechainMissedPolicy(MsgSetSidechainMissedPolicy) returns (MsgSetSidechainMissedPolicyResponse);
+
 }
 
 message MsgRegisterSidechain {
@@ -218,3 +221,13 @@ message MsgUpdateParams {
 // MsgUpdateParamsResponse defines the response structure for executing a
 // MsgUpdateParams message.
 message MsgUpdateParamsResponse {}
+
+
+message MsgSetSidechainMissedPolicy {
+  option (cosmos.msg.v1.signer) = "authority";
+  string authority = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  string id = 2;
+  // Unset clears the override.
+  MissedCheckpointPolicy policy = 3;
+}
+message MsgSetSidechainMissedPolicyResponse {}

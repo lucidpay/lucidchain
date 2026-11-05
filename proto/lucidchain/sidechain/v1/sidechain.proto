@@ -17,6 +17,27 @@ enum AssuranceTier {
   ASSURANCE_TIER_PROVEN      = 3; // Tier 3: notarized + validity proof verification
 }
 
+enum MissedCheckpointAction {
+  MISSED_CHECKPOINT_ACTION_UNSPECIFIED = 0;
+  MISSED_CHECKPOINT_ACTION_NONE        = 1; // record the strike only
+  MISSED_CHECKPOINT_ACTION_PENALIZE    = 2; // burn a bond fraction, stay ACTIVE
+  MISSED_CHECKPOINT_ACTION_SUSPEND     = 3; // suspend on the first miss
+}
+
+message MissedCheckpointPolicy {
+  option (gogoproto.equal) = true;
+  AssuranceTier tier = 1;
+  MissedCheckpointAction action = 2;
+  uint64 grace_seconds = 3;
+  string penalty_fraction = 4 [
+    (cosmos_proto.scalar) = "cosmos.Dec",
+    (gogoproto.customtype) = "cosmossdk.io/math.LegacyDec",
+    (gogoproto.nullable) = false
+  ];
+  uint32 suspend_after_strikes = 5;     // 0 = never escalate to SUSPENDED
+  uint32 strike_decay_checkpoints = 6;  // on-time checkpoints that clear one strike; 0 = no decay
+}
+
 // SidechainStatus defines the lifecycle state of a registered sidechain.
 enum SidechainStatus {
   SIDECHAIN_STATUS_UNSPECIFIED = 0;
@@ -75,12 +96,6 @@ message Sidechain {
   google.protobuf.Timestamp last_checkpoint_at = 15
       [(gogoproto.stdtime) = true, (gogoproto.nullable) = true];
 
-  // Bitmap of the previous signer set's members that approved the most
-  // recent rotation (bit i = signer i of the outgoing set). Empty until the
-  // first rotation. Kept in state, not only in events, so continuity of
-  // control can be audited without an indexer.
-  bytes last_rotation_approver_bitmap = 22;
-
   // Set by InitiateExit.
   google.protobuf.Timestamp exit_requested_at = 16
       [(gogoproto.stdtime) = true, (gogoproto.nullable) = true];
@@ -100,6 +115,20 @@ message Sidechain {
       [(gogoproto.stdtime) = true, (gogoproto.nullable) = true];
   // Reason given for the most recent slash.
   string slash_reason = 21;
+
+  // Bitmap of the previous signer set's members that approved the most
+  // recent rotation (bit i = signer i of the outgoing set). Empty until the
+  // first rotation. Kept in state, not only in events, so continuity of
+  // control can be audited without an indexer.
+  bytes last_rotation_approver_bitmap = 22;
+
+  uint32 missed_strikes = 23;
+  uint32 on_time_streak = 24;
+  google.protobuf.Timestamp next_deadline_at = 25 
+        [(gogoproto.stdtime) = true, (gogoproto.nullable) = true];
+
+  // Governance-set override of the tier policy. Its tier field must be unset.
+  MissedCheckpointPolicy missed_policy_override = 26;
 
 }
 
