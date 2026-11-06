@@ -2,6 +2,7 @@ package keeper
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 	"time"
 
@@ -175,8 +176,23 @@ func (ms msgServer) ReinstateAttestor(ctx context.Context, msg *types.MsgReinsta
 }
 
 // UpdateAttestorSigners replaces the signer keys and threshold and bumps
-// signer_set_version. Existing attestations keep the version they were signed under.
+// signer_set_version. Attestations already stored keep the version they were
+// signed under.
+//
+// Authorisation is two-sided: the operator account must sign the transaction
+// AND the CURRENT signer set must approve the rotation at its current
+// threshold (current_set_signatures over the AttestorRotationSignDoc). Without
+// the second condition the operator's single account key could replace the
+// attestor's post-quantum signer keys in one message and sign attestations
+// alone, which defeats the threshold. Same rule as MsgUpdateSidechainSigners.
+// Rotation stays possible while SUSPENDED: the current-set approval is what
+// stops an operator-alone takeover, and a suspended attestor with compromised
+// keys must be able to rotate them out before it is reinstated. SLASHED and
+// EXITED cannot rotate. Every approval carries not_after_height, so an
+// approval gathered for a planned rotation expires instead of lingering.
 func (ms msgServer) UpdateAttestorSigners(ctx context.Context, msg *types.MsgUpdateAttestorSigners) (*types.MsgUpdateAttestorSignersResponse, error) {
+	sdkCtx := sdk.UnwrapSDKContext(ctx)
+
 	params, err := ms.Params.Get(ctx)
 	if err != nil {
 		return nil, err
@@ -202,17 +218,42 @@ func (ms msgServer) UpdateAttestorSigners(ctx context.Context, msg *types.MsgUpd
 	if err := types.ValidateSignerSet(msg.SignerKeys, msg.SignatureThreshold, params); err != nil {
 		return nil, err
 	}
+	if msg.NotAfterHeight == 0 {
+		return nil, errorsmod.Wrap(types.ErrInvalidRequest, "not_after_height is required")
+	}
+	if height := uint64(sdkCtx.BlockHeight()); height > msg.NotAfterHeight {
+		return nil, errorsmod.Wrapf(types.ErrRotationNotApproved,
+			"approval expired: not_after_height %d, current height %d", msg.NotAfterHeight, height)
+	}
+
+	// The current signer set must approve its own replacement. verifySignatures
+	// checks the count against the threshold before any verification, charges
+	// signature_verification_gas per signature, and rejects any invalid,
+	// duplicate or out-of-range signature.
+	signBytes, err := types.AttestorRotationSignBytes(types.AttestorRotationSignDocFor(
+		sdkCtx.ChainID(), attestor, msg.SignerKeys, msg.SignatureThreshold, msg.NotAfterHeight))
+	if err != nil {
+		return nil, errorsmod.Wrap(types.ErrInvalidRequest, err.Error())
+	}
+	approvers, _, err := ms.verifySignatures(sdkCtx, attestor.SignerKeys, attestor.SignatureThreshold,
+		params, signBytes, msg.CurrentSetSignatures)
+	if err != nil {
+		return nil, errorsmod.Wrap(types.ErrRotationNotApproved, err.Error())
+	}
 
 	attestor.SignerKeys = msg.SignerKeys
 	attestor.SignatureThreshold = msg.SignatureThreshold
 	attestor.SignerSetVersion++
+	attestor.LastRotationApproverBitmap = approvers
 	if err := ms.Attestors.Set(ctx, attestor.Id, attestor); err != nil {
 		return nil, err
 	}
 
-	emit(sdk.UnwrapSDKContext(ctx), "attestor_signers_updated",
-		attr("attestor_id", attestor.Id), attr("signer_set_version", uitoa(attestor.SignerSetVersion)))
-	return &types.MsgUpdateAttestorSignersResponse{}, nil
+	emit(sdkCtx, "attestor_signers_updated",
+		attr("attestor_id", attestor.Id),
+		attr("signer_set_version", uitoa(attestor.SignerSetVersion)),
+		attr("approved_by_bitmap", hex.EncodeToString(approvers)))
+	return &types.MsgUpdateAttestorSignersResponse{SignerSetVersion: attestor.SignerSetVersion}, nil
 }
 
 // InitiateAttestorExit deregisters an attestor. It can no longer attest, and

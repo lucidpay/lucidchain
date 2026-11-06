@@ -1,5 +1,9 @@
 // signrotation produces the current-signer-set approvals that
-// MsgUpdateSidechainSigners requires (finding N9 of the v0.4-Beta review).
+// MsgUpdateSidechainSigners (finding N9 of the v0.4-Beta review) and
+// MsgUpdateAttestorSigners (finding 4.3 of the v0.6-Beta summary) require.
+// Pass -sidechain-id for a sidechain rotation or -attestor-id for an attestor
+// rotation; the two sign documents use different domain prefixes, so an
+// approval for one can never be used for the other.
 //
 // It works for both signer profiles:
 //   - classical: secp256k1 keys, as in tools/signcheckpoint
@@ -19,6 +23,9 @@
 //	  -new-key "$(lucidchaind keys show newkey2 --pubkey)" \
 //	  -new-key "$(lucidchaind keys show newkey3 --pubkey)" \
 //	  -key 0=<hex priv of CURRENT signer 0> -key 2=<hex priv of CURRENT signer 2>
+//
+// For an attestor, replace -sidechain-id sc-1 with -attestor-id <attestor id>
+// and use the attestor's current signer_set_version and signer positions.
 //
 // -new-key takes the JSON object printed by `lucidchaind keys show --pubkey`
 // (any supported type), or a raw hex secp256k1 public key for backwards
@@ -44,6 +51,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 
+	attestortypes "github.com/lucidpay/lucidchain/x/attestor/types"
 	"github.com/lucidpay/lucidchain/x/sidechain/types"
 )
 
@@ -118,8 +126,9 @@ func parsePrivKey(privHex string) (cryptotypes.PrivKey, error) {
 
 func main() {
 	chainID := flag.String("chain-id", "my-testnet-1", "chain id")
-	sidechain := flag.String("sidechain-id", "", "sidechain id")
-	version := flag.Uint64("current-version", 1, "CURRENT signer_set_version of the sidechain")
+	sidechain := flag.String("sidechain-id", "", "sidechain id (sidechain rotation)")
+	attestor := flag.String("attestor-id", "", "attestor id (attestor rotation)")
+	version := flag.Uint64("current-version", 1, "CURRENT signer_set_version of the sidechain or attestor")
 	threshold := flag.Uint("new-threshold", 1, "signature threshold of the NEW set")
 	notAfter := flag.Uint64("not-after-height", 0, "last block height at which the rotation may execute (required)")
 	var newKeys, keys list
@@ -127,8 +136,11 @@ func main() {
 	flag.Var(&keys, "key", "CURRENT signer as <index>=<private key hex>; repeat per approving signer")
 	flag.Parse()
 
-	if *sidechain == "" || len(newKeys) == 0 || len(keys) == 0 || *notAfter == 0 {
-		must(fmt.Errorf("-sidechain-id, -not-after-height, at least one -new-key and at least one -key are required"))
+	if (*sidechain == "") == (*attestor == "") {
+		must(fmt.Errorf("pass exactly one of -sidechain-id or -attestor-id"))
+	}
+	if len(newKeys) == 0 || len(keys) == 0 || *notAfter == 0 {
+		must(fmt.Errorf("-not-after-height, at least one -new-key and at least one -key are required"))
 	}
 
 	anys := make([]*codectypes.Any, 0, len(newKeys))
@@ -138,11 +150,24 @@ func main() {
 		anys = append(anys, a)
 	}
 
-	sc := types.Sidechain{Id: *sidechain, SignerSetVersion: *version}
-	signBytes, err := types.SignerRotationSignBytes(types.RotationSignDocFor(*chainID, sc, anys, uint32(*threshold), *notAfter))
+	var (
+		signBytes []byte
+		err       error
+		target    string
+	)
+	if *attestor != "" {
+		a := attestortypes.Attestor{Id: *attestor, SignerSetVersion: *version}
+		signBytes, err = attestortypes.AttestorRotationSignBytes(
+			attestortypes.AttestorRotationSignDocFor(*chainID, a, anys, uint32(*threshold), *notAfter))
+		target = "attestor=" + *attestor
+	} else {
+		sc := types.Sidechain{Id: *sidechain, SignerSetVersion: *version}
+		signBytes, err = types.SignerRotationSignBytes(types.RotationSignDocFor(*chainID, sc, anys, uint32(*threshold), *notAfter))
+		target = "sc=" + *sidechain
+	}
 	must(err)
-	fmt.Fprintf(os.Stderr, "chain=%s sc=%s current_version=%d new_keys=%d new_threshold=%d not_after_height=%d\nsignbytes=%x\n",
-		*chainID, *sidechain, *version, len(anys), *threshold, *notAfter, signBytes)
+	fmt.Fprintf(os.Stderr, "chain=%s %s current_version=%d new_keys=%d new_threshold=%d not_after_height=%d\nsignbytes=%x\n",
+		*chainID, target, *version, len(anys), *threshold, *notAfter, signBytes)
 	fmt.Printf("--not-after-height %d \\\n", *notAfter)
 
 	for _, k := range keys {

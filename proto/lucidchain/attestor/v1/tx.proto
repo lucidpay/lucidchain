@@ -16,6 +16,11 @@ service Msg {
   option (cosmos.msg.v1.service) = true;
 
   rpc RegisterAttestor(MsgRegisterAttestor) returns (MsgRegisterAttestorResponse);
+  // UpdateAttestorSigners replaces the signer keys and threshold and bumps
+  // signer_set_version. Requires the operator AND signatures from the CURRENT
+  // signer set at its current threshold over an AttestorRotationSignDoc, so a
+  // single account key can never replace the keys that sign attestations.
+  // Allowed while PENDING, ACTIVE or SUSPENDED; refused for SLASHED and EXITED.
   rpc UpdateAttestorSigners(MsgUpdateAttestorSigners) returns (MsgUpdateAttestorSignersResponse);
   rpc InitiateAttestorExit(MsgInitiateAttestorExit) returns (MsgInitiateAttestorExitResponse);
 
@@ -79,8 +84,19 @@ message MsgUpdateAttestorSigners {
   repeated google.protobuf.Any signer_keys = 3
       [(cosmos_proto.accepts_interface) = "cosmos.crypto.PubKey"];
   uint32 signature_threshold = 4;
+  // Approval of the rotation by the CURRENT signer set: at least
+  // Attestor.signature_threshold valid signatures from distinct current
+  // signers (signer_index into the current signer_keys) over the
+  // AttestorRotationSignDoc for this rotation.
+  repeated Signature current_set_signatures = 5 [(gogoproto.nullable) = false];
+  // Last block height at which this rotation may be executed. Part of the
+  // signed doc, so an approval gathered for a planned rotation cannot be kept
+  // and used much later. Required (> 0).
+  uint64 not_after_height = 6;
 }
-message MsgUpdateAttestorSignersResponse {}
+message MsgUpdateAttestorSignersResponse {
+  uint64 signer_set_version = 1; // the new version
+}
 
 message MsgInitiateAttestorExit {
   option (cosmos.msg.v1.signer) = "operator";

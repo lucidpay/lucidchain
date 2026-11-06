@@ -63,6 +63,10 @@ func (gs GenesisState) Validate() error {
 		if a.SignerSetVersion == 0 {
 			return genesisErr("attestor %q: signer_set_version must be >= 1", a.Id)
 		}
+		if max := (len(a.SignerKeys) + 7) / 8; len(a.LastRotationApproverBitmap) > max {
+			return genesisErr("attestor %q: last_rotation_approver_bitmap is %d bytes, max %d for %d signer keys",
+				a.Id, len(a.LastRotationApproverBitmap), max, len(a.SignerKeys))
+		}
 		if err := ValidateSchemaIDList("authorized_schema_ids", a.AuthorizedSchemaIds); err != nil {
 			return genesisErr("attestor %q: %s", a.Id, err)
 		}

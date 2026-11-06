@@ -868,14 +868,43 @@ func TestPendingAttestorCannotAttest(t *testing.T) {
 // signer rotation
 // ---------------------------------------------------------------------------
 
+// approveRotation attaches current-set approval signatures to a rotation
+// message. With no positions it signs with the first `threshold` members of
+// the CURRENT set; with positions it signs with exactly those current-set
+// positions. f.keyOrder maps current positions to the fixture's private keys.
+func (f *fixture) approveRotation(t *testing.T, m *types.MsgUpdateAttestorSigners, pos ...int) {
+	t.Helper()
+	a := f.getAttestor(t)
+	if m.NotAfterHeight == 0 {
+		m.NotAfterHeight = uint64(f.ctx.BlockHeight()) + 100
+	}
+	bz, err := types.AttestorRotationSignBytes(types.AttestorRotationSignDocFor(
+		f.ctx.ChainID(), a, m.SignerKeys, m.SignatureThreshold, m.NotAfterHeight))
+	require.NoError(t, err)
+	if len(pos) == 0 {
+		for i := 0; i < int(a.SignatureThreshold); i++ {
+			pos = append(pos, i)
+		}
+	}
+	m.CurrentSetSignatures = nil
+	for _, p := range pos {
+		sig, err := f.signers[f.keyOrder[p]].Sign(bz)
+		require.NoError(t, err)
+		m.CurrentSetSignatures = append(m.CurrentSetSignatures,
+			types.Signature{SignerIndex: uint32(p), Signature: sig})
+	}
+}
+
 func TestUpdateAttestorSigners(t *testing.T) {
 	updateMsg := func(f *fixture, t *testing.T, order []int, threshold uint32) *types.MsgUpdateAttestorSigners {
-		return &types.MsgUpdateAttestorSigners{
+		m := &types.MsgUpdateAttestorSigners{
 			Operator:           f.operatorS,
 			Id:                 testAttestor,
 			SignerKeys:         f.keyAnys(t, order),
 			SignatureThreshold: threshold,
 		}
+		f.approveRotation(t, m)
+		return m
 	}
 
 	t.Run("rotation bumps the version and changes which keys are valid", func(t *testing.T) {
