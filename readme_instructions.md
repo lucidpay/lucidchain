@@ -1186,9 +1186,11 @@ You should see signer_set_version: "2", signature_threshold: 2 and a non-empty l
 To confirm the new keys and the emitted event, run:
 
 ```bash
-lucidchaind query attestor attestor acme -o json | jq '{signer_set_version, signature_threshold, keys: [.attestor.signer_keys[].key]}'
-lucidchaind query tx <txcode> -o json \
-  | jq '.events[] | select(.type=="attestor_signers_updated")'
+lucidchaind query attestor attestor acme -o json | jq '.attestor | {
+  signer_set_version,
+  signature_threshold,
+  keys: [.signer_keys[] | {type, value}]
+}'
 ```
 
 ## How to dispute an attestation
@@ -1339,6 +1341,98 @@ wait for the voting period to finish (60s) then check the status
 ```bash
 lucidchaind query attestor attestor kyc-attestor-01 | grep status
 ```
+
+
+## How to rotate a sidechain’s signers
+
+Rotate hospitality-platform-01 from sidechainkey1..3 (2-of-3) to a new 2-of-3 set, sidechainkey4..6.
+
+### Create the new signer keys
+
+```bash
+lucidchaind keys add sidechainkey4
+lucidchaind keys add sidechainkey5
+lucidchaind keys add sidechainkey6
+```
+
+Write down the mnemonics.
+
+### Check the current state
+
+```bash
+lucidchaind query sidechain sidechain hospitality-platform-01 | grep -E "status|signer_set_version|signature_threshold"
+```
+
+signer_set_version must match -current-version
+
+### Sign the rotation approval with the CURRENT signers
+
+```bash
+# approval expires after this block height; sign and send within this window
+export NOT_AFTER=$(( $(lucidchaind status | jq -r '.sync_info.latest_block_height') + 200 ))
+
+K0=$(lucidchaind keys export sidechainkey1 --unarmored-hex --unsafe)
+K1=$(lucidchaind keys export sidechainkey2 --unarmored-hex --unsafe)
+
+OUT=$(~/tools/signrotation/signrotation \
+  -chain-id my-testnet-1 \
+  -sidechain-id hospitality-platform-01 \
+  -current-version 1 \
+  -not-after-height "$NOT_AFTER" \
+  -new-threshold 2 \
+  -new-key "$(lucidchaind keys show sidechainkey4 --pubkey)" \
+  -new-key "$(lucidchaind keys show sidechainkey5 --pubkey)" \
+  -new-key "$(lucidchaind keys show sidechainkey6 --pubkey)" \
+  -key 0="$K0" -key 1="$K1" 2>/tmp/sc-rotation-signbytes.txt)
+
+export SC_ROT_SIG0=$(printf '%s\n' "$OUT" | grep -o '{"signature":"[^"]*","signer_index":0}')
+export SC_ROT_SIG1=$(printf '%s\n' "$OUT" | grep -o '{"signature":"[^"]*","signer_index":1}')
+
+# sanity check: both signatures should print; the sign bytes are in the file
+echo "$SC_ROT_SIG0"; echo "$SC_ROT_SIG1"
+cat /tmp/sc-rotation-signbytes.txt
+
+unset K0 K1   # don't leave the private keys in your shell
+```
+
+### Dry run
+
+```bash
+OWNER=$(lucidchaind keys show validator -a)
+
+SC_ROT_ARGS=(
+  --signer-keys "$(lucidchaind keys show sidechainkey4 --pubkey)"
+  --signer-keys "$(lucidchaind keys show sidechainkey5 --pubkey)"
+  --signer-keys "$(lucidchaind keys show sidechainkey6 --pubkey)"
+  --signature-threshold 2
+  --not-after-height "$NOT_AFTER"
+  --current-set-signatures "$SC_ROT_SIG0"
+  --current-set-signatures "$SC_ROT_SIG1"
+)
+
+# the keybase is not accessible in dry-run mode, so --from takes the owner's address
+lucidchaind tx sidechain update-signers hospitality-platform-01 "${SC_ROT_ARGS[@]}" \
+  --from "$OWNER" --chain-id my-testnet-1 \
+  --gas-adjustment 1.5 --gas-prices 0stake --dry-run
+echo "dry-run exit code: $?"
+```
+
+A pass prints a gas estimate: <N> line and exit code 0.
+
+### Actual run, only if the dry run passed
+
+```bash
+lucidchaind tx sidechain update-signers hospitality-platform-01 "${SC_ROT_ARGS[@]}" \
+  --from validator --chain-id my-testnet-1 \
+  --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
+
+sleep 4 # wait for block creation
+
+lucidchaind query sidechain sidechain hospitality-platform-01 | grep -E "signer_set_version|signature_threshold"
+```
+
+You should see signer_set_version: "2" and signature_threshold: 2
+
 
 ## How to suspend a sidechain
 
