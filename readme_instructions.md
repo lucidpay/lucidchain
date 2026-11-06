@@ -1089,6 +1089,108 @@ pagination:
   total: "1"
 ```
 
+## Key rotation
+
+How to rotate an attestor’s signers?
+
+Rotate acme from attestorkey2 to a new 2-of-2 set (attestorkey3, attestorkey4)
+
+### Build the rotation signing tool
+
+```bash
+cd ~/go/src/github.com/lucidpay/lucidchain
+mkdir -p ~/tools/signrotation
+go build -o ~/tools/signrotation/signrotation ./tools/signrotation
+chmod +x ~/tools/signrotation/signrotation
+```
+
+### Create the new signer keys
+
+```bash
+lucidchaind keys add attestorkey3
+lucidchaind keys add attestorkey4
+```
+
+Write down the mnemonics. A rotation to keys you can’t use later locks the attestor out.
+
+### Check the current state
+
+```bash
+lucidchaind query attestor attestor acme | grep -E "status|signer_set_version|signature_threshold"
+```
+
+### Sign the rotation approval with the CURRENT signer
+
+```bash
+# approval expires after this block height; sign and send within this window
+export NOT_AFTER=$(( $(lucidchaind status | jq -r '.sync_info.latest_block_height') + 200 ))
+
+K0=$(lucidchaind keys export attestorkey2 --unarmored-hex --unsafe)
+
+OUT=$(~/tools/signrotation/signrotation \
+  -chain-id my-testnet-1 \
+  -attestor-id acme \
+  -current-version 1 \
+  -not-after-height "$NOT_AFTER" \
+  -new-threshold 2 \
+  -new-key "$(lucidchaind keys show attestorkey3 --pubkey)" \
+  -new-key "$(lucidchaind keys show attestorkey4 --pubkey)" \
+  -key 0="$K0" 2>/tmp/rotation-signbytes.txt)
+
+export ROT_SIG0=$(printf '%s\n' "$OUT" | grep -o '{"signature":"[^"]*","signer_index":0}')
+
+# sanity check: the signature should print; the sign bytes are in the file
+echo "$ROT_SIG0"
+cat /tmp/rotation-signbytes.txt
+
+unset K0   # don't leave the private key in your shell
+```
+
+### Dry run
+
+```bash
+OPER=$(lucidchaind keys show attestor-operator -a)
+
+ROT_ARGS=(
+  --id acme
+  --signer-keys "$(lucidchaind keys show attestorkey3 --pubkey)"
+  --signer-keys "$(lucidchaind keys show attestorkey4 --pubkey)"
+  --signature-threshold 2
+  --not-after-height "$NOT_AFTER"
+  --current-set-signatures "$ROT_SIG0"
+)
+
+# the keybase is not accessible in dry-run mode, so --from takes the operator's address
+lucidchaind tx attestor update-attestor-signers "${ROT_ARGS[@]}" \
+  --from "$OPER" --chain-id my-testnet-1 \
+  --gas-adjustment 1.5 --gas-prices 0stake --dry-run
+echo "dry-run exit code: $?"
+```
+
+A pass prints a gas estimate: <N> line and exit code 0. A failure prints the handler’s error and a non-zero exit code.
+
+### Actual run, only if the dry run passed
+
+```bash
+lucidchaind tx attestor update-attestor-signers "${ROT_ARGS[@]}" \
+  --from attestor-operator --chain-id my-testnet-1 \
+  --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
+
+sleep 4 # wait for block creation
+
+lucidchaind query attestor attestor acme | grep -E "signer_set_version|signature_threshold|last_rotation_approver_bitmap"
+```
+
+You should see signer_set_version: "2", signature_threshold: 2 and a non-empty last_rotation_approver_bitmap.
+
+To confirm the new keys and the emitted event, run:
+
+```bash
+lucidchaind query attestor attestor acme -o json | jq '{signer_set_version, signature_threshold, keys: [.attestor.signer_keys[].key]}'
+lucidchaind query tx <txcode> -o json \
+  | jq '.events[] | select(.type=="attestor_signers_updated")'
+```
+
 ## How to dispute an attestation
 
 ### Create a challenger
