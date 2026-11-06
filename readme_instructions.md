@@ -1191,6 +1191,14 @@ lucidchaind query attestor attestor acme -o json | jq '.attestor | {
   signature_threshold,
   keys: [.signer_keys[] | {type, value}]
 }'
+
+for i in 0 1; do
+  chain=$(lucidchaind query attestor attestor acme -o json | jq -r ".attestor.signer_keys[$i].value")
+  k3=$(lucidchaind keys show attestorkey3 --pubkey | jq -r '.key')
+  k4=$(lucidchaind keys show attestorkey4 --pubkey | jq -r '.key')
+  [ "$chain" = "$k3" ] && echo "signer $i = attestorkey3"
+  [ "$chain" = "$k4" ] && echo "signer $i = attestorkey4"
+done
 ```
 
 ## How to dispute an attestation
