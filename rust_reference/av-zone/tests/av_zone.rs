@@ -53,12 +53,28 @@ fn rejected_as_is(st: &Statement, samples: &[Sample]) -> bool {
     rejected_trace(st, unchecked_trace(st, samples))
 }
 
-fn rejected_trace(st: &Statement, trace: RowMajorMatrix<Val>) -> bool {
-    let attempt = catch_unwind(AssertUnwindSafe(|| prove_trace(st, trace, &ENTROPY)));
-    match attempt {
-        Err(_) | Ok(Err(_)) => true,
-        Ok(Ok(bytes)) => verify_bytes(&st.to_values(), &bytes) != Verdict::Valid,
+#[derive(Debug, PartialEq, Eq)]
+enum Outcome {
+    ProverRefused,
+    VerifierRejected,
+    Accepted,
+}
+
+fn outcome(st: &Statement, trace: RowMajorMatrix<Val>) -> Outcome {
+    match catch_unwind(AssertUnwindSafe(|| prove_trace(st, trace, &ENTROPY))) {
+        Err(_) | Ok(Err(_)) => Outcome::ProverRefused,
+        Ok(Ok(bytes)) => {
+            if verify_bytes(&st.to_values(), &bytes) == Verdict::Valid {
+                Outcome::Accepted
+            } else {
+                Outcome::VerifierRejected
+            }
+        }
     }
+}
+
+fn rejected_trace(st: &Statement, trace: RowMajorMatrix<Val>) -> bool {
+    outcome(st, trace) != Outcome::Accepted
 }
 
 #[test]
@@ -356,6 +372,26 @@ fn largest_accepted_proof_fits_the_size_cap() {
     // one row count above the pinned range is refused up front
     let (st, samples) = scenario(1 << (MAX_LOG_ROWS + 1));
     assert!(matches!(prove_trip(&st, &samples, &ENTROPY), Err(ProveError::BadLength)));
+}
+
+#[cfg(not(debug_assertions))]
+#[test]
+fn in_release_the_verifier_is_what_rejects() {
+    let (st, mut samples) = scenario(N);
+    samples[17].x = 3001;
+    let mut st1 = st.clone();
+    st1.trip_digest = trip_digest(&samples);
+    assert_eq!(outcome(&st1, unchecked_trace(&st1, &samples)), Outcome::VerifierRejected, "outside zone");
+
+    let (st, samples) = scenario(N);
+    let mut other = samples.clone();
+    other[100].x += 1;
+    assert_eq!(outcome(&st, unchecked_trace(&st, &other)), Outcome::VerifierRejected, "substituted sample");
+
+    let (st, samples) = scenario(N);
+    let mut t = unchecked_trace(&st, &samples);
+    t.values[100 * WIDTH + COL_P2 + 150] += Val::ONE;
+    assert_eq!(outcome(&st, t), Outcome::VerifierRejected, "corrupted hash cell");
 }
 
 #[test]
