@@ -22,6 +22,7 @@ dependencies = [
  "p3-keccak",
  "p3-matrix",
  "p3-merkle-tree",
+ "p3-poseidon2-air",
  "p3-symmetric",
  "p3-uni-stark",
  "postcard",
@@ -369,6 +370,22 @@ dependencies = [
  "p3-util",
  "rand",
  "thiserror",
+]
+
+[[package]]
+name = "p3-poseidon2-air"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2062adf64c7d59eec1884bedd8567f78bbcf797688a0509b17cf98f9ce5ee0d3"
+dependencies = [
+ "p3-air",
+ "p3-field",
+ "p3-matrix",
+ "p3-maybe-rayon",
+ "p3-poseidon2",
+ "rand",
+ "thiserror",
+ "tracing",
 ]
 
 [[package]]

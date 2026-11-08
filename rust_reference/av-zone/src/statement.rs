@@ -19,9 +19,8 @@ pub const COORD_BITS: usize = 14; // coordinates are integers in [0, 2^14)
 pub const EDGE_BITS: usize = 29; // cross products lie in [0, 2^29) when inside
 pub const GAP_BITS: usize = 4;
 pub const MAX_GAP: u32 = 1 << GAP_BITS; // consecutive samples at most 16 s apart
-/// Longest chain the AIR can prove: 16 (lead) + 16 * 2^14 (gaps) + 16 (trail)
-/// seconds, under 2^19. Keeping the window this far below the modulus means the
-/// time chain can never wrap around the field.
+/// Longest chain the AIR can prove: 16 (lead) + 16 * 2^14 (gaps) + 16 (trail) seconds, under 2^19.
+/// Keeping the window this far below the modulus means the time chain can never wrap the field.
 pub const TIME_MARGIN: u32 = 1 << 19;
 /// Exclusive upper bound for t_start and t_end (seconds since the protocol epoch).
 pub const MAX_TIME: u32 = MODULUS - TIME_MARGIN;
@@ -31,7 +30,11 @@ pub const PV_ZONE_ID: usize = BINDING_LIMBS;
 pub const PV_T_START: usize = PV_ZONE_ID + 1;
 pub const PV_T_END: usize = PV_T_START + 1;
 pub const PV_POLY: usize = PV_T_END + 1;
-pub const NUM_PUBLIC_VALUES: usize = PV_POLY + 2 * K;
+/// Trip commitment (Poseidon2 digest of the sample sequence, see `commit.rs`).
+pub const PV_DIGEST: usize = PV_POLY + 2 * K;
+pub const NUM_PUBLIC_VALUES: usize = PV_DIGEST + DIGEST_ELEMS;
+
+pub use crate::commit::DIGEST_ELEMS;
 
 /// BabyBear modulus. Public values must be below it (the Go adapter enforces
 /// the same rule).
@@ -47,6 +50,9 @@ pub struct Statement {
     /// Convex polygon, counter-clockwise; unused trailing slots repeat the
     /// last vertex.
     pub polygon: [(u32, u32); K],
+    /// Poseidon2 digest of the hidden sample sequence. The proof says the hidden samples
+    /// hash to exactly this value; an attestor signs it to tie the proof to real data.
+    pub trip_digest: [u32; DIGEST_ELEMS],
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -87,7 +93,9 @@ impl Statement {
             }
         }
         check_convex_ccw(&polygon)?;
-        Ok(Self { binding, zone_id: v[PV_ZONE_ID], t_start, t_end, polygon })
+        let mut trip_digest = [0u32; DIGEST_ELEMS];
+        trip_digest.copy_from_slice(&v[PV_DIGEST..PV_DIGEST + DIGEST_ELEMS]);
+        Ok(Self { binding, zone_id: v[PV_ZONE_ID], t_start, t_end, polygon, trip_digest })
     }
 
     pub fn to_values(&self) -> Vec<u32> {
@@ -100,6 +108,7 @@ impl Statement {
             v.push(x);
             v.push(y);
         }
+        v.extend_from_slice(&self.trip_digest);
         v
     }
 }
@@ -157,6 +166,8 @@ pub enum Violation {
     LeadingGap,
     Gap { index: usize },
     TrailingGap,
+    /// The samples do not hash to `Statement::trip_digest`.
+    DigestMismatch,
 }
 
 /// Reference check of the statement for a concrete sample lc_sequence. Uses the
@@ -187,6 +198,9 @@ pub fn check_trip(st: &Statement, samples: &[Sample]) -> Result<(), Violation> {
     if st.t_end < last.t || st.t_end - last.t >= MAX_GAP {
         return Err(Violation::TrailingGap);
     }
+    if crate::commit::trip_digest(samples) != st.trip_digest {
+        return Err(Violation::DigestMismatch);
+    }
     Ok(())
 }
 
@@ -199,7 +213,7 @@ pub(crate) mod testutil {
         let corners = [(1000, 1000), (3000, 1000), (3000, 3000), (1000, 3000)];
         let mut polygon = [corners[3]; K];
         polygon[..4].copy_from_slice(&corners);
-        Statement { binding: [7; BINDING_LIMBS], zone_id: 42, t_start, t_end, polygon }
+        Statement { binding: [7; BINDING_LIMBS], zone_id: 42, t_start, t_end, polygon, trip_digest: [0; DIGEST_ELEMS] }
     }
 
     /// n samples drifting inside the square with 3 s spacing.
@@ -294,9 +308,15 @@ mod tests {
 
     #[test]
     fn reference_model_accepts_good_and_rejects_each_violation() {
-        let st = square_statement(1_000_000, 1_000_000 + 2 + 3 * 63 + 5);
+        let mut st = square_statement(1_000_000, 1_000_000 + 2 + 3 * 63 + 5);
         let good = good_trip(&st, 64);
+        st.trip_digest = crate::commit::trip_digest(&good);
         assert_eq!(check_trip(&st, &good), Ok(()));
+
+        // geometry and times are fine but the samples are not the committed ones
+        let mut t = good.clone();
+        t[20].x += 1;
+        assert_eq!(check_trip(&st, &t), Err(Violation::DigestMismatch));
 
         assert_eq!(check_trip(&st, &[]), Err(Violation::NoSamples));
 
@@ -306,7 +326,9 @@ mod tests {
 
         let mut t = good.clone();
         t[10].x = 3000; // exactly on the boundary is inside
-        assert_eq!(check_trip(&st, &t), Ok(()));
+        let mut st_b = st.clone();
+        st_b.trip_digest = crate::commit::trip_digest(&t);
+        assert_eq!(check_trip(&st_b, &t), Ok(()));
 
         let mut t = good.clone();
         t[5].x = 1 << COORD_BITS;

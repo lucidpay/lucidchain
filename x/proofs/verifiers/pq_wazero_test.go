@@ -34,7 +34,7 @@ func newWasm(t testing.TB, inst int, timeout time.Duration, pages uint32) (*Wasm
 
 func TestWasmRealProofs(t *testing.T) {
 	_, v, vk := newWasm(t, 2, 60*time.Second, 1024)
-	for _, n := range []string{"256", "16384"} {
+	for _, n := range []string{"256", "1024"} {
 		pub, proof := fx(t, "pub_"+n+".bin"), fx(t, "proof_"+n+".bin")
 		start := time.Now()
 		if err := v.Verify(vk, pub, proof); err != nil {
@@ -134,7 +134,7 @@ func TestWasmConcurrent(t *testing.T) {
 
 func TestWasmTimeoutIsAFaultAndRecovers(t *testing.T) {
 	tr, _, vk := newWasm(t, 1, 5*time.Millisecond, 1024)
-	req := PQRequest{PublicInputs: fx(t, "pub_16384.bin"), Proof: fx(t, "proof_16384.bin")}
+	req := PQRequest{PublicInputs: fx(t, "pub_1024.bin"), Proof: fx(t, "proof_1024.bin")}
 	copy(req.VKID[:], vk)
 	_, err := tr.Verify(req)
 	if err == nil {

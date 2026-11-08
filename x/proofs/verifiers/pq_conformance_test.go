@@ -70,7 +70,7 @@ func seq(n int, rev bool) []int {
 // verifier_fault.go: infrastructure failures must satisfy errors.Is(ErrVerifierFault)
 // when seen through the ProofVerifier, and verdicts must not.
 func TestWasmFailuresAreVerifierFaults(t *testing.T) {
-	pub, proof := fx(t, "pub_16384.bin"), fx(t, "proof_16384.bin")
+	pub, proof := fx(t, "pub_1024.bin"), fx(t, "proof_1024.bin")
 
 	_, slow, vk := newWasm(t, 1, 5*time.Millisecond, 256) // timeout
 	if err := slow.Verify(vk, pub, proof); !errors.Is(err, types.ErrVerifierFault) {

@@ -25,7 +25,9 @@ use p3_uni_stark::StarkConfig;
 use rand::rngs::StdRng;
 use rand::SeedableRng;
 
+use crate::commit::{CHAIN_DOMAIN, RATE};
 use crate::statement::*;
+use p3_baby_bear::BABYBEAR_S_BOX_DEGREE;
 
 pub type Val = BabyBear;
 pub type Challenge = BinomialExtensionField<Val, 4>;
@@ -62,7 +64,7 @@ pub const NUM_RANDOM_CODEWORDS: usize = 4;
 /// Trace heights a verifier will accept (log2 rows). The proof carries its own
 /// height, so the verifier must bound it.
 pub const MIN_LOG_ROWS: usize = 8; // 256 rows: the hiding budget for 100 queries
-pub const MAX_LOG_ROWS: usize = 14;
+pub const MAX_LOG_ROWS: usize = 10; // 1024 rows: keeps the largest proof under MAX_PROOF_BYTES
 
 /// Hard cap on proof bytes accepted before any decoding.
 pub const MAX_PROOF_BYTES: usize = 512 * 1024;
@@ -113,17 +115,20 @@ pub fn verifier_config() -> Config {
 /// Identity of this verifier: a hash over everything that determines which
 /// statements verify. Bump `VERSION` whenever the AIR's constraints change;
 /// the numeric constants below are folded in automatically.
-pub const VERSION: &str = "av-zone.core.v0.1";
+pub const VERSION: &str = "av-zone.stage2.v0";
 
 pub fn vk_descriptor() -> String {
     format!(
         "{VERSION}|p3=0.8.0|field=babybear|challenge=ext4|hash=keccak256|zk=hiding({NUM_RANDOM_CODEWORDS})\
 |K={K}|coord_bits={COORD_BITS}|edge_bits={EDGE_BITS}|gap_bits={GAP_BITS}|max_time={MAX_TIME}\
 |binding_limbs={BINDING_LIMBS}|public_values={NUM_PUBLIC_VALUES}|cols={}\
+|trip_digest={DIGEST_ELEMS}|chain=poseidon2-babybear16(rf={},rp={},d={BABYBEAR_S_BOX_DEGREE},rc=plonky3-default,rate={RATE},domain={CHAIN_DOMAIN})\
 |fri(log_blowup={LOG_BLOWUP},final={LOG_FINAL_POLY_LEN},arity={MAX_LOG_ARITY},queries={NUM_QUERIES},\
 batch_pow={BATCH_POW_BITS},commit_pow={COMMIT_POW_BITS},query_pow={QUERY_POW_BITS})\
 |rows=2^{MIN_LOG_ROWS}..2^{MAX_LOG_ROWS}|max_proof={MAX_PROOF_BYTES}",
-        crate::air::WIDTH
+        crate::air::WIDTH,
+        crate::air::P2_HALF * 2,
+        crate::air::P2_PARTIAL
     )
 }
 

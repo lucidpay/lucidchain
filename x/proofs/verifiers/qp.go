@@ -91,7 +91,7 @@ var _ types.ProofVerifier = pqVerifier{}
 // NewPQ returns the hash-based verifier. imageHash is the pinned hash of the
 // verifier image, vkIDs the allowlist of verification keys this binary
 // accepts, and maxProofBytes the hard cap on proof size (checked before the
-// transport is touched, so the microVM cannot be used as a DoS amplifier).
+// transport is touched, so the WASM cannot be used as a DoS amplifier).
 //
 // Register it next to the gnark verifiers:
 //

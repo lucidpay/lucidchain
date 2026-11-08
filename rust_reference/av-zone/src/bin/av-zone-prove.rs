@@ -8,7 +8,7 @@
 //!   t_start <u32>
 //!   t_end <u32>
 //!   polygon <x> <y>           3..=8 lines, counter-clockwise; padded by repeating the last
-//!   sample <x> <y> <t>        count must be a power of two in [256, 16384]
+//!   sample <x> <y> <t>        count must be a power of two in [256, 1024]
 //!
 //! Writes <out_dir>/proof.bin and <out_dir>/pub.bin (canonical public inputs:
 //! u32 LE count, then the u32 LE values: the exact bytes Go's PQPublicInputs makes).
@@ -82,6 +82,7 @@ fn main() {
         t_start: t_start.unwrap_or_else(|| die("t_start is required")),
         t_end: t_end.unwrap_or_else(|| die("t_end is required")),
         polygon,
+        trip_digest: av_zone::commit::trip_digest(&samples),
     };
 
     let mut entropy = [0u8; 64];
@@ -97,6 +98,8 @@ fn main() {
     let proof = prove_trip(&st, &samples, &entropy).unwrap_or_else(|e| die(format!("cannot prove: {e:?}")));
 
     let vals = st.to_values();
+
+    eprintln!("trip_digest = {:?}", st.trip_digest);
 
     use av_zone::proof::{verify_bytes, Verdict};
     if verify_bytes(&vals, &proof) != Verdict::Valid {

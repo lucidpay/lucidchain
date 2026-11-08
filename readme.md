@@ -11,7 +11,7 @@ The chain is deliberately minimal: no general-purpose smart contract VM, only a 
 
 > Companion to the project white paper. Covers all four modules across Tier 1 (`x/sidechain`, `x/checkpoint`), Tier 2 (`x/attestor`), and Tier 3 (`x/proofs`).
 >
-> Sections 2–4 describe the implemented behaviour of `x/sidechain`, `x/checkpoint` and `x/attestor`. §5 (`x/proofs`) describes the implemented behaviour too, together with the current verifier choice (gnark) and the planned microVM direction (§5.7).
+> Sections 2–4 describe the implemented behaviour of `x/sidechain`, `x/checkpoint` and `x/attestor`. §5 (`x/proofs`) describes the implemented behaviour too, together with the current verifier choice (gnark) and the planned WASM direction (§5.7).
 
 ---
 
@@ -403,7 +403,7 @@ Proto definitions: `proto/lucidchain/proofs/v1/*.proto`.
 
 ### 5.3 Verifier implementations are Go code, not on-chain data
 
-**Current verifiers.** The verifiers are implemented with [gnark](https://github.com/Consensys/gnark), over the BN254 curve (for example Groth16 and PLONK). gnark is not quantum-resistant; see §5.7 for what that means and for the planned move to Rust code in a microVM.
+**Current verifiers.** The verifiers are implemented with [gnark](https://github.com/Consensys/gnark), over the BN254 curve (for example Groth16 and PLONK). gnark is not quantum-resistant; see §5.7 for what that means and for the planned move to Rust code in a WASM.
 
 `VerifierRegistration.verification_key` is opaque on-chain state — the actual cryptographic verification (pairing checks, FRI, whatever the proof system requires) is implemented as compiled Go code, handed to the keeper at construction as a map keyed by `proof_system_id`. The keeper itself has no dependency on a proof library; it only uses this interface:
 
@@ -499,7 +499,7 @@ The `zk_anchor` is coupled to the same curve: its only supported scheme today is
 
 - **Determinism.** Every validator must reach the same accept or reject result for the same inputs, on every platform and version.
 - **Gas and limits.** Cost must be metered and bounded, with a hard timeout, so a proof cannot stall block processing.
-- **Failure behaviour.** The current code already separates a verdict from an infrastructure fault (§5.4): a fault is never reported as an invalid proof, and during block execution it halts the affected node rather than letting it diverge. A microVM that is slow, crashed or unreachable would be such a fault, so timeouts and recovery must be specified. It must also be possible to tell "the verifier crashed on this malformed input" (a deterministic rejection, the same on every node) from "the microVM is unavailable on this node" (a fault). If a crafted proof could crash the microVM on every validator and be classified as a fault, a single transaction could halt the whole chain.
+- **Failure behaviour.** The current code already separates a verdict from an infrastructure fault (§5.4): a fault is never reported as an invalid proof, and during block execution it halts the affected node rather than letting it diverge. A WASM that is slow, crashed or unreachable would be such a fault, so timeouts and recovery must be specified. It must also be possible to tell "the verifier crashed on this malformed input" (a deterministic rejection, the same on every node) from "the WASM is unavailable on this node" (a fault). If a crafted proof could crash the WASM on every validator and be classified as a fault, a single transaction could halt the whole chain.
 - **Verifier identity and upgrades.** The exact verifier build (for example a pinned image hash) must be fixed by a governance or software-upgrade path so all validators run the identical version. This replaces the §5.3 property that verification code is compiled into the node binary.
 
 

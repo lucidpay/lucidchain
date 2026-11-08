@@ -12,7 +12,9 @@ pub fn scenario(n: usize) -> (Statement, Vec<Sample>) {
         .map(|i| Sample { x: 1500 + (i * 7) % 1000, y: 1500 + (i * 13) % 1000, t: t_start + 2 + 3 * i })
         .collect();
     let t_end = samples.last().unwrap().t + 5;
-    (Statement { binding: [7; BINDING_LIMBS], zone_id: 42, t_start, t_end, polygon }, samples)
+    let trip_digest = av_zone::commit::trip_digest(&samples);
+    (Statement { binding: [7; BINDING_LIMBS], zone_id: 42, t_start, t_end, polygon, trip_digest }, samples)
+
 }
 
 pub fn encode_pub(vals: &[u32]) -> Vec<u8> {
@@ -93,10 +95,12 @@ fn embedded_mutation_table_native() {
     let proof = std::fs::read(format!("{dir}/selfcheck_proof.bin")).unwrap();
     let pubs = std::fs::read(format!("{dir}/selfcheck_pub.bin")).unwrap();
     let mut row = String::new();
-    for i in 0..35 {
+    for i in 0..43 {
         let mut bad = pubs.clone();
         bad[4 + 4 * i] ^= 1; // low bit of public value i
         row.push_str(&format!("{}", serve_frame(&frame(2, &vk, &bad, &proof))));
     }
-    println!("NATIVE {row}");
+    //println!("NATIVE {row}");
+    let expected = format!("{}{}{}", "1".repeat(27), "2".repeat(8), "1".repeat(8));
+    assert_eq!(row, expected, "verdict per mutated public value changed");
 }

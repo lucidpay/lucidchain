@@ -8,7 +8,7 @@ import (
 )
 
 func BenchmarkWasmVerify(b *testing.B) {
-	for _, tag := range []string{"256", "256_rt", "16384"} {
+	for _, tag := range []string{"256", "256_rt", "1024"} {
 		pub, _ := os.ReadFile("testdata/pub_" + tag + ".bin")
 		proof, _ := os.ReadFile("testdata/proof_" + tag + ".bin")
 		tr, err := NewWasmTransport(context.Background(), 1, 30*time.Second, 256)

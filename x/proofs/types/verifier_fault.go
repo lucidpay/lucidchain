@@ -3,7 +3,7 @@ package types
 import "errors"
 
 // ErrVerifierFault marks a failure of the verification infrastructure rather
-// than a verdict on the proof: the verifier process or microVM crashed, timed
+// than a verdict on the proof: the verifier process or WASM crashed, timed
 // out, was unreachable, answered with something unintelligible, or reported an
 // image hash other than the pinned one.
 //
