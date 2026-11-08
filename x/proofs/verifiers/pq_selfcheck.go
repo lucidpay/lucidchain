@@ -30,6 +30,10 @@ const (
 	// Must equal PV_T_END and MAX_TIME in av-zone/src/statement.rs.
 	avZoneIdxTEnd = 18
 	pqMaxTime     = 2013265921 - 1<<19
+
+	// Index of the first of the 8 trip-digest elements (PV_DIGEST in av-zone/src/statement.rs):
+	// 16 binding limbs, zone_id 16, t_start 17, t_end 18, 16 polygon values 19..34, digest 35..42.
+	avZoneIdxDigest = 35
 )
 
 // PQKnownAnswer is a proof that must verify under VKID.
@@ -105,6 +109,18 @@ func PQSelfCheck(tr PQTransport, answers []PQKnownAnswer) error {
 		}
 		if stCap != StatusMalformed {
 			return fmt.Errorf("self-check vk_id %x: t_end at cap got status %d, want MALFORMED", id, stCap)
+		}
+
+		// A changed digest is a well-formed statement the proof does not satisfy: the guest must
+		// answer INVALID. This guards the trip commitment.
+		badDigest := bytes.Clone(ka.Pub)
+		badDigest[4+4*avZoneIdxDigest] ^= 1
+		stDig, err := run(badDigest, ka.Proof)
+		if err != nil {
+			return fmt.Errorf("self-check vk_id %x (changed digest): %w", id, err)
+		}
+		if stDig != StatusInvalid {
+			return fmt.Errorf("self-check vk_id %x: changed digest got status %d, want INVALID", id, stDig)
 		}
 
 		if st != StatusInvalid {

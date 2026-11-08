@@ -94,13 +94,17 @@ fn embedded_mutation_table_native() {
     let vk = vk_id();
     let proof = std::fs::read(format!("{dir}/selfcheck_proof.bin")).unwrap();
     let pubs = std::fs::read(format!("{dir}/selfcheck_pub.bin")).unwrap();
+
+    // positive controls: right layout, and the untouched frame verifies
+    assert_eq!(pubs.len(), 4 + 4 * 43, "embedded public values must be the 43-value layout");
+    assert_eq!(serve_frame(&frame(2, &vk, &pubs, &proof)), 0, "the embedded proof must be VALID");
+
     let mut row = String::new();
     for i in 0..43 {
         let mut bad = pubs.clone();
         bad[4 + 4 * i] ^= 1; // low bit of public value i
         row.push_str(&format!("{}", serve_frame(&frame(2, &vk, &bad, &proof))));
     }
-    //println!("NATIVE {row}");
     let expected = format!("{}{}{}", "1".repeat(27), "2".repeat(8), "1".repeat(8));
     assert_eq!(row, expected, "verdict per mutated public value changed");
 }
