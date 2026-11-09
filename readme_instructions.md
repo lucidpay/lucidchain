@@ -104,7 +104,7 @@ unset G
 
 ### Add the verifiers
 
-Add both Groth16 and PLONK.
+Add Groth16, PLONK, and BabyBear
 
 ```bash
 cd ~/go/src/github.com/lucidpay/lucidchain
@@ -770,7 +770,7 @@ export PROVER=$HOME/tools/av-zone-prove/target/release/av-zone-prove
 ./tools/prove/make-demo-spec.sh 256 > /tmp/trip.txt
 ls -l /tmp/trip.txt && grep -c '^salt_hex' /tmp/trip.txt     # file exists, prints 1
 
-export SEQ=1     # needs an existing checkpoint with no PQ proof recorded yet
+export SEQ=2     # needs an existing checkpoint with no PQ proof recorded yet
 
 # must be REJECTED: polygon square 1000..4000 instead of the pinned 1000..3000
 sed -E '/^polygon/ s/3000/4000/g' /tmp/trip.txt > /tmp/trip_bad.txt
