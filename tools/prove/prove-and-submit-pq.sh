@@ -3,11 +3,19 @@
 #
 #   SPEC=trip.txt ./prove-and-submit-pq.sh
 #
-# SPEC is the trip part of the av-zone-prove spec: zone_id, t_start, t_end,
-# polygon lines and sample lines. Do NOT put binding_hex in it; this script
-# derives it from the chain's `query proofs binding`.
+# SPEC is the trip part of the av-zone-prove spec: salt_hex, zone_id, t_start,
+# t_end, polygon lines and sample lines. Do NOT put binding_hex in it; this
+# script derives it from the chain's `query proofs binding`.
 #
-# Why the transaction is built in a file: proofs are 268 KB to 515 KB, and one
+# salt_hex is the device's private trip salt (see av-zone/README.md). Put it in
+# SPEC, or pass it as SALT_HEX=<56 hex> (not both). The script never prints it
+# and deletes the merged spec it writes to $OUT when it exits (KEEP_SPEC=1 to
+# keep it, e.g. for debugging with a throwaway salt).
+#
+# NOT covered here: attestation. The digest the proof commits to is public
+# values 35..43 in pub.bin; nothing in this flow gets it signed yet.
+#
+# Why the transaction is built in a file: proofs are hundreds of KB (cap 512 KiB), and one
 # command-line argument is capped at 128 KiB on Linux, so
 # `--proof "$(cat proof.b64)"` cannot work. We take the CLI's own unsigned
 # tx JSON (so the message type and layout are never guessed), patch the two
@@ -32,12 +40,23 @@ OUT="${OUT:-pq-out}"
 AVZONE_DIR="${AVZONE_DIR:-../av-zone}"
 SPEC="${SPEC:?set SPEC to the trip spec file (no binding_hex line)}"
 EXPECT_VK_ID="${EXPECT_VK_ID:-}" # optional: abort unless the prover reports this vk_id
+                                 # (Stage 2 salted: b81d579743df1e93a5f3a28f7b47392c2b075fab50dd3018024c62263bd9dbb8)
+SALT_HEX="${SALT_HEX:-}"         # optional: 56 hex, if SPEC has no salt_hex line
+KEEP_SPEC="${KEEP_SPEC:-0}"
 read -r -a TX_FLAGS <<<"${TX_FLAGS:-}"   # extra flags, e.g. "--keyring-backend test --node tcp://..."
 
 for tool in jq base64 od; do command -v "$tool" >/dev/null || { echo "missing tool: $tool" >&2; exit 1; }; done
 [[ -f "$SPEC" ]] || { echo "SPEC file not found: $SPEC" >&2; exit 1; }
 if grep -Eq '^[[:space:]]*binding_hex' "$SPEC"; then
   echo "SPEC must not contain binding_hex; it is derived from the chain" >&2; exit 1
+fi
+SPEC_HAS_SALT=0
+grep -Eq '^[[:space:]]*salt_hex' "$SPEC" && SPEC_HAS_SALT=1
+if (( SPEC_HAS_SALT == 1 )) && [[ -n "$SALT_HEX" ]]; then
+  echo "salt given twice: SPEC has a salt_hex line and SALT_HEX is set; use one" >&2; exit 1
+fi
+if (( SPEC_HAS_SALT == 0 )) && ! [[ "$SALT_HEX" =~ ^[0-9a-f]{56}$ ]]; then
+  echo "no salt: add a 'salt_hex <56 hex>' line to SPEC or set SALT_HEX (the prover requires one)" >&2; exit 1
 fi
 mkdir -p "$OUT"
 
@@ -58,7 +77,9 @@ to_hex16() {
 BINDING_HEX="$(to_hex16 "$HI")$(to_hex16 "$LO")"
 echo "binding_hex=$BINDING_HEX"
 
-{ echo "binding_hex $BINDING_HEX"; cat "$SPEC"; } >"$OUT/spec.txt"
+# The merged spec holds the secret salt: private file, removed on exit.
+( umask 077; { echo "binding_hex $BINDING_HEX"; [[ -n "$SALT_HEX" ]] && echo "salt_hex $SALT_HEX"; cat "$SPEC"; } >"$OUT/spec.txt" )
+[[ "$KEEP_SPEC" == "1" ]] || trap 'rm -f "$OUT/spec.txt"' EXIT
 
 # 2. Prove. The prover checks its own proof before writing it (see the patch
 #    to av-zone-prove.rs), the analogue of gnark's local Verify.

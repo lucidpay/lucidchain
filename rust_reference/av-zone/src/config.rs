@@ -25,7 +25,7 @@ use p3_uni_stark::StarkConfig;
 use rand::rngs::StdRng;
 use rand::SeedableRng;
 
-use crate::commit::{CHAIN_DOMAIN, RATE};
+use crate::commit::{CHAIN_DOMAIN, RATE, SALT_ELEMS};
 use crate::statement::*;
 use p3_baby_bear::BABYBEAR_S_BOX_DEGREE;
 
@@ -115,14 +115,14 @@ pub fn verifier_config() -> Config {
 /// Identity of this verifier: a hash over everything that determines which
 /// statements verify. Bump `VERSION` whenever the AIR's constraints change;
 /// the numeric constants below are folded in automatically.
-pub const VERSION: &str = "av-zone.stage2.v0";
+pub const VERSION: &str = "av-zone.stage2.v1";
 
 pub fn vk_descriptor() -> String {
     format!(
         "{VERSION}|p3=0.8.0|field=babybear|challenge=ext4|hash=keccak256|zk=hiding({NUM_RANDOM_CODEWORDS})\
 |K={K}|coord_bits={COORD_BITS}|edge_bits={EDGE_BITS}|gap_bits={GAP_BITS}|max_time={MAX_TIME}\
 |binding_limbs={BINDING_LIMBS}|public_values={NUM_PUBLIC_VALUES}|cols={}\
-|trip_digest={DIGEST_ELEMS}|chain=poseidon2-babybear16(rf={},rp={},d={BABYBEAR_S_BOX_DEGREE},rc=plonky3-default,rate={RATE},domain={CHAIN_DOMAIN})\
+|trip_digest={DIGEST_ELEMS}|chain=poseidon2-babybear16(rf={},rp={},d={BABYBEAR_S_BOX_DEGREE},rc=plonky3-default,rate={RATE},domain={CHAIN_DOMAIN},salt_elems={SALT_ELEMS})\
 |fri(log_blowup={LOG_BLOWUP},final={LOG_FINAL_POLY_LEN},arity={MAX_LOG_ARITY},queries={NUM_QUERIES},\
 batch_pow={BATCH_POW_BITS},commit_pow={COMMIT_POW_BITS},query_pow={QUERY_POW_BITS})\
 |rows=2^{MIN_LOG_ROWS}..2^{MAX_LOG_ROWS}|max_proof={MAX_PROOF_BYTES}",

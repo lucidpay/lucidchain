@@ -1,6 +1,7 @@
 //! Writes test fixtures for the Go side: gen_fixtures <out_dir>
 use av_zone::config::vk_id;
 use av_zone::proof::prove_trip;
+const SALT: av_zone::commit::Salt = [11, 22, 33, 44, 55, 66, 77];
 use av_zone::statement::*;
 use std::fs;
 
@@ -25,10 +26,10 @@ fn main() {
             .collect();
         
         let t_end = samples.last().unwrap().t + 5;
-        let trip_digest = av_zone::commit::trip_digest(&samples);
+        let trip_digest = av_zone::commit::trip_digest(&samples, &SALT);
         assert!(t_end < MAX_TIME, "case {tag} would exceed MAX_TIME");
         let st = Statement { binding: [7; BINDING_LIMBS], zone_id: 42, t_start, t_end, polygon, trip_digest };
-        let proof = prove_trip(&st, &samples, &[0x11; 64]).unwrap();
+        let proof = prove_trip(&st, &samples, &SALT, &[0x11; 64]).unwrap();
         let mut pubs = (NUM_PUBLIC_VALUES as u32).to_le_bytes().to_vec();
         for x in st.to_values() { pubs.extend_from_slice(&x.to_le_bytes()); }
         fs::write(format!("{dir}/proof_{tag}.bin"), &proof).unwrap();

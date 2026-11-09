@@ -3,6 +3,8 @@ use av_zone::proof::prove_trip;
 use av_zone::statement::*;
 use pq_verifier_guest::wasm::{serve_frame, FAULT};
 
+const SALT: av_zone::commit::Salt = [11, 22, 33, 44, 55, 66, 77];
+
 pub fn scenario(n: usize) -> (Statement, Vec<Sample>) {
     let t_start = 1_000_000;
     let corners = [(1000, 1000), (3000, 1000), (3000, 3000), (1000, 3000)];
@@ -12,7 +14,7 @@ pub fn scenario(n: usize) -> (Statement, Vec<Sample>) {
         .map(|i| Sample { x: 1500 + (i * 7) % 1000, y: 1500 + (i * 13) % 1000, t: t_start + 2 + 3 * i })
         .collect();
     let t_end = samples.last().unwrap().t + 5;
-    let trip_digest = av_zone::commit::trip_digest(&samples);
+    let trip_digest = av_zone::commit::trip_digest(&samples, &SALT);
     (Statement { binding: [7; BINDING_LIMBS], zone_id: 42, t_start, t_end, polygon, trip_digest }, samples)
 
 }
@@ -36,7 +38,7 @@ pub fn frame(version: u8, vk: &[u8; 32], pubs: &[u8], proof: &[u8]) -> Vec<u8> {
 #[test]
 fn real_proof_through_the_wasm_framing_layer() {
     let (st, samples) = scenario(256);
-    let proof = prove_trip(&st, &samples, &[0x11; 64]).unwrap();
+    let proof = prove_trip(&st, &samples, &SALT, &[0x11; 64]).unwrap();
     let pubs = encode_pub(&st.to_values());
     let vk = vk_id();
 

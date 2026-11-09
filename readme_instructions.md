@@ -112,6 +112,8 @@ chmod +x ./tools/gen-vk/add-verifier.sh
 # ./tools/gen-vk/add-verifier.sh                       # defaults: ~/.lucidchain/config/genesis.json, ./vk.bin
 ./tools/gen-vk/add-verifier.sh ~/.lucidchain/config/genesis.json ~/tmp_workarea/keys-geo-plonk-bn254/vk.bin plonk-bn254 500000
 ./tools/gen-vk/add-verifier.sh ~/.lucidchain/config/genesis.json ~/tmp_workarea/keys-geo-groth16-bn254/vk.bin groth16-bn254 500000
+./tools/gen-vk/add-verifier.sh ~/.lucidchain/config/genesis.json x/proofs/verifiers/testdata/vkid.bin plonky3-babybear-v1 1000000 av-zone
+
 cd
 ```
 
@@ -694,7 +696,7 @@ You should see something similar to this:
 ```
 
 
-## Register a ZKP verifier
+## Working with PQ ZKP verifier
 
 First increase the size of the proof bytes
 
@@ -727,52 +729,34 @@ PID=$(lucidchaind query gov proposals -o json | jq -r '.proposals[-1].id')
 lucidchaind tx gov vote "$PID" yes --from validator --chain-id my-testnet-1 \
   --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
   
-sleep 35
-lucidchaind q gov proposal $ID -o json | jq '{status: .proposal.status, failed_reason: .proposal.failed_reason}'
+echo Waiting for voting period to end...  
+sleep 65
+lucidchaind q gov proposal $PID -o json | jq '{status: .proposal.status, failed_reason: .proposal.failed_reason}'
 lucidchaind q proofs params
 
 ```
 
-Next register the ZK Verifier
-
-```bash
-export BASE64_VK_ID=$(base64 -w0 x/proofs/verifiers/testdata/vkid.bin; echo)
-export GOV_ADDRESS=$(lucidchaind query auth module-account gov -o json | jq -r '.account.value.address')
-cat << EOF > ~/tmp_workarea/json/register-zk-verifier.json
-{
-  "messages": [{
-    "@type": "/lucidchain.proofs.v1.MsgRegisterVerifier",
-    "authority": "$GOV_ADDRESS",
-    "proof_system_id": "plonky3-babybear-v1",
-    "description": "av-zone PQ verifier",
-    "verification_key": "$BASE64_VK_ID",
-    "verification_gas": "1000000",
-    "claim_id": "av-zone",
-    "input_layout": []
-  }],
-  "metadata": "",
-  "deposit": "10000000stake",
-  "title": "Register PQ verifier",
-  "summary": "Register plonky3-babybear-v1 for claim av-zone"
-}
-EOF
-
-lucidchaind tx gov submit-proposal ~/tmp_workarea/json/register-zk-verifier.json --from validator \
-  --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
-
-sleep 7   # long enough for inclusion in a block
-
-PID=$(lucidchaind query gov proposals -o json | jq -r '.proposals[-1].id')
-lucidchaind tx gov vote "$PID" yes --from validator --chain-id my-testnet-1 \
-  --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
-
-sleep 65
-lucidchaind q proofs verifiers | grep proof_system_id
-```
-
 ### Example 3 - Tier 3 quantum resistant 
 
+
+
 ```bash
+cat > ~/tmp_workarea/pq-env.sh <<'EOF'
+cd ~/go/src/github.com/lucidpay/lucidchain
+export PROVER=$HOME/tools/av-zone-prove/target/release/av-zone-prove
+export SC=hospitality-platform-01
+export CLAIM=av-zone
+export SYSTEM=plonky3-babybear-v1
+export FROM=validator
+export CHAIN_ID=my-testnet-1
+export OUT=/tmp/pq-out
+export GAS_PRICES=0.025stake
+export VERIFY_GAS=1000000
+export EXPECT_VK_ID=b81d579743df1e93a5f3a28f7b47392c2b075fab50dd3018024c62263bd9dbb8
+EOF
+chmod + ~/tmp_workarea/pq-env.sh
+source ~/tmp_workarea/pq-env.sh
+[ -x "$PROVER" ] && echo "prover ok" || echo "PROVER missing: rebuild it as before"
 cd ~/go/src/github.com/lucidpay/lucidchain
 
 chmod +x ./tools/prove/*.sh
@@ -784,20 +768,16 @@ CARGO_TARGET_DIR=$HOME/tools/av-zone-prove/target \
 export PROVER=$HOME/tools/av-zone-prove/target/release/av-zone-prove
 
 ./tools/prove/make-demo-spec.sh 256 > /tmp/trip.txt
+ls -l /tmp/trip.txt && grep -c '^salt_hex' /tmp/trip.txt     # file exists, prints 1
 
-export SC=hospitality-platform-01
-export SEQ=2
-export CLAIM=av-zone
-export SYSTEM=plonky3-babybear-v1
-export FROM=validator
-export CHAIN_ID=my-testnet-1
-export SPEC=/tmp/trip.txt
-export OUT=/tmp/pq-out
-export GAS_PRICES=0.025stake       # as in your checkpoint command
-export VERIFY_GAS=1000000
+export SEQ=1     # needs an existing checkpoint with no PQ proof recorded yet
 
-./tools/prove/prove-and-submit-pq.sh
+# must be REJECTED: polygon square 1000..4000 instead of the pinned 1000..3000
+sed -E '/^polygon/ s/3000/4000/g' /tmp/trip.txt > /tmp/trip_bad.txt
+SPEC=/tmp/trip_bad.txt ./tools/prove/prove-and-submit-pq.sh
 
+# must be ACCEPTED
+SPEC=/tmp/trip.txt ./tools/prove/prove-and-submit-pq.sh
 # Wait for block creation then
 sleep 3
 
@@ -811,7 +791,7 @@ lucidchaind q tx "$TXHASH" -o json | jq '{code, raw_log, height, gas_wanted, gas
 ### Validate the proofs
 
 ```bash
-lucidchaind query proofs proofs-for-checkpoint --sidechain-id hospitality-platform-01 --checkpoint-sequence 2 -o json \
+lucidchaind query proofs proofs-for-checkpoint --sidechain-id hospitality-platform-01 --checkpoint-sequence $SEQ -o json \
   | jq '.proofs[] | {proof_system_id, claim_id, verified_height}'
 
   unset ZK_RECORDS_ROOT K1 K2

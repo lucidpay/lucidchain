@@ -1,4 +1,5 @@
 use av_zone::commit::trip_digest;
+const SALT: av_zone::commit::Salt = [11, 22, 33, 44, 55, 66, 77];
 use av_zone::config::*;
 use av_zone::proof::*;
 use av_zone::statement::*;
@@ -15,9 +16,9 @@ fn main() {
             .map(|i| Sample { x: 1500 + (i * 7) % 1000, y: 1500 + (i * 13) % 1000, t: t_start + 2 + 3 * i })
             .collect();
         let t_end = samples.last().unwrap().t + 5;
-        let st = Statement { binding: [7; BINDING_LIMBS], zone_id: 42, t_start, t_end, polygon, trip_digest: trip_digest(&samples) };
+        let st = Statement { binding: [7; BINDING_LIMBS], zone_id: 42, t_start, t_end, polygon, trip_digest: trip_digest(&samples, &SALT) };
         let t0 = Instant::now();
-        let proof = prove_trip(&st, &samples, &[0x11; 64]).unwrap();
+        let proof = prove_trip(&st, &samples, &SALT, &[0x11; 64]).unwrap();
         let prove = t0.elapsed().as_secs_f64();
         let pv = st.to_values();
         let mut us: Vec<f64> = (0..30)

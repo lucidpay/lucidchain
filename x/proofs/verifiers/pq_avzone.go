@@ -15,7 +15,7 @@ import (
 //	19..35  8 polygon vertex slots (x, y), counter-clockwise, padded by repeating the last
 const (
 	AVZoneMaxVertices = 8
-	AVZoneNumPublic   = bindingLimbs + 3 + 2*AVZoneMaxVertices // 35
+	AVZoneNumPublic   = bindingLimbs + 3 + 2*AVZoneMaxVertices + PQDigestElems // 43
 
 	AVZoneIdxZoneID = bindingLimbs
 	AVZoneIdxTStart = bindingLimbs + 1
@@ -25,6 +25,9 @@ const (
 	avZoneCoordBits = 14
 	avZoneTimeBits  = 30
 )
+
+var _ [AVZoneNumPublic - PQNumPublicValues]struct{}
+var _ [PQNumPublicValues - AVZoneNumPublic]struct{}
 
 // AVZoneStatement is the public, non-binding part of an av-zone proof.
 type AVZoneStatement struct {

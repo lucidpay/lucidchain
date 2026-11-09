@@ -4,6 +4,9 @@
 //!
 //! Spec (one item per line, '#' comments allowed):
 //!   binding_hex <64 hex>      the 32-byte x/proofs/types.Binding (ComputeBinding output)
+//!   salt_hex <56 hex>         the device's trip salt: 7 u32 LE words, each below the BabyBear
+//!                             modulus (rejection-sampled from a CSPRNG). Private witness: never
+//!                             written to <out_dir>. Required: there is no default.
 //!   zone_id <u32>
 //!   t_start <u32>
 //!   t_end <u32>
@@ -14,6 +17,7 @@
 //! u32 LE count, then the u32 LE values: the exact bytes Go's PQPublicInputs makes).
 //! Zero-knowledge randomness comes from /dev/urandom unless a TEST entropy is given.
 
+use av_zone::commit::{salt_is_canonical, Salt, SALT_ELEMS};
 use av_zone::config::vk_id;
 use av_zone::proof::prove_trip;
 use av_zone::statement::*;
@@ -41,6 +45,19 @@ fn limbs_from_binding(d: &[u8]) -> [u32; BINDING_LIMBS] {
     out
 }
 
+/// 7 little-endian u32 words; every word must already be canonical (< modulus).
+fn salt_from_hex(s: &str) -> Salt {
+    let b = hex(s, 4 * SALT_ELEMS);
+    let mut out = [0u32; SALT_ELEMS];
+    for (i, o) in out.iter_mut().enumerate() {
+        *o = u32::from_le_bytes([b[4 * i], b[4 * i + 1], b[4 * i + 2], b[4 * i + 3]]);
+    }
+    if !salt_is_canonical(&out) {
+        die("salt_hex has a word >= the field modulus: rejection-sample the salt instead of reducing it");
+    }
+    out
+}
+
 fn num(tok: Option<&str>, what: &str) -> u32 {
     tok.and_then(|t| t.parse().ok()).unwrap_or_else(|| die(format!("bad or missing {what}")))
 }
@@ -53,6 +70,7 @@ fn main() {
     let spec = fs::read_to_string(&args[1]).unwrap_or_else(|e| die(format!("read spec: {e}")));
 
     let (mut binding, mut zone_id, mut t_start, mut t_end) = (None, None, None, None);
+    let mut salt: Option<Salt> = None;
     let mut poly: Vec<(u32, u32)> = vec![];
     let mut samples: Vec<Sample> = vec![];
     for line in spec.lines() {
@@ -63,6 +81,7 @@ fn main() {
         let mut it = line.split_whitespace();
         match it.next().unwrap() {
             "binding_hex" => binding = Some(limbs_from_binding(&hex(it.next().unwrap_or(""), 32))),
+            "salt_hex" => salt = Some(salt_from_hex(it.next().unwrap_or(""))),
             "zone_id" => zone_id = Some(num(it.next(), "zone_id")),
             "t_start" => t_start = Some(num(it.next(), "t_start")),
             "t_end" => t_end = Some(num(it.next(), "t_end")),
@@ -76,13 +95,14 @@ fn main() {
     }
     let mut polygon = [*poly.last().unwrap(); K];
     polygon[..poly.len()].copy_from_slice(&poly);
+    let salt = salt.unwrap_or_else(|| die("salt_hex is required"));
     let st = Statement {
         binding: binding.unwrap_or_else(|| die("binding_hex is required")),
         zone_id: zone_id.unwrap_or_else(|| die("zone_id is required")),
         t_start: t_start.unwrap_or_else(|| die("t_start is required")),
         t_end: t_end.unwrap_or_else(|| die("t_end is required")),
         polygon,
-        trip_digest: av_zone::commit::trip_digest(&samples),
+        trip_digest: av_zone::commit::trip_digest(&samples, &salt),
     };
 
     let mut entropy = [0u8; 64];
@@ -95,7 +115,7 @@ fn main() {
             .unwrap_or_else(|e| die(format!("cannot read OS entropy: {e}")));
     }
 
-    let proof = prove_trip(&st, &samples, &entropy).unwrap_or_else(|e| die(format!("cannot prove: {e:?}")));
+    let proof = prove_trip(&st, &samples, &salt, &entropy).unwrap_or_else(|e| die(format!("cannot prove: {e:?}")));
 
     let vals = st.to_values();
 

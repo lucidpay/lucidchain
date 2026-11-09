@@ -8,11 +8,14 @@
 //!      polygon,
 //!   2. sample times strictly increase with every gap at most MAX_GAP seconds,
 //!   3. the first sample is within MAX_GAP-1 s of `t_start` and the last
-//!      within MAX_GAP-1 s of `t_end`, so the whole window is covered.
+//!      within MAX_GAP-1 s of `t_end`, so the whole window is covered,
+//!   4. the samples hash, under a hidden salt, to `trip_digest` (the Poseidon2 chain of
+//!      `commit.rs`; the AIR chains the permutations over the same x, y, t cells).
 //!
-//! It says NOTHING about whether those samples are real. Binding the hidden
-//! samples to an attested trip log (a Poseidon2 commitment checked by lookup)
-//! is the next stage and is NOT in this version.
+//! It says NOTHING about whether those samples are real. That is the attestor's
+//! job: it signs `trip_digest` (and the chain must check the signed digest equals
+//! the public one). The salt is private witness, not a public value; the verifier
+//! never sees it.
 
 pub const K: usize = 8; // polygon vertex slots (unused slots repeat the last vertex)
 pub const COORD_BITS: usize = 14; // coordinates are integers in [0, 2^14)
@@ -173,7 +176,7 @@ pub enum Violation {
 /// Reference check of the statement for a concrete sample lc_sequence. Uses the
 /// slot-level edges exactly as the AIR does (zero-length padding edges
 /// included).
-pub fn check_trip(st: &Statement, samples: &[Sample]) -> Result<(), Violation> {
+pub fn check_trip(st: &Statement, samples: &[Sample], salt: &crate::commit::Salt) -> Result<(), Violation> {
     let first = samples.first().ok_or(Violation::NoSamples)?;
     for (i, s) in samples.iter().enumerate() {
         if s.x >= 1 << COORD_BITS || s.y >= 1 << COORD_BITS {
@@ -198,7 +201,7 @@ pub fn check_trip(st: &Statement, samples: &[Sample]) -> Result<(), Violation> {
     if st.t_end < last.t || st.t_end - last.t >= MAX_GAP {
         return Err(Violation::TrailingGap);
     }
-    if crate::commit::trip_digest(samples) != st.trip_digest {
+    if crate::commit::trip_digest(samples, salt) != st.trip_digest {
         return Err(Violation::DigestMismatch);
     }
     Ok(())
@@ -207,6 +210,9 @@ pub fn check_trip(st: &Statement, samples: &[Sample]) -> Result<(), Violation> {
 #[cfg(test)]
 pub(crate) mod testutil {
     use super::*;
+    use crate::commit::Salt;
+
+    pub const TEST_SALT: Salt = [11, 22, 33, 44, 55, 66, 77];
 
     /// A square zone [1000, 3000)^2 padded to K slots.
     pub fn square_statement(t_start: u32, t_end: u32) -> Statement {
@@ -310,52 +316,63 @@ mod tests {
     fn reference_model_accepts_good_and_rejects_each_violation() {
         let mut st = square_statement(1_000_000, 1_000_000 + 2 + 3 * 63 + 5);
         let good = good_trip(&st, 64);
-        st.trip_digest = crate::commit::trip_digest(&good);
-        assert_eq!(check_trip(&st, &good), Ok(()));
+        st.trip_digest = crate::commit::trip_digest(&good, &TEST_SALT);
+        assert_eq!(check_trip(&st, &good, &TEST_SALT), Ok(()));
 
         // geometry and times are fine but the samples are not the committed ones
         let mut t = good.clone();
         t[20].x += 1;
-        assert_eq!(check_trip(&st, &t), Err(Violation::DigestMismatch));
+        assert_eq!(check_trip(&st, &t, &TEST_SALT), Err(Violation::DigestMismatch));
 
-        assert_eq!(check_trip(&st, &[]), Err(Violation::NoSamples));
+        assert_eq!(check_trip(&st, &[], &TEST_SALT), Err(Violation::NoSamples));
 
         let mut t = good.clone();
         t[10].x = 3001; // just outside the right edge
-        assert_eq!(check_trip(&st, &t), Err(Violation::OutsideZone { index: 10 }));
+        assert_eq!(check_trip(&st, &t, &TEST_SALT), Err(Violation::OutsideZone { index: 10 }));
 
         let mut t = good.clone();
         t[10].x = 3000; // exactly on the boundary is inside
         let mut st_b = st.clone();
-        st_b.trip_digest = crate::commit::trip_digest(&t);
-        assert_eq!(check_trip(&st_b, &t), Ok(()));
+        st_b.trip_digest = crate::commit::trip_digest(&t, &TEST_SALT);
+        assert_eq!(check_trip(&st_b, &t, &TEST_SALT), Ok(()));
 
         let mut t = good.clone();
         t[5].x = 1 << COORD_BITS;
-        assert_eq!(check_trip(&st, &t), Err(Violation::CoordinateOutOfRange { index: 5 }));
+        assert_eq!(check_trip(&st, &t, &TEST_SALT), Err(Violation::CoordinateOutOfRange { index: 5 }));
 
         // a hole in coverage: a 17 s gap lets the vehicle leave and return unseen
         let mut t = good.clone();
         for s in t.iter_mut().skip(20) {
             s.t += 14; // 3 s spacing + 14 = 17 s gap
         }
-        assert_eq!(check_trip(&st, &t), Err(Violation::Gap { index: 19 }));
+        assert_eq!(check_trip(&st, &t, &TEST_SALT), Err(Violation::Gap { index: 19 }));
 
         // duplicate / non-increasing timestamps
         let mut t = good.clone();
         t[30].t = t[29].t;
-        assert_eq!(check_trip(&st, &t), Err(Violation::Gap { index: 29 }));
+        assert_eq!(check_trip(&st, &t, &TEST_SALT), Err(Violation::Gap { index: 29 }));
 
         // starts late
         let mut t = good.clone();
         for s in t.iter_mut() {
             s.t += 20;
         }
-        assert_eq!(check_trip(&st, &t), Err(Violation::LeadingGap));
+        assert_eq!(check_trip(&st, &t, &TEST_SALT), Err(Violation::LeadingGap));
 
         // ends early
         let mut st2 = st.clone();
         st2.t_end += 100;
-        assert_eq!(check_trip(&st2, &good), Err(Violation::TrailingGap));
+        assert_eq!(check_trip(&st2, &good, &TEST_SALT), Err(Violation::TrailingGap));
+    }
+
+    #[test]
+    fn digest_depends_on_the_salt() {
+        let mut st = square_statement(1_000_000, 1_000_000 + 2 + 3 * 63 + 5);
+        let good = good_trip(&st, 64);
+        st.trip_digest = crate::commit::trip_digest(&good, &TEST_SALT);
+        assert_eq!(check_trip(&st, &good, &TEST_SALT), Ok(()));
+        let mut other = TEST_SALT;
+        other[6] += 1;
+        assert_eq!(check_trip(&st, &good, &other), Err(Violation::DigestMismatch));
     }
 }

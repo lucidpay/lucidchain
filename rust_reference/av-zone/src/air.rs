@@ -11,7 +11,7 @@
 //! Trip commitment. The permutations form a sponge chain over the SAME x, y, t cells the
 //! geofence constraints use, so the hidden trip that is proven inside the zone is, by
 //! construction, the trip whose digest is public:
-//!   first row:   inputs = IV + block(x, y, t)
+//!   first row:   inputs = IV + block(x, y, t)   (capacity[1..8] is the hidden salt: a free witness)
 //!   transition:  next.inputs = this.outputs + block(next.x, next.y, next.t)
 //!   last row:    outputs[0..8] = public digest
 //! The permutation itself is constrained by the unmodified `p3_poseidon2_air::Poseidon2Air`,
@@ -39,7 +39,7 @@ use p3_field::PrimeCharacteristicRing;
 use p3_matrix::dense::RowMajorMatrix;
 use p3_poseidon2_air::{generate_trace_rows, num_cols, Poseidon2Air, Poseidon2Cols, RoundConstants};
 
-use crate::commit::{initial_state, sample_block, DIGEST_ELEMS, RATE, STATE_WIDTH};
+use crate::commit::{initial_state, sample_block, Salt, DIGEST_ELEMS, RATE, STATE_WIDTH, ZERO_SALT};
 use crate::statement::*;
 
 // ---- the Poseidon2 block ----
@@ -227,7 +227,8 @@ impl<AB: AirBuilder<F = BabyBear>> Air<AB> for AvZoneAir {
         let cur: &P2Cols<AB::Var> = local[COL_P2..COL_P2 + P2_COLS].borrow();
         let nxt: &P2Cols<AB::Var> = next[COL_P2..COL_P2 + P2_COLS].borrow();
         let out = &cur.ending_full_rounds[P2_HALF - 1].post;
-        let iv = initial_state();
+        // Only the fixed part of the initial state (rate = 0, capacity[0] = domain) is used below.
+    let iv = initial_state(&ZERO_SALT);
         let block = |row: &[AB::Var], j: usize| -> AB::Expr {
             match j {
                 0 => row[COL_X].into(),
@@ -238,7 +239,11 @@ impl<AB: AirBuilder<F = BabyBear>> Air<AB> for AvZoneAir {
         };
         for j in 0..STATE_WIDTH {
             let blk = if j < RATE { block(local, j) } else { AB::Expr::ZERO };
-            builder.when_first_row().assert_eq(cur.inputs[j], AB::Expr::from(iv[j]) + blk);
+            // Rate part and capacity[0] are pinned on the first row. capacity[1..] is the hidden
+            // salt: deliberately unconstrained here; it then flows through every transition.
+            if j <= RATE {
+                builder.when_first_row().assert_eq(cur.inputs[j], AB::Expr::from(iv[j]) + blk);
+            }
 
             let nblk = if j < RATE { block(next, j) } else { AB::Expr::ZERO };
             builder.when_transition().assert_eq(nxt.inputs[j], out[j] + nblk);
@@ -263,9 +268,10 @@ fn to_bits(v: u64, n: usize, out: &mut [BabyBear]) {
 pub fn generate_trace(
     st: &Statement,
     samples: &[Sample],
+    salt: &Salt,
 ) -> Result<RowMajorMatrix<BabyBear>, TraceError> {
-    check_trip(st, samples).map_err(TraceError::Violation)?;
-    Ok(build_trace(st, samples))
+    check_trip(st, samples, salt).map_err(TraceError::Violation)?;
+    Ok(build_trace(st, samples, salt))
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -277,10 +283,10 @@ pub enum TraceError {
 /// Builds a trace WITHOUT checking the statement. For negative tests only:
 /// the result may be unsatisfiable, in which case proving must fail or the
 /// proof must not verify.
-pub fn build_trace(st: &Statement, samples: &[Sample]) -> RowMajorMatrix<BabyBear> {
+pub fn build_trace(st: &Statement, samples: &[Sample], salt: &Salt) -> RowMajorMatrix<BabyBear> {
     let n = samples.len();
     let consts = p2_constants();
-    let mut state = initial_state();
+    let mut state = initial_state(salt);
     let mut values = vec![BabyBear::ZERO; n * WIDTH];
     for (i, s) in samples.iter().enumerate() {
         let row = &mut values[i * WIDTH..(i + 1) * WIDTH];

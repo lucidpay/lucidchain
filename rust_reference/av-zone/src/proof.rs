@@ -6,6 +6,7 @@
 use p3_uni_stark::{prove, verify, Proof, VerificationError};
 
 use crate::air::{build_trace, generate_trace, public_values, AvZoneAir, TraceError};
+use crate::commit::{salt_is_canonical, Salt};
 use crate::config::*;
 use crate::statement::*;
 
@@ -21,15 +22,25 @@ pub enum ProveError {
     Statement(StatementError),
     Trace(TraceError),
     BadLength,
+    NonCanonicalSalt,
     Prover(String),
 }
 
-/// Proves that `samples` satisfy `st`. `entropy` must be fresh OS randomness.
-/// The sample count must be a power of two within the pinned row range.
-pub fn prove_trip(st: &Statement, samples: &[Sample], entropy: &[u8; 64]) -> Result<Vec<u8>, ProveError> {
+/// Proves that `samples` satisfy `st`, and that they hash under `salt` to `st.trip_digest`.
+/// `salt` is private witness (device CSPRNG); `entropy` is separate, fresh OS randomness for the
+/// zero-knowledge of the proof. The sample count must be a power of two within the pinned row range.
+pub fn prove_trip(
+    st: &Statement,
+    samples: &[Sample],
+    salt: &Salt,
+    entropy: &[u8; 64],
+) -> Result<Vec<u8>, ProveError> {
+    if !salt_is_canonical(salt) {
+        return Err(ProveError::NonCanonicalSalt);
+    }
     Statement::from_values(&st.to_values()).map_err(ProveError::Statement)?;
     check_rows(samples.len()).map_err(|_| ProveError::BadLength)?;
-    let trace = generate_trace(st, samples).map_err(ProveError::Trace)?;
+    let trace = generate_trace(st, samples, salt).map_err(ProveError::Trace)?;
     prove_trace(st, trace, entropy)
 }
 
@@ -47,8 +58,8 @@ pub fn prove_trace(
 }
 
 /// Builds a trace without checking the statement (negative tests only).
-pub fn unchecked_trace(st: &Statement, samples: &[Sample]) -> p3_matrix::dense::RowMajorMatrix<Val> {
-    build_trace(st, samples)
+pub fn unchecked_trace(st: &Statement, samples: &[Sample], salt: &Salt) -> p3_matrix::dense::RowMajorMatrix<Val> {
+    build_trace(st, samples, salt)
 }
 
 fn check_rows(n: usize) -> Result<(), ()> {

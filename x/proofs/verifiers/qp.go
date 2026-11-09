@@ -88,15 +88,15 @@ type pqVerifier struct {
 
 var _ types.ProofVerifier = pqVerifier{}
 
-// NewPQ returns the hash-based verifier. imageHash is the pinned hash of the
-// verifier image, vkIDs the allowlist of verification keys this binary
-// accepts, and maxProofBytes the hard cap on proof size (checked before the
-// transport is touched, so the WASM cannot be used as a DoS amplifier).
-//
-// Register it next to the gnark verifiers:
+// NewPQ returns the hash-based verifier. vkIDs is the allowlist of verification
+// keys this binary accepts (the verifier image pin is checked by the transport,
+// see CheckWasmPin), and maxProofBytes the hard cap on proof size (checked
+// before the transport is touched, so the WASM cannot be used as a DoS
+// amplifier). Production code should use DefaultWithPQ, which also runs the
+// self-check; to register it by hand next to the gnark verifiers:
 //
 //	m := verifiers.Default()
-//	m[verifiers.PQBabyBear] = verifiers.NewPQ(transport, imageHash, vkIDs, 512<<10)
+//	m[verifiers.PQBabyBear] = verifiers.NewPQ(transport, vkIDs, 512<<10)
 func NewPQ(transport PQTransport, vkIDs [][VKIDLen]byte, maxProofBytes int) types.ProofVerifier {
 	// run some sanity code first, so we don't panic in the middle of a fuzz run.
 	if maxProofBytes < 1 || maxProofBytes > PQWireMaxProofBytes {
@@ -162,9 +162,10 @@ func (v pqVerifier) CheckInputs(publicInputs []byte, expected []types.ExpectedIn
 }
 
 // pqNumPublic is the number of public values of the statement this binary's
-// vk_ids prove: 35 in total: the 16 binding limbs plus 19 statement values. SET THIS to match
-// your circuit. It is a stopgap until the count lives per vk_id in the allowlist.
-const pqNumPublic = 35
+// vk_ids prove: 43 in total (layout in pq_layout.go): the 16 binding limbs, zone_id, t_start,
+// t_end, 16 polygon values and the 8-element trip digest. It is a stopgap until the count
+// lives per vk_id in the allowlist.
+const pqNumPublic = PQNumPublicValues
 
 // PublicInputCount implements types.ProofVerifier.
 func (v pqVerifier) PublicInputCount(vkBytes []byte) (int, error) {
