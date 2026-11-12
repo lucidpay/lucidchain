@@ -1023,7 +1023,7 @@ lucidchaind tx attestor register-attestor \
   --credential-uri https://example.org/acme.json \
   --from attestor-operator --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
 
-sleep 4 #wait for block creation
+sleep 6 #wait for block creation
 
 lucidchaind query attestor attestor acme   # status should be ATTESTOR_STATUS_PENDING
 ```
@@ -1056,11 +1056,9 @@ sleep 7
 lucidchaind query gov proposals -o json | jq '.proposals[-1] | {id, status}'
 PID=$(lucidchaind query gov proposals -o json | jq -r '.proposals[-1].id')
 lucidchaind tx gov vote "$PID" yes --from validator --chain-id my-testnet-1 --gas-prices 0stake --yes  # proposal ID should be 2 if this is your first proposal
-```
-
-```bash
 # give it a couple minutes then check
-
+echo Waiting for voting period to end
+sleep 65
 lucidchaind query attestor attestor acme   # status should be ATTESTOR_STATUS_ACTIVE
 
 # if it doesn't activate make sure your proposal-id is correct. You can list the proposals using
@@ -1110,7 +1108,7 @@ txhash: 5D1C540C4E110B77D05FDE3E74EAC2FE9D2685B522C77AB7BBE6993E52928AEB
 ### Verify the attestation
 
 ```bash
-lucidchaind query attestor checkpoint-attestations hospitality-platform-01 2
+lucidchaind query attestor checkpoint-attestations hospitality-platform-01 3
 ```
 
 You should see something similar to this:
@@ -1222,7 +1220,7 @@ lucidchaind tx attestor update-attestor-signers "${ROT_ARGS[@]}" \
   --from attestor-operator --chain-id my-testnet-1 \
   --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
 
-sleep 4 # wait for block creation
+sleep 6 # wait for block creation
 
 lucidchaind query attestor attestor acme | grep -E "signer_set_version|signature_threshold|last_rotation_approver_bitmap"
 ```
@@ -1258,9 +1256,9 @@ lucidchaind keys show challenger -a      # the address
 # IMPORTANT: fund the wallet
 lucidchaind tx bank send validator $(lucidchaind keys show challenger -a) 5000000stake \
   --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
-sleep 4 # wait for block creation
+sleep 6 # wait for block creation
 # pull the attestation id for the next command
-export ATTESTATION_ID=$(lucidchaind query attestor checkpoint-attestations hospitality-platform-01 2 -o json | jq -r '.attestations[0].id')
+export ATTESTATION_ID=$(lucidchaind query attestor checkpoint-attestations hospitality-platform-01 3 -o json | jq -r '.attestations[0].id')
 
 # raise a dispute
 lucidchaind tx attestor raise-dispute \
@@ -1276,7 +1274,7 @@ Create the proposal file with the JSON below. The `dispute_id` comes from the ra
 
 ```bash
 # pull the attestation id for the next command
-export ATTESTATION_ID=$(lucidchaind query attestor checkpoint-attestations hospitality-platform-01 2 -o json | jq -r '.attestations[0].id')
+export ATTESTATION_ID=$(lucidchaind query attestor checkpoint-attestations hospitality-platform-01 3 -o json | jq -r '.attestations[0].id')
 export DISPUTE_ID=$(lucidchaind query txs --query "dispute_raised.attestation_id='$ATTESTATION_ID'" -o json \
   | jq -r '.txs[0].events[] | select(.type=="dispute_raised") | .attributes[] | select(.key=="dispute_id") | .value')
 
@@ -1308,12 +1306,10 @@ PID=$(lucidchaind query gov proposals -o json | jq -r '.proposals[-1].id')
 lucidchaind query gov proposal "$PID" -o json | jq '.proposal | {id, status, voting_end_time}'
 lucidchaind tx gov vote "$PID" yes --from validator --chain-id my-testnet-1 \
   --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
-```
 
+echo Waiting for voting period to finish
+sleep 65
 
-wait for the voting period to finish (60s) then check the status of the proposal
-
-```bash
 PID=$(lucidchaind query gov proposals -o json | jq -r '.proposals[-1].id')
 lucidchaind query gov proposal "$PID" -o json | jq '.proposal | {status, failed_reason, voting_end_time}'
 ```
@@ -1352,11 +1348,10 @@ PID=$(lucidchaind query gov proposals -o json | jq -r '.proposals[-1].id')
 lucidchaind query gov proposal "$PID" -o json | jq '.proposal | {id, status, voting_end_time}'
 lucidchaind tx gov vote "$PID" yes --from validator --chain-id my-testnet-1 \
   --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
-```
 
-wait for the voting period to finish (60s) then check the status
+echo Waiting for voting period to finish
+sleep 65
 
-```bash
 lucidchaind query attestor attestor kyc-attestor-01 | grep status
 ```
 
@@ -1388,11 +1383,10 @@ sleep 7   # long enough for inclusion in a block
 PID=$(lucidchaind query gov proposals -o json | jq -r '.proposals[-1].id')
 lucidchaind tx gov vote "$PID" yes --from validator --chain-id my-testnet-1 \
   --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
-```
 
-wait for the voting period to finish (60s) then check the status
+echo Waiting for voting period to end
+sleep 65
 
-```bash
 lucidchaind query attestor attestor kyc-attestor-01 | grep status
 ```
 
@@ -1480,7 +1474,7 @@ lucidchaind tx sidechain update-signers hospitality-platform-01 "${SC_ROT_ARGS[@
   --from validator --chain-id my-testnet-1 \
   --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
 
-sleep 4 # wait for block creation
+sleep 6 # wait for block creation
 
 lucidchaind query sidechain sidechain hospitality-platform-01 | grep -E "signer_set_version|signature_threshold"
 ```
@@ -1514,11 +1508,10 @@ lucidchaind tx gov submit-proposal ~/tmp_workarea/json/sidechain-suspension-prop
 sleep 7
 PID=$(lucidchaind query gov proposals -o json | jq -r '.proposals[-1].id')
 lucidchaind tx gov vote "$PID" yes --from validator --chain-id my-testnet-1 --yes
-```
 
-wait for the voting period to finish (60s) then check the status
+echo wait for the voting period to finish
+sleep 65
 
-```bash
 lucidchaind query sidechain sidechain hospitality-platform-01
 ```
 
@@ -1551,11 +1544,10 @@ lucidchaind tx gov submit-proposal ~/tmp_workarea/json/sidechain-slash-proposal.
 sleep 7
 PID=$(lucidchaind query gov proposals -o json | jq -r '.proposals[-1].id')
 lucidchaind tx gov vote "$PID" yes --from validator --chain-id my-testnet-1 --yes
-```
 
-wait for the voting period to finish (60s) then check the status
+echo wait for the voting period to finish
+sleep 65
 
-```bash
 lucidchaind query sidechain sidechain hospitality-platform-01
 ```
 
