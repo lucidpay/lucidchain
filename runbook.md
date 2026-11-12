@@ -127,18 +127,6 @@ chmod +x ./tools/gen-vk/bind-av-zone-root.sh
 ./tools/gen-vk/bind-av-zone-root.sh genesis ~/.lucidchain/config/genesis.json
 ```
 
-On a running chain use a governance proposal instead (the verifier version becomes 2):
-
-```bash
-export GOV_ADDRESS=$(lucidchaind query auth module-account gov -o json | jq -r '.account.value.address')
-./tools/gen-vk/bind-av-zone-root.sh proposal ~/tmp_workarea/json/bind-av-zone.json
-lucidchaind tx gov submit-proposal ~/tmp_workarea/json/bind-av-zone.json --from validator \
-  --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
-sleep 7
-PID=$(lucidchaind query gov proposals -o json | jq -r '.proposals[-1].id')
-lucidchaind tx gov vote "$PID" yes --from validator --chain-id my-testnet-1 \
-  --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
-```
 
 ### Shorten the governance voting period
 
@@ -183,6 +171,22 @@ Do this only if validation passed.
 lucidchaind comet unsafe-reset-all
 lucidchaind start
 ```
+
+### use a governance proposal for registering the verifier (the verifier version becomes 2):
+
+```bash
+cd ~/go/src/github.com/lucidpay/lucidchain
+export GOV_ADDRESS=$(lucidchaind query auth module-account gov -o json | jq -r '.account.value.address')
+./tools/gen-vk/bind-av-zone-root.sh proposal ~/tmp_workarea/json/bind-av-zone.json
+lucidchaind tx gov submit-proposal ~/tmp_workarea/json/bind-av-zone.json --from validator \
+  --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
+sleep 7
+PID=$(lucidchaind query gov proposals -o json | jq -r '.proposals[-1].id')
+lucidchaind tx gov vote "$PID" yes --from validator --chain-id my-testnet-1 \
+  --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
+cd
+```
+
 
 ## Check the node
 
@@ -759,10 +763,9 @@ lucidchaind q proofs params
 
 ```
 
-### Example 3 - Tier 3 quantum resistant 
+## Example 3 - Tier 3 quantum resistant 
 
-
-
+0. Environment and prover build (once per shell)
 ```bash
 cat > ~/tmp_workarea/pq-env.sh <<'EOF'
 cd ~/go/src/github.com/lucidpay/lucidchain
@@ -779,83 +782,91 @@ export EXPECT_VK_ID=b81d579743df1e93a5f3a28f7b47392c2b075fab50dd3018024c62263bd9
 EOF
 chmod +x ~/tmp_workarea/pq-env.sh
 source ~/tmp_workarea/pq-env.sh
-[ -x "$PROVER" ] && echo "prover ok" || echo "PROVER missing: rebuild it as before"
 cd ~/go/src/github.com/lucidpay/lucidchain
 
-chmod +x ./tools/prove/*.sh
-
-CARGO_TARGET_DIR=$HOME/tools/av-zone-prove/target \
-  cargo build --release \
-  --manifest-path rust_reference/av-zone/Cargo.toml --bin av-zone-prove
-
-export PROVER=$HOME/tools/av-zone-prove/target/release/av-zone-prove
-
-./tools/prove/make-demo-spec.sh 256 > /tmp/trip.txt
-ls -l /tmp/trip.txt && grep -c '^salt_hex' /tmp/trip.txt     # file exists, prints 1
-
-export SEQ=2     # needs an existing checkpoint with no PQ proof recorded yet
-
-# must be REJECTED: polygon square 1000..4000 instead of the pinned 1000..3000
-sed -E '/^polygon/ s/3000/4000/g' /tmp/trip.txt > /tmp/trip_bad.txt
-SPEC=/tmp/trip_bad.txt ./tools/prove/prove-and-submit-pq.sh
-
-# must be ACCEPTED
-SPEC=/tmp/trip.txt ./tools/prove/prove-and-submit-pq.sh
-# Wait for block creation then
-sleep 3
-
-export TXHASH=$(cat /tmp/pq-out/txhash)
-lucidchaind q tx "$TXHASH" -o json | jq '{code, raw_log, height, gas_wanted, gas_used}'
-
-
+cargo build --release --manifest-path rust_reference/av-zone/Cargo.toml --bin av-zone-prove
+export PROVER=$PWD/rust_reference/target/release/av-zone-prove   # workspace target dir
 ```
 
-
-### Validate the proofs
-
+1. Generate the trip spec once, then freeze it
 ```bash
-lucidchaind query proofs proofs-for-checkpoint --sidechain-id hospitality-platform-01 --checkpoint-sequence $SEQ -o json \
-  | jq '.proofs[] | {proof_system_id, claim_id, verified_height}'
-
-  unset ZK_RECORDS_ROOT K1 K2
-```
-
-
-
-### Example 4 - Tier 3 quantum resistant, proof bound to the checkpoint
-
-One trip per checkpoint: the checkpoint's anchor is the trip digest. Needs the genesis step "Bind the av-zone trip digest to the checkpoint anchor", and `signcheckpoint` / `submit-checkpoint-from-batch.sh` must support a `POSEIDON2_BABYBEAR` anchor (scheme 2).
-
-```bash
-source ~/tmp_workarea/pq-env.sh
-cd ~/go/src/github.com/lucidpay/lucidchain
-
 ./tools/prove/make-demo-spec.sh 256 > /tmp/trip.txt
-
-# the trip digest is the anchor's records_root: 64 hex characters (8 u32 little-endian words)
+mkdir -p $OUT && cp /tmp/trip.txt $OUT/trip.txt     # never regenerate: the salt changes the digest
 export ZK_ROOT=$($PROVER /tmp/trip.txt --digest-only)
-echo "$ZK_ROOT"
+echo -n "$ZK_ROOT" | wc -c                           # must be 64
 ```
 
-Submit a checkpoint with `zk_anchor {scheme: ZK_HASH_SCHEME_POSEIDON2_BABYBEAR, records_root: $ZK_ROOT, records_tree_depth: 0}` and `record_count: 1`. `state_root` must be `SHA-256("lucidchain/checkpoint/v1/state-root\0" || 0x02 || records_root || 0x00 || be64(1))`. For the test digest in readme §5.8 that is `22ea5aca332548a68be8e898d2e7989662b5d92f1037e2bea86451d9e23a7857`. Then:
-
+2. Build the anchor and read the chain tip
 ```bash
-export SEQ=$(lucidchaind query checkpoint latest-checkpoint $SC -o json | jq -r '.checkpoint.lc_sequence')
+export ZK_ANCHOR=$(printf '{"records_root":"%s","records_tree_depth":0,"scheme":"ZK_HASH_SCHEME_POSEIDON2_BABYBEAR"}' \
+  "$(echo "$ZK_ROOT" | xxd -r -p | base64 -w0)")
 
-# must be ACCEPTED: the proof's digest is the one in the signed anchor
-SPEC=/tmp/trip.txt ./tools/prove/prove-and-submit-pq.sh
 
-# must be REJECTED (public input 35 does not match chain state): a different trip, with its own fresh salt
-./tools/prove/make-demo-spec.sh 256 > /tmp/trip2.txt
-SPEC=/tmp/trip2.txt ./tools/prove/prove-and-submit-pq.sh
+CP=$(lucidchaind query checkpoint latest-checkpoint $SC -o json)
+export PREV_B64=$(echo "$CP" | jq -r '.checkpoint.checkpoint_hash')
+export LATEST_SEQ=$(echo "$CP" | jq -r '.checkpoint.lc_sequence')
+export NEXT_SEQ=$((LATEST_SEQ + 1))
+export PREV_HEX=$(echo "$PREV_B64" | base64 -d | xxd -p -c64)
+
+echo "latest=$LATEST_SEQ next=$NEXT_SEQ"
+
 ```
 
+3. Derive the state root (required when an anchor is present)
 ```bash
-lucidchaind query proofs proofs-for-checkpoint --sidechain-id $SC --checkpoint-sequence $SEQ -o json \
-  | jq '.proofs[] | {proof_system_id, claim_id, verified_height, proof_hash}'
+export STATE_ROOT_B64=$(go run ./tools/signcheckpoint \
+  -record-count 1 -zk-scheme poseidon2-babybear -zk-records-root $ZK_ROOT -zk-tree-depth 0 \
+  -derive-state-root -print-state-root | xxd -r -p | base64 -w0)
 ```
 
-`proof_hash` must equal `sha256sum /tmp/pq-out/proof.bin` (hex); the record holds no proof bytes.
+4. Sign with signers 0 and 1 (threshold is 2 of 3)
+```bash
+K1=$(lucidchaind keys export sidechainkey1 --unarmored-hex --unsafe <<< y)
+K2=$(lucidchaind keys export sidechainkey2 --unarmored-hex --unsafe <<< y)
+
+go run ./tools/signcheckpoint \
+  -chain-id $CHAIN_ID -sidechain-id $SC -lc-sequence $NEXT_SEQ \
+  -previous-hash $PREV_HEX -record-count 1 -data-pointer "ipfs://pq-trip-1" \
+  -signer-set-version 1 \
+  -zk-scheme poseidon2-babybear -zk-records-root $ZK_ROOT -zk-tree-depth 0 \
+  -derive-state-root \
+  -key 0=$K1 -key 1=$K2 > /tmp/sigs.out
+unset K1 K2
+
+export SIG0=$(sed -n 1p /tmp/sigs.out | sed -E "s/^--signatures '(.*)' \\\\$/\1/")
+export SIG1=$(sed -n 2p /tmp/sigs.out | sed -E "s/^--signatures '(.*)' \\\\$/\1/")
+```
+
+Check the stderr output: the pubkey lines must show AjvrYZ… (signer 0) and A8qr2Z… (signer 1). Optionally run 'go run ./tools/testsigner/main.go' and expect valid=true for both. It hardcodes LcSequence: 4, so edit that number first.
+
+5. Submit the checkpoint
+```bash
+lucidchaind tx checkpoint submit-checkpoint \
+  $SC $NEXT_SEQ "$STATE_ROOT_B64" "$PREV_B64" 1 "ipfs://pq-trip-1" 1 \
+  --signatures "$SIG0" --signatures "$SIG1" --zk-anchor "$ZK_ANCHOR" \
+  --from $FROM --chain-id $CHAIN_ID \
+  --gas auto --gas-adjustment 1.5 --gas-prices $GAS_PRICES --yes
+sleep 6
+lucidchaind query checkpoint latest-checkpoint $SC     # confirm lc_sequence and the Poseidon2 anchor
+```
+
+6. Prove and submit the proof (bound to that checkpoint)
+```bash
+export SEQ=$NEXT_SEQ        # must be exported, otherwise the script defaults to 1
+export SPEC=/tmp/trip.txt
+./tools/prove/prove-and-submit-pq.sh
+```
+
+Check that the printed vk_id equals $EXPECT_VK_ID and that the binding_hex is new.
+
+7. Verify
+```bash
+lucidchaind q tx $(cat /tmp/pq-out/txhash) -o json | jq '{code, raw_log, height}'
+lucidchaind q tx $(cat /tmp/pq-out/txhash) -o json | jq '.events[] | select(.type=="proof_verified")'
+lucidchaind q proofs list     # new av-zone entry: checkpoint_sequence == NEXT_SEQ, verified: true
+```
+
+
 
 ## How to work with attestors
 
@@ -1566,4 +1577,12 @@ No proposals or voting is needed for this. There is a cooling-off period of 14 d
 
 ```bash
 lucidchaind tx sidechain exit hospitality-platform-01 --from validator --chain-id my-testnet-1 --yes
+```
+
+
+### Clean up
+
+```bash
+shred -u /tmp/trip.txt $OUT/trip.txt   # holds the private salt
+history -c                             # clears the exported key material
 ```

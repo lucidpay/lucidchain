@@ -26,6 +26,17 @@ func must(err error) {
 	}
 }
 
+// parseZkScheme maps the -zk-scheme flag to the chain's enum.
+func parseZkScheme(s string) (types.ZkHashScheme, error) {
+	switch strings.ToLower(s) {
+	case "mimc", "mimc-bn254":
+		return types.ZkHashScheme_ZK_HASH_SCHEME_MIMC_BN254, nil
+	case "poseidon2-babybear", "babybear":
+		return types.ZkHashScheme_ZK_HASH_SCHEME_POSEIDON2_BABYBEAR, nil
+	}
+	return 0, fmt.Errorf("unknown -zk-scheme %q (want mimc or poseidon2-babybear)", s)
+}
+
 func main() {
 	chainID := flag.String("chain-id", "my-testnet-1", "chain id")
 	sidechain := flag.String("sidechain-id", "", "sidechain id")
@@ -36,7 +47,8 @@ func main() {
 	pointer := flag.String("data-pointer", "", "data pointer")
 	version := flag.Uint64("signer-set-version", 1, "signer set version")
 	zkRoot := flag.String("zk-records-root", "", "records root, 32-byte hex (optional)")
-	zkDepth := flag.Uint("zk-tree-depth", 0, "records tree depth (required with -zk-records-root)")
+	zkDepth := flag.Uint("zk-tree-depth", 0, "records tree depth (required with -zk-records-root; 0 is valid only for poseidon2-babybear single-record anchors)")
+	zkScheme := flag.String("zk-scheme", "mimc", "zk anchor hash scheme: mimc (default) or poseidon2-babybear (root = 8 u32 little-endian limbs, 64 hex characters)")
 	derive := flag.Bool("derive-state-root", false, "derive state_root from the zk anchor and record count (required by the chain when an anchor is present); overrides -state-root")
 	printRoot := flag.Bool("print-state-root", false, "with -derive-state-root: print the derived state_root (hex) and exit")
 	var keys keyList
@@ -48,12 +60,18 @@ func main() {
 	ph, err := hex.DecodeString(*prevHash)
 	must(err)
 
+	scheme, err := parseZkScheme(*zkScheme)
+	must(err)
+	if *zkRoot == "" && scheme != types.ZkHashScheme_ZK_HASH_SCHEME_MIMC_BN254 {
+		must(fmt.Errorf("-zk-scheme %s needs -zk-records-root", *zkScheme))
+	}
+
 	var anchor *types.ZkAnchor
 	if *zkRoot != "" {
 		rr, err := hex.DecodeString(*zkRoot)
 		must(err)
 		anchor = &types.ZkAnchor{
-			Scheme:           types.ZkHashScheme_ZK_HASH_SCHEME_MIMC_BN254,
+			Scheme:           scheme,
 			RecordsRoot:      rr,
 			RecordsTreeDepth: uint32(*zkDepth),
 		}
@@ -118,7 +136,7 @@ func main() {
 	// NEW: add the snippet here, after the loop
 	if anchor != nil {
 		js, _ := json.Marshal(map[string]any{
-			"scheme":             "ZK_HASH_SCHEME_MIMC_BN254",
+			"scheme":             anchor.Scheme.String(),
 			"records_root":       base64.StdEncoding.EncodeToString(anchor.RecordsRoot),
 			"records_tree_depth": anchor.RecordsTreeDepth,
 		})

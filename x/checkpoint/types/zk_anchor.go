@@ -59,9 +59,16 @@ func ValidateZkAnchor(a *ZkAnchor) error {
 	default:
 		return errorsmod.Wrap(ErrInvalidCheckpoint, "unsupported zk hash scheme")
 	}
-	if a.RecordsTreeDepth == 0 || a.RecordsTreeDepth > MaxRecordsTreeDepth {
-		return errorsmod.Wrapf(ErrInvalidCheckpoint, "records_tree_depth %d out of range [1, %d]",
-			a.RecordsTreeDepth, MaxRecordsTreeDepth)
+	// Depth 0 is a single-record anchor: records_root is the record's own
+	// commitment (for av-zone, the trip digest) and record_count must be 1.
+	// Only the BabyBear scheme allows it; MiMC trees keep depth >= 1.
+	minDepth := uint32(1)
+	if a.Scheme == ZkHashScheme_ZK_HASH_SCHEME_POSEIDON2_BABYBEAR {
+		minDepth = 0
+	}
+	if a.RecordsTreeDepth < minDepth || a.RecordsTreeDepth > MaxRecordsTreeDepth {
+		return errorsmod.Wrapf(ErrInvalidCheckpoint, "records_tree_depth %d out of range [%d, %d]",
+			a.RecordsTreeDepth, minDepth, MaxRecordsTreeDepth)
 	}
 	return nil
 }
@@ -83,7 +90,8 @@ const StateRootDomain = "lucidchain/checkpoint/v1/state-root\x00"
 // tooling must reproduce this byte for byte; see tools/signcheckpoint
 // -derive-state-root and tools/zkgeo/submit-checkpoint-from-batch.sh.
 //
-// Precondition: a passed ValidateZkAnchor (32-byte root, depth in [1, 64],
+// Precondition: a passed ValidateZkAnchor (32-byte root, depth in [1, 64], or 0
+// for POSEIDON2_BABYBEAR,
 // known scheme). The 1-byte fields are only injective under that check;
 // ValidateAnchorBinding enforces it, callers deriving directly must too.
 func DeriveStateRoot(a *ZkAnchor, recordCount uint64) []byte {
