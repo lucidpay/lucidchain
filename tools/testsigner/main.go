@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
@@ -31,9 +32,19 @@ func main() {
 	root, _ := hex.DecodeString(os.Getenv("ZK_ROOT"))
 	sr, _ := base64.StdEncoding.DecodeString(os.Getenv("STATE_ROOT_B64"))
 	prev, _ := base64.StdEncoding.DecodeString(os.Getenv("PREV_B64"))
+	secquence := os.Getenv("NEXT_SEQ")
+	if secquence == "" {
+		secquence = "3"
+		fmt.Printf("$NEXT_SEQ not set, defaulting to 3\n")
+	}
+
+	seq, err := strconv.ParseUint(secquence, 10, 64)
+	if err != nil {
+		panic(err)
+	}
 
 	doc := &types.CheckpointSignDoc{
-		ChainId: "my-testnet-1", SidechainId: os.Getenv("SC"), LcSequence: 4,
+		ChainId: "my-testnet-1", SidechainId: os.Getenv("SC"), LcSequence: seq,
 		StateRoot: sr, PreviousCheckpointHash: prev, RecordCount: 1,
 		SignerSetVersion: 1, DataPointer: "ipfs://pq-trip-1",
 		ZkAnchor: &types.ZkAnchor{

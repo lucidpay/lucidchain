@@ -837,7 +837,7 @@ export SIG0=$(sed -n 1p /tmp/sigs.out | sed -E "s/^--signatures '(.*)' \\\\$/\1/
 export SIG1=$(sed -n 2p /tmp/sigs.out | sed -E "s/^--signatures '(.*)' \\\\$/\1/")
 ```
 
-Check the stderr output: the pubkey lines must show AjvrYZ… (signer 0) and A8qr2Z… (signer 1). Optionally run 'go run ./tools/testsigner/main.go' and expect valid=true for both. It hardcodes LcSequence: 4, so edit that number first.
+Check the stderr output: the pubkey lines must show signer 0 and signer 1. Optionally run 'go run ./tools/testsigner/main.go' and expect valid=true for both. 
 
 5. Submit the checkpoint
 ```bash
