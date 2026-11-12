@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 
+	"crypto/sha256"
+
 	"cosmossdk.io/collections"
 	"cosmossdk.io/core/address"
 	corestore "cosmossdk.io/core/store"
@@ -366,6 +368,8 @@ func (k Keeper) SubmitProof(ctx context.Context, msg *types.MsgSubmitProof) (*ty
 		return nil, rejection(types.ErrInvalidProof, err)
 	}
 
+	sum := sha256.Sum256(msg.Proof)
+
 	record := types.ProofRecord{
 		Id:                 id,
 		SidechainId:        msg.SidechainId,
@@ -374,7 +378,7 @@ func (k Keeper) SubmitProof(ctx context.Context, msg *types.MsgSubmitProof) (*ty
 		VerifierVersion:    reg.Version,
 		ClaimId:            msg.ClaimId,
 		PublicInputs:       msg.PublicInputs,
-		Proof:              msg.Proof,
+		ProofHash:          sum[:],
 		Verified:           true,
 		VerifiedHeight:     uint64(sdkCtx.BlockHeight()),
 		VerifiedAt:         sdkCtx.BlockTime(),
@@ -395,6 +399,7 @@ func (k Keeper) SubmitProof(ctx context.Context, msg *types.MsgSubmitProof) (*ty
 		sdk.NewAttribute("claim_id", msg.ClaimId),
 		sdk.NewAttribute("verifier_version", strconv.FormatUint(uint64(reg.Version), 10)),
 		sdk.NewAttribute("binding", hex.EncodeToString(binding[:])),
+		sdk.NewAttribute("proof_hash", hex.EncodeToString(sum[:])),
 	))
 
 	return &types.MsgSubmitProofResponse{ProofRecordId: id}, nil

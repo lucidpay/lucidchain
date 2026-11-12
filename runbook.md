@@ -117,6 +117,29 @@ chmod +x ./tools/gen-vk/add-verifier.sh
 cd
 ```
 
+### Bind the av-zone trip digest to the checkpoint anchor
+
+This pins the proof's trip digest (public inputs 35 to 42) to the checkpoint's `zk_anchor.records_root`, so a PQ proof is only accepted for the trip the sidechain signed. Run it after the verifiers are added and before the first start:
+
+```bash
+cd ~/go/src/github.com/lucidpay/lucidchain
+chmod +x ./tools/gen-vk/bind-av-zone-root.sh
+./tools/gen-vk/bind-av-zone-root.sh genesis ~/.lucidchain/config/genesis.json
+```
+
+On a running chain use a governance proposal instead (the verifier version becomes 2):
+
+```bash
+export GOV_ADDRESS=$(lucidchaind query auth module-account gov -o json | jq -r '.account.value.address')
+./tools/gen-vk/bind-av-zone-root.sh proposal ~/tmp_workarea/json/bind-av-zone.json
+lucidchaind tx gov submit-proposal ~/tmp_workarea/json/bind-av-zone.json --from validator \
+  --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
+sleep 7
+PID=$(lucidchaind query gov proposals -o json | jq -r '.proposals[-1].id')
+lucidchaind tx gov vote "$PID" yes --from validator --chain-id my-testnet-1 \
+  --gas auto --gas-adjustment 1.5 --gas-prices 0stake --yes
+```
+
 ### Shorten the governance voting period
 
 With the default genesis the governance voting period is 48 hours, so each proposal below takes two days to pass. For a dev chain, shorten it before the first start:
@@ -754,7 +777,7 @@ export GAS_PRICES=0.025stake
 export VERIFY_GAS=1000000
 export EXPECT_VK_ID=b81d579743df1e93a5f3a28f7b47392c2b075fab50dd3018024c62263bd9dbb8
 EOF
-chmod + ~/tmp_workarea/pq-env.sh
+chmod +x ~/tmp_workarea/pq-env.sh
 source ~/tmp_workarea/pq-env.sh
 [ -x "$PROVER" ] && echo "prover ok" || echo "PROVER missing: rebuild it as before"
 cd ~/go/src/github.com/lucidpay/lucidchain
@@ -798,6 +821,41 @@ lucidchaind query proofs proofs-for-checkpoint --sidechain-id hospitality-platfo
 ```
 
 
+
+### Example 4 - Tier 3 quantum resistant, proof bound to the checkpoint
+
+One trip per checkpoint: the checkpoint's anchor is the trip digest. Needs the genesis step "Bind the av-zone trip digest to the checkpoint anchor", and `signcheckpoint` / `submit-checkpoint-from-batch.sh` must support a `POSEIDON2_BABYBEAR` anchor (scheme 2).
+
+```bash
+source ~/tmp_workarea/pq-env.sh
+cd ~/go/src/github.com/lucidpay/lucidchain
+
+./tools/prove/make-demo-spec.sh 256 > /tmp/trip.txt
+
+# the trip digest is the anchor's records_root: 64 hex characters (8 u32 little-endian words)
+export ZK_ROOT=$($PROVER /tmp/trip.txt --digest-only)
+echo "$ZK_ROOT"
+```
+
+Submit a checkpoint with `zk_anchor {scheme: ZK_HASH_SCHEME_POSEIDON2_BABYBEAR, records_root: $ZK_ROOT, records_tree_depth: 0}` and `record_count: 1`. `state_root` must be `SHA-256("lucidchain/checkpoint/v1/state-root\0" || 0x02 || records_root || 0x00 || be64(1))`. For the test digest in readme §5.8 that is `22ea5aca332548a68be8e898d2e7989662b5d92f1037e2bea86451d9e23a7857`. Then:
+
+```bash
+export SEQ=$(lucidchaind query checkpoint latest-checkpoint $SC -o json | jq -r '.checkpoint.lc_sequence')
+
+# must be ACCEPTED: the proof's digest is the one in the signed anchor
+SPEC=/tmp/trip.txt ./tools/prove/prove-and-submit-pq.sh
+
+# must be REJECTED (public input 35 does not match chain state): a different trip, with its own fresh salt
+./tools/prove/make-demo-spec.sh 256 > /tmp/trip2.txt
+SPEC=/tmp/trip2.txt ./tools/prove/prove-and-submit-pq.sh
+```
+
+```bash
+lucidchaind query proofs proofs-for-checkpoint --sidechain-id $SC --checkpoint-sequence $SEQ -o json \
+  | jq '.proofs[] | {proof_system_id, claim_id, verified_height, proof_hash}'
+```
+
+`proof_hash` must equal `sha256sum /tmp/pq-out/proof.bin` (hex); the record holds no proof bytes.
 
 ## How to work with attestors
 
@@ -894,13 +952,10 @@ lucidchaind query gov proposals -o json | jq '.proposals[-1] | {id, status}'
 PID=$(lucidchaind query gov proposals -o json | jq -r '.proposals[-1].id')
 lucidchaind tx gov vote "$PID" yes --from validator \
   --chain-id my-testnet-1 --gas auto --gas-adjustment 1.5 --yes  # proposal id should be 1
-```
 
-### Validate the attestor
-
-Wait for the voting period to end (60s) then validate
-
-```bash
+echo Waiting for voting period to end
+sleep 65
+echo Validating the attestor
 lucidchaind query gov proposal "$PID" -o json | jq '.proposal.messages[0]."@type", .proposal.title'
 lucidchaind query attestor attestor kyc-attestor-01 | grep status
 ```

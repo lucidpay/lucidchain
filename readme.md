@@ -397,7 +397,7 @@ Proto definitions: `proto/lucidchain/proofs/v1/*.proto`.
 
 **`VerifierRegistration`:** `proof_system_id`, `claim_id`, `description`, `verification_key` (opaque to the module), `status` (`ACTIVE` or `DEPRECATED`), `version` (starts at 1; incremented when the key or the input layout changes), `num_public_inputs` (derived from the key), `input_layout`, `verification_gas`, `registered_at` and `updated_at`.
 
-**`ProofRecord`:** `id`, `sidechain_id`, `checkpoint_sequence`, `proof_system_id`, `verifier_version`, `claim_id`, `public_inputs`, `proof`, `verified` (always true: failed proofs are rejected, not stored), `verified_height`, `verified_at`, `checkpoint_hash`, `binding` and `submitter`. `ProofSummary` is the same record without the proof and public-input bytes, for listings.
+**`ProofRecord`:** `id`, `sidechain_id`, `checkpoint_sequence`, `proof_system_id`, `verifier_version`, `claim_id`, `public_inputs`, `proof_hash`, `verified` (always true: failed proofs are rejected, not stored), `verified_height`, `verified_at`, `checkpoint_hash`, `binding` and `submitter`. The proof bytes are **not stored**: the proof is verified synchronously in the handler, so state keeps only `proof_hash` (SHA-256 of the proof exactly as submitted, 32 bytes). The bytes stay in the submitting transaction and in the prover's own archive, and an auditor can check any proof they hold against `proof_hash` and re-verify it offline against the recorded verifier version. `ProofSummary` is the same record without the public-input bytes, for listings.
 
 **`Params`:** `base_verification_fee` and `fee_denom`, `max_proof_bytes`, `max_public_input_bytes` and `max_verification_key_bytes`.
 
@@ -440,7 +440,7 @@ Governance can only register a verifier for a `proof_system_id` that already has
 
 **The binding.** A proof must be tied to exactly one checkpoint and claim on this chain. The module computes a 32-byte binding as a hash over the chain id, sidechain id, checkpoint `lc_sequence`, state root, checkpoint hash and `claim_id`. The first two public inputs of the proof must be the 128-bit big-endian halves (high, low) of that binding, so circuits must declare these two public variables first. `public_inputs` uses the verifier's own encoding; for the gnark verifiers it is a gnark public witness (`MarshalBinary`).
 
-**The input layout.** Every other public input can be bound too. A registration's `input_layout` lists, by index, which inputs must equal the checkpoint's `zk_anchor.records_root`, the checkpoint's `record_count`, or a fixed value set at registration. Layout indexes must lie after the binding inputs, with no duplicates; a records-root entry needs a `-bn254` proof system, and a fixed value must be 1 to 32 bytes and below the field modulus.
+**The input layout.** Every other public input can be bound too. A registration's `input_layout` lists, by index, which inputs must equal the checkpoint's `zk_anchor.records_root`, the checkpoint's `record_count`, or a fixed value set at registration. Layout indexes must lie after the binding inputs, with no duplicates; a `RECORDS_ROOT` entry (a MiMC-BN254 anchor) needs a `-bn254` proof system, a `RECORDS_ROOT_BABYBEAR_LIMB` entry binds one of the eight limbs of a Poseidon2/BabyBear anchor (limbs are the root's u32 little-endian words, `limb` 0 to 7), and a fixed value must be 1 to 32 bytes and below the field modulus.
 
 `MsgSubmitProof` handler logic, cheap checks first so bad input costs little. Any failure aborts the whole message (the handler runs in a cached context):
 
@@ -452,7 +452,7 @@ Governance can only register a verifier for a `proof_system_id` that already has
 6. **Check the input layout.** The remaining bound inputs must equal their expected values (`ErrInputMismatch`). An entry sourced from the records root fails if the checkpoint has no valid MiMC-BN254 anchor.
 7. **Charge.** Collect `base_verification_fee` (in `fee_denom`, zero means free) from the submitter into the fee collector, and consume the registration's `verification_gas`. The gas is spent whether or not the proof turns out to be valid, which discourages spamming invalid proofs; the fee transfer is reverted with the rest of a failed transaction.
 8. **Verify.** On failure the transaction aborts with `ErrInvalidProof` and nothing is written.
-9. **Persist** the `ProofRecord` with the verifier version it was checked under, plus its by-checkpoint index entry, and emit `proof_verified` (proof id, sidechain, checkpoint sequence, proof system, claim id, verifier version, binding).
+9. **Persist** the `ProofRecord` with the verifier version it was checked under and `proof_hash = SHA-256(proof)` (the proof bytes are not written to state), plus its by-checkpoint index entry, and emit `proof_verified` (proof id, sidechain, checkpoint sequence, proof system, claim id, verifier version, binding, proof hash).
 
 **Verifier faults.** Every verifier call is wrapped. A panic inside a verifier becomes an ordinary, deterministic rejection, so a malformed proof can never crash block execution. An error wrapping `ErrVerifierFault` is an infrastructure failure, not a verdict, and is never reported as an invalid proof: while executing a block it escalates to a typed panic that the app's recovery handler (`FaultRecoveryHandler` with `HardHalt`, registered in `app/app.go`) turns into a node halt, and in simulation or check mode it is returned as-is.
 
@@ -502,6 +502,15 @@ The `zk_anchor` is coupled to the same curve: its only supported scheme today is
 - **Failure behaviour.** The current code already separates a verdict from an infrastructure fault (§5.4): a fault is never reported as an invalid proof, and during block execution it halts the affected node rather than letting it diverge. A WASM that is slow, crashed or unreachable would be such a fault, so timeouts and recovery must be specified. It must also be possible to tell "the verifier crashed on this malformed input" (a deterministic rejection, the same on every node) from "the WASM is unavailable on this node" (a fault). If a crafted proof could crash the WASM on every validator and be classified as a fault, a single transaction could halt the whole chain.
 - **Verifier identity and upgrades.** The exact verifier build (for example a pinned image hash) must be fixed by a governance or software-upgrade path so all validators run the identical version. This replaces the §5.3 property that verification code is compiled into the node binary.
 
+
+### 5.8 Tying a PQ claim to a checkpoint's records (single-trip checkpoints)
+
+The av-zone statement is about one hidden trip, committed publicly as `trip_digest` (public inputs 35 to 42: the salted Poseidon2/BabyBear digest of `commit.rs`). The chain ties that digest to a checkpoint inside `x/checkpoint` and `x/proofs`, without involving `x/attestor`:
+
+1. The sidechain submits the checkpoint with `zk_anchor{scheme: POSEIDON2_BABYBEAR, records_root: trip_digest as 8 u32 little-endian words, records_tree_depth: 0}` and `record_count: 1`. The anchor is covered by the signatures (§3.4) and `state_root` is derived from it (§3.3 step 1). `av-zone-prove <spec> --digest-only` prints the `records_root` before any proof exists. Test vector: digest `[246859429, 1627689361, 871247076, 533616870, 616768534, 197241660, 1573146428, 1651469256]` gives `records_root = a5c6b60e91910461e42cee33e658ce1f1624c3243cabc10b3c4fc45dc86b6f62` and, with depth 0 and count 1, `state_root = 22ea5aca332548a68be8e898d2e7989662b5d92f1037e2bea86451d9e23a7857`.
+2. The verifier registration's `input_layout` pins public inputs 35 to 42 to limbs 0 to 7 of that `records_root` (`INPUT_SOURCE_CHECKPOINT_RECORDS_ROOT_BABYBEAR_LIMB`; `tools/gen-vk/bind-av-zone-root.sh`).
+
+A proof is therefore accepted only if its digest is the one in the signed anchor: nobody can attach a proof about another trip to the checkpoint or take its proof slot. The vouching party is the sidechain's signer quorum, not an independent attestor; attestations about the same checkpoint stay in `x/attestor` and are compared by relying parties off the proof path, so the two modules remain independent. The limit is one trip per checkpoint. A checkpoint that batches many trips needs a circuit that proves membership of the trip under a Poseidon2 Merkle root.
 
 ## 6. Cross-module interaction diagram
 

@@ -106,8 +106,12 @@ message ProofRecord {
   // declare these two public variables first.
   bytes public_inputs = 7;
 
-  // The proof itself, in the encoding expected by the registered verifier.
-  bytes proof = 8;
+  // Field 8 held the raw proof bytes (hundreds of KB for the PQ verifier). They
+  // are no longer kept in state: the proof is verified synchronously in
+  // MsgSubmitProof, so only its hash is stored (proof_hash, field 15). The proof
+  // bytes remain in the submitting transaction and in the prover's own archive.
+  reserved 8;
+  reserved "proof";
 
   bool verified = 9;   // always true for persisted records; verification happens
                         // synchronously in the message handler and failed proofs
@@ -123,6 +127,11 @@ message ProofRecord {
 
   // NEW
   string submitter = 14 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+
+  // SHA-256 of the proof bytes exactly as submitted (always 32 bytes). Lets an
+  // auditor holding the proof check it is the one the chain verified, and
+  // re-verify it offline against the verifier version recorded above.
+  bytes proof_hash = 15;
 }
 
 // ProofSummary is a ProofRecord without the proof and public input bytes, for
@@ -137,4 +146,5 @@ message ProofSummary {
   uint64 verified_height = 7;
   google.protobuf.Timestamp verified_at = 8 [(gogoproto.stdtime) = true, (gogoproto.nullable) = false];
   string submitter = 9 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  bytes proof_hash = 10;
 }

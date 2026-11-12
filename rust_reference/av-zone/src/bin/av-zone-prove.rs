@@ -1,6 +1,12 @@
 //! Proves an av-zone statement for a trip and writes the artifacts the chain needs.
 //!
 //!   av-zone-prove <spec.txt> <out_dir> [--insecure-test-entropy-hex <128 hex>]
+//!   av-zone-prove <spec.txt> --digest-only
+//!
+//! --digest-only prints ONLY the trip digest, as 64 hex characters (8 u32 little-endian
+//! words), and exits. That is exactly the zk_anchor.records_root of a POSEIDON2_BABYBEAR
+//! anchor, so the checkpoint can be built and signed before any proof exists. It needs only
+//! salt_hex and the sample lines (no binding_hex, which depends on the checkpoint).
 //!
 //! Spec (one item per line, '#' comments allowed):
 //!   binding_hex <64 hex>      the 32-byte x/proofs/types.Binding (ComputeBinding output)
@@ -65,7 +71,7 @@ fn num(tok: Option<&str>, what: &str) -> u32 {
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 3 {
-        die("usage: av-zone-prove <spec.txt> <out_dir> [--insecure-test-entropy-hex <128 hex>]");
+        die("usage: av-zone-prove <spec.txt> <out_dir> [--insecure-test-entropy-hex <128 hex>] | <spec.txt> --digest-only");
     }
     let spec = fs::read_to_string(&args[1]).unwrap_or_else(|e| die(format!("read spec: {e}")));
 
@@ -89,6 +95,16 @@ fn main() {
             "sample" => samples.push(Sample { x: num(it.next(), "x"), y: num(it.next(), "y"), t: num(it.next(), "t") }),
             other => die(format!("unknown spec key {other:?}")),
         }
+    }
+    if args[2] == "--digest-only" {
+        let salt = salt.unwrap_or_else(|| die("salt_hex is required"));
+        if !samples.len().is_power_of_two() {
+            die(format!("sample count must be a power of two, got {}", samples.len()));
+        }
+        let digest = av_zone::commit::trip_digest(&samples, &salt);
+        let root_hex: String = digest.iter().flat_map(|w| w.to_le_bytes()).map(|b| format!("{b:02x}")).collect();
+        println!("{root_hex}");
+        return;
     }
     if poly.len() < 3 || poly.len() > K {
         die(format!("polygon needs 3..={K} vertices, got {}", poly.len()));
