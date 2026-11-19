@@ -1,8 +1,8 @@
 # LucidChain: A Public Assurance Layer for Private Chains
 
 **Summary**
-Lucidchain is a public, quantum-resistant, proof-of-stake (PoS) blockchain that acts as a neutral assurance layer for private sidechains. Sidechains keep their data and execution private and publish compact cryptographic commitments to our public chain. In return they receive a tamper-evident, independently timestamped record and, at higher tiers, signed attestations from qualified third parties.
-Quantum resistance currently covers the chain's signatures (ML-DSA-65). Tier 3 proof verification uses gnark over BN254 and is not yet quantum-resistant (see §5.7).
+Lucidchain is a public, classic and quantum-resistant, proof-of-stake (PoS) blockchain that acts as a neutral assurance layer for private sidechains. Sidechains keep their data and execution private and publish compact cryptographic commitments to our public chain. In return they receive a tamper-evident, independently timestamped record and, at higher tiers, signed attestations from qualified third parties.
+Quantum resistance currently covers the chain's signatures (ML-DSA-65). Tier 3 proof verification uses gnark over BN254 and plonky3 over babybear (see §5.7).
 The chain is deliberately minimal: no general-purpose smart contract VM, only a small set of purpose-built native modules.
 
 # Technical Specification: `x/sidechain`, `x/checkpoint`, `x/attestor`, `x/proofs` Modules
@@ -68,7 +68,7 @@ Proto definitions: `proto/lucidchain/sidechain/v1/{sidechain,params,tx,query,gen
 | `missed_checkpoint_grace_seconds` | Grace period for the missed-checkpoint liveness rule (§2.6) |
 | `exit_cooldown_seconds` | Delay between an exit request and the bond return |
 | `max_signer_keys` | Maximum signer keys per sidechain. ML-DSA-65 public keys are 1,952 bytes each, so this bounds per-sidechain state size |
-| `allowed_pubkey_type_urls` | Public-key type URLs accepted as checkpoint signers (for example `/cosmos.crypto.mldsa65.PubKey`). For a quantum-resistant deployment set this to ML-DSA-65 only; adding classical types re-opens the sidechain to quantum forgery of its checkpoint signatures |
+| `allowed_pubkey_type_urls` | Public-key type URLs accepted as checkpoint signers (for example `/cosmos.crypto.mldsa65.PubKey`). In the future, for an only quantum-resistant deployment set this to ML-DSA-65 only; adding classical types re-opens the sidechain to quantum forgery of its checkpoint signatures |
 | `auto_activate` | When true, registration creates the sidechain `ACTIVE` immediately (permissionless registration, the bond is the only gate). When false, it stays `PENDING` until governance activates it |
 
 ### 2.3 Messages
@@ -403,7 +403,7 @@ Proto definitions: `proto/lucidchain/proofs/v1/*.proto`.
 
 ### 5.3 Verifier implementations are Go code, not on-chain data
 
-**Current verifiers.** The verifiers are implemented with [gnark](https://github.com/Consensys/gnark), over the BN254 curve (for example Groth16 and PLONK). gnark is not quantum-resistant; see §5.7 for what that means and for the planned move to Rust code in a WASM.
+**Current verifiers.** The verifiers are implemented with [gnark](https://github.com/Consensys/gnark), over the BN254 curve (e.g. Groth16 and PLONK). gnark is not quantum-resistant. A second set of verifier is written in Rust and compiled to WASM (Plonk3 over babybear); see §5.7 for what that means and for the future move to PQ mode only
 
 `VerifierRegistration.verification_key` is opaque on-chain state — the actual cryptographic verification (pairing checks, FRI, whatever the proof system requires) is implemented as compiled Go code, handed to the keeper at construction as a map keyed by `proof_system_id`. The keeper itself has no dependency on a proof library; it only uses this interface:
 
@@ -489,19 +489,26 @@ A prover's workflow is therefore: read the checkpoint, call `Binding` for the cl
 - **`claim_id` scoping mirrors `x/attestor`'s `schema_id`**, and here it is part of the registration key, so a checkpoint can accumulate multiple narrow, named claims over time (from attestors, from proofs, or both) rather than one all-or-nothing verdict.
 - **Proofs are replay-proof by construction.** The binding commits to the chain id, the checkpoint and the claim, so a valid proof cannot be reused for another checkpoint, claim or chain.
 
-### 5.7 Quantum resistance and the planned verifier architecture
 
-**Today: gnark over BN254, not quantum-resistant.** Groth16 and PLONK over BN254 rest on elliptic-curve pairing assumptions, which a sufficiently large quantum computer could break. The consequence is for soundness: after such a break, a forged proof could pass verification, so Tier 3 evidence would be only as strong as classical assumptions. This is separate from the rest of the chain, where checkpoint signatures can already be ML-DSA-65 only (`allowed_pubkey_type_urls`, §2.2). Proofs accepted before a quantum break remain timestamped on-chain records, but proofs submitted after one could not be trusted.
+### 5.7 Classic and Quantum resistance and the verifiers architecture
 
-The `zk_anchor` is coupled to the same curve: its only supported scheme today is `ZK_HASH_SCHEME_MIMC_BN254`, with a `records_root` that must be a canonical BN254 scalar-field element. The `scheme` field is the extension point for a different commitment scheme when the proof system changes.
+**Two verifier families.** `x/proofs` currently ships two kinds of verifier side by side, and they differ in their quantum posture. This is by design. Non PQ can be disabled once real quantum computers surface. But for now they offer a cheaper alternative than the post quantum verifier.
 
-**Planned: Rust code in WASM container.** The design must settle these consensus-critical points before it replaces the gnark verifiers:
+- **gnark over BN254 (`groth16-bn254`, `plonk-bn254`): not quantum-resistant.** These rest on elliptic-curve pairing assumptions, which a sufficiently large quantum computer could break. After such a break a forged proof could pass verification, so evidence from these systems would be only as strong as classical assumptions. Proofs accepted before a quantum break remain timestamped on-chain records, but proofs submitted after one could not be trusted. The `zk_anchor` used with these systems is tied to the same curve: its scheme is `ZK_HASH_SCHEME_MIMC_BN254`, and `records_root` must be a canonical BN254 scalar-field element.
+- **Rust verifier in WASM (`plonky3-babybear-v1`, claim `av-zone`): the post-quantum path.** The verifier is Rust compiled to WebAssembly and executed inside the node by the Wazero runtime. Its anchor scheme is `ZK_HASH_SCHEME_POSEIDON2_BABYBEAR`, so it does not depend on the BN254 curve. [confirm: state the underlying assumption, for example hash-based commitments and FRI, and the security level the parameters target.] §5.8 describes how a proof of this system is bound to a checkpoint.
 
-- **Determinism.** Every validator must reach the same accept or reject result for the same inputs, on every platform and version.
-- **Gas and limits.** Cost must be metered and bounded, with a hard timeout, so a proof cannot stall block processing.
-- **Failure behaviour.** The current code already separates a verdict from an infrastructure fault (§5.4): a fault is never reported as an invalid proof, and during block execution it halts the affected node rather than letting it diverge. A WASM that is slow, crashed or unreachable would be such a fault, so timeouts and recovery must be specified. It must also be possible to tell "the verifier crashed on this malformed input" (a deterministic rejection, the same on every node) from "the WASM is unavailable on this node" (a fault). If a crafted proof could crash the WASM on every validator and be classified as a fault, a single transaction could halt the whole chain.
-- **Verifier identity and upgrades.** The exact verifier build (for example a pinned image hash) must be fixed by a governance or software-upgrade path so all validators run the identical version. This replaces the §5.3 property that verification code is compiled into the node binary.
+**What is quantum-resistant today, and what is not.** Checkpoint and attestor signatures can be ML-DSA-65 only (`allowed_pubkey_type_urls`, §2.2), and consensus keys can use ML-DSA-65 at `init`. Tier 3 is quantum-resistant only when the sidechain uses the WASM verifier and a Poseidon2/BabyBear anchor. Tier 3 with a gnark verifier is not. 
 
+**How the WASM verifier is shipped.** The compiled module (`x/proofs/verifiers/wasm/embed/pq_verifier.wasm`) is committed to the repository and embedded in the node binary at build time. Its SHA-256 hash is pinned in `x/proofs/verifiers/pq_wire.go` (`pqWasmPinnedImageHex`), so every node built from the same source runs the identical verifier, and the node does not run a module whose hash differs from the pin. This keeps the §5.3 property that verification code is part of the signed software release: governance can register a verification key for `plonky3-babybear-v1`, but it cannot change the verifier code, which changes only through a coordinated software upgrade. Rebuilding the module from `rust_reference/` (`PQ_VERIFY=1 ./scripts/build_wasm.sh`) can produce a different hash if the Rust toolchain differs, in which case the script rewrites the pin and the change must be reviewed in `git diff` before it is committed.
+
+**Consensus-critical properties.** The WASM verifier must meet these, and each should be covered by tests:
+
+- **Determinism.** Every validator must reach the same accept or reject result for the same inputs, on every platform and version. [confirm: how this is enforced in the Wazero configuration, for example disabled non-deterministic features and floating-point handling.]
+- **Gas and limits.** Cost is metered through the registration's `verification_gas` and bounded by a hard limit, so a proof cannot stall block processing. [confirm: the memory limit and timeout used, and how they are set.] PQ proofs are large (about 270 to 500 KB), so `max_proof_bytes` must be raised by governance above its default (the runbook sets 524,288) and must fit within the block and transaction size limits. Proof bytes are not stored in state, only `proof_hash`.
+- **Failure behaviour.** A verdict is separated from an infrastructure fault (§5.4). A malformed or malicious proof that makes the module trap is a deterministic rejection, the same on every node. A module that is unavailable, out of resources or crashed on one node is a `ErrVerifierFault`, which halts that node during block execution instead of letting it diverge. The classification must make it impossible for a crafted proof to be treated as a fault on every validator, because a single transaction could then halt the chain. [confirm: the code path that makes this distinction.]
+- **Verifier identity and upgrades.** The verifier is fixed by the pinned hash above and changes only through a software upgrade. The verifier registration records the verification key's identifier (the runbook checks the printed `vk_id` against an expected value), so an auditor can tie a stored proof record to the exact key and verifier version it was checked under.
+
+**Current limits.** The WASM path supports one claim, `av-zone`, with one trip per checkpoint (§5.8). Supporting a checkpoint that batches many trips needs a circuit that proves membership of a trip under a Poseidon2 Merkle root. Other proof systems still require a coordinated software upgrade (§5.3).
 
 ### 5.8 Tying a PQ claim to a checkpoint's records (single-trip checkpoints)
 
@@ -566,8 +573,7 @@ A proof is therefore accepted only if its digest is the one in the signed anchor
 - No attestor-availability check at upgrade time. The original idea (at least one available attestor for the sidechain's declared domain before moving to `ATTESTED`) needs a `domain` field on `Sidechain` and a dependency from `x/sidechain` on `x/attestor`, which would create a dependency cycle. For now `ATTESTED` is enforced where it is used, in `x/attestor`.
 - No per-checkpoint attestation or proof requirement beyond the anchor. An `ATTESTED` sidechain's checkpoints are accepted whether or not any attestor has signed them.
 - No retroactive tier re-check. A governance increase of `min_bond_by_tier`, or a slash, does not downgrade a sidechain or force a top-up.
-- Tier 3 both quantum-resistant and not quantum-resistant support. The current gnark verifiers over BN254 rely on classical assumptions (§5.7). A new implementation in process for Rust code compiled to WASM runing in Wazero.
-- No other proof systems beyond the current gnark-based verifiers are specified; adding one still means a coordinated software upgrade (§5.3), and the likely target use cases (geofence compliance, AML thresholds, etc.) will drive which are needed.
+- Tier 3 both quantum-resistant and not quantum-resistant support. The current gnark verifiers over BN254 rely on classical assumptions (§5.7). A new implementation in place for Rust code compiled to WASM runing in Wazero.
 - No slashing conditions beyond bond math are finalized for `x/sidechain` — the exact fault conditions for `MsgSlashSidechain` (e.g. two conflicting checkpoints at the same sequence, signed by the registered keys) need a dedicated fraud-detection spec before mainnet.
 - Verification gas is set per registration in `x/proofs`, but the values and the flat `base_verification_fee` are placeholders pending real gas benchmarks on validator hardware.
 - No HSM/hardware-backed signing solution is chosen for attestor keys — see §4.7. The on-chain protocol doesn't need this decision made now, but it should be resolved operationally before onboarding a real (non-test) attestor.
