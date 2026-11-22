@@ -1,4 +1,4 @@
-// Package x402facilitator is a skeleton facilitator for an x402 "exact" scheme
+// Package facilitator is a skeleton facilitator for an x402 "exact" scheme
 // on a Cosmos SDK chain. See x402-cosmos-exact-spec.md for the normative rules.
 //
 // The core verify/settle logic here has NO Cosmos SDK imports. Everything that
@@ -8,7 +8,7 @@
 //
 // STATUS: draft. Wire field names follow the x402 v2 style but MUST be checked
 // against the current spec before you publish a scheme.
-package x402facilitator
+package facilitator
 
 // Scheme and flow identifiers.
 const (

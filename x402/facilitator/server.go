@@ -1,4 +1,4 @@
-package x402facilitator
+package facilitator
 
 import (
 	"encoding/json"

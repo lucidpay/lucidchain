@@ -1,0 +1,17 @@
+{
+  "listenAddr": "127.0.0.1:8402",
+  "network": "cosmos:my-testnet-1",
+  "asset": "ucheck",
+  "memoPrefix": "x402:",
+  "allowedKeyTypes": [
+    "/cosmos.crypto.secp256k1.PubKey",
+    "/cosmos.crypto.mldsa65.PubKey"
+  ],
+  "minRemaining": "5s",
+  "maxWindow": "60s",
+  "minFeeReserve": "0",
+  "sponsorAddr": "",
+  "grpcAddr": "localhost:9090",
+  "pollInterval": "500ms",
+  "confirmTimeout": "15s"
+}

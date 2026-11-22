@@ -1,6 +1,6 @@
 # x402 `exact` scheme for lucidchain (Cosmos SDK) — DRAFT
 
-**Status:** draft for internal review. Reference code: `x402facilitator/` (core verify/settle logic is unit-tested; SDK and node adapters are not written yet).
+**Status:** draft for internal review. Reference code: `x402/facilitator/` (core verify/settle logic is unit-tested; SDK and node adapters are not written yet).
 
 **Before publishing or proposing upstream, check against the current x402 spec:** header names (v1 used `X-PAYMENT` / `X-PAYMENT-RESPONSE`; later versions renamed them), `PaymentRequirements` / settle-response field names, and the acceptance criteria in x402's `CONTRIBUTING.md`. Field names below follow the v2 style and may need adjusting.
 
