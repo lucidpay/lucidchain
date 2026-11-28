@@ -1,6 +1,11 @@
 package adapters
 
 // Tests for the real adapters, written against cosmos-sdk v0.55.0.
+//
+// run
+// `go test ./x402/adapters/...` and fix any compile error first. Everything
+// here is hermetic: an in-process fake gRPC node serves the auth, bank and tx
+// services, and transactions are really signed (secp256k1 and ML-DSA-65).
 
 import (
 	"bytes"
@@ -40,7 +45,7 @@ import (
 
 const testChainID = "x402-test-1"
 
-func must(t *testing.T, err error) {
+func must(t testing.TB, err error) {
 	t.Helper()
 	if err != nil {
 		t.Fatal(err)
@@ -167,7 +172,7 @@ func (f *fakeTx) GetTx(_ context.Context, req *sdktx.GetTxRequest) (*sdktx.GetTx
 	return &sdktx.GetTxResponse{TxResponse: r}, nil
 }
 
-func startFake(t *testing.T) (string, *fakeState) {
+func startFake(t testing.TB) (string, *fakeState) {
 	t.Helper()
 	lis, err := net.Listen("tcp", "127.0.0.1:0")
 	must(t, err)
@@ -186,7 +191,7 @@ func startFake(t *testing.T) (string, *fakeState) {
 // ---------------------------------------------------------------------------
 
 type env struct {
-	t        *testing.T
+	t        testing.TB
 	reg      codectypes.InterfaceRegistry
 	txCfg    client.TxConfig
 	addrCdc  address.Codec
@@ -196,7 +201,7 @@ type env struct {
 	ver      *SDKSignatureVerifier
 }
 
-func newEnv(t *testing.T) *env {
+func newEnv(t testing.TB) *env {
 	t.Helper()
 	reg := codectestutil.CodecOptions{}.NewInterfaceRegistry()
 	std.RegisterInterfaces(reg)
@@ -224,7 +229,7 @@ func (e *env) addr(bz []byte) string {
 	return s
 }
 
-func genKey(t *testing.T, kind string) cryptotypes.PrivKey {
+func genKey(t testing.TB, kind string) cryptotypes.PrivKey {
 	t.Helper()
 	if kind == "mldsa65" {
 		k, err := mldsa65.GenPrivKey()
@@ -359,7 +364,7 @@ func (e *env) junkSigTx(o txOpts, pubs ...cryptotypes.PubKey) []byte {
 	return e.encode(b)
 }
 
-func tamperMemo(t *testing.T, raw []byte) []byte {
+func tamperMemo(t testing.TB, raw []byte) []byte {
 	t.Helper()
 	var r sdktx.TxRaw
 	must(t, r.Unmarshal(raw))
@@ -375,7 +380,7 @@ func tamperMemo(t *testing.T, raw []byte) []byte {
 }
 
 // stripAuthInfo returns a TxRaw with the same body but no AuthInfo (so no fee).
-func stripAuthInfo(t *testing.T, raw []byte) []byte {
+func stripAuthInfo(t testing.TB, raw []byte) []byte {
 	t.Helper()
 	var r sdktx.TxRaw
 	must(t, r.Unmarshal(raw))
@@ -385,7 +390,7 @@ func stripAuthInfo(t *testing.T, raw []byte) []byte {
 	return out
 }
 
-func tamperSignature(t *testing.T, raw []byte) []byte {
+func tamperSignature(t testing.TB, raw []byte) []byte {
 	t.Helper()
 	var r sdktx.TxRaw
 	must(t, r.Unmarshal(raw))
@@ -722,7 +727,7 @@ func TestNewVerifierRequiresChainID(t *testing.T) {
 // ChainReader
 // ---------------------------------------------------------------------------
 
-func newChain(t *testing.T, e *env, moduleNames ...string) *GRPCChain {
+func newChain(t testing.TB, e *env, moduleNames ...string) *GRPCChain {
 	t.Helper()
 	c, err := NewGRPCChain(e.grpcAddr, e.reg, e.addrCdc, moduleNames)
 	must(t, err)
@@ -827,7 +832,7 @@ func TestChainSimulate(t *testing.T) {
 // Broadcaster
 // ---------------------------------------------------------------------------
 
-func newBroadcaster(t *testing.T, e *env) *NodeBroadcaster {
+func newBroadcaster(t testing.TB, e *env) *NodeBroadcaster {
 	t.Helper()
 	b, err := NewNodeBroadcaster(e.grpcAddr)
 	must(t, err)
