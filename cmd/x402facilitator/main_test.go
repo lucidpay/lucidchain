@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/lucidpay/lucidchain/x402/adapters"
 	"github.com/lucidpay/lucidchain/x402/facilitator"
 )
 
@@ -20,6 +21,19 @@ func testResolved(t *testing.T) Resolved {
 		t.Fatal(err)
 	}
 	return r
+}
+
+// testHandler wires the REAL adapters. They dial lazily, so no node needs to be
+// running: requests that reach the node simply fail (and must fail closed).
+func testHandler(t *testing.T, token string) http.Handler {
+	t.Helper()
+	res := testResolved(t)
+	set, err := newAdapters(res, "cosmos", "my-testnet-1", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(set.Close)
+	return buildHandler(res, token, set)
 }
 
 func do(h http.Handler, method, path, body, auth string) *httptest.ResponseRecorder {
@@ -51,9 +65,10 @@ func payment() string {
 	return string(b)
 }
 
-// With stub adapters the service must reject every payment, never approve one.
-func TestStubsFailClosed(t *testing.T) {
-	h := buildHandler(testResolved(t), "")
+// A payload that is not a decodable transaction must never be approved or settled.
+// (Full valid-payment coverage lives in x402/adapters and x402/facilitator tests.)
+func TestMalformedPaymentIsRejected(t *testing.T) {
+	h := testHandler(t, "")
 
 	var v facilitator.VerifyResponse
 	rec := do(h, http.MethodPost, "/verify", payment(), "")
@@ -64,7 +79,10 @@ func TestStubsFailClosed(t *testing.T) {
 		t.Fatal(err)
 	}
 	if v.IsValid {
-		t.Fatal("stub adapters approved a payment in /verify")
+		t.Fatal("a malformed payment was approved in /verify")
+	}
+	if v.InvalidReason != facilitator.ReasonMalformedPayload {
+		t.Fatalf("want %q, got %q", facilitator.ReasonMalformedPayload, v.InvalidReason)
 	}
 
 	var s facilitator.SettleResponse
@@ -73,12 +91,15 @@ func TestStubsFailClosed(t *testing.T) {
 		t.Fatal(err)
 	}
 	if s.Success {
-		t.Fatal("stub adapters settled a payment")
+		t.Fatal("a malformed payment was settled")
+	}
+	if s.ErrorReason != facilitator.ReasonMalformedPayload {
+		t.Fatalf("want %q, got %q", facilitator.ReasonMalformedPayload, s.ErrorReason)
 	}
 }
 
 func TestSupportedAndHealth(t *testing.T) {
-	h := buildHandler(testResolved(t), "")
+	h := testHandler(t, "")
 	rec := do(h, http.MethodGet, "/supported", "", "")
 	if rec.Code != 200 || !strings.Contains(rec.Body.String(), "cosmos:my-testnet-1") {
 		t.Fatalf("supported: %d %s", rec.Code, rec.Body.String())
@@ -89,7 +110,7 @@ func TestSupportedAndHealth(t *testing.T) {
 }
 
 func TestTokenAuth(t *testing.T) {
-	h := buildHandler(testResolved(t), "s3cret")
+	h := testHandler(t, "s3cret")
 	if rec := do(h, http.MethodPost, "/verify", payment(), ""); rec.Code != http.StatusUnauthorized {
 		t.Fatalf("no token: want 401, got %d", rec.Code)
 	}
@@ -108,11 +129,23 @@ func TestTokenAuth(t *testing.T) {
 	}
 }
 
-func TestRunRefusesStubsWithoutFlag(t *testing.T) {
+func TestRunRefusesToStartUntilImplemented(t *testing.T) {
+	if adapters.Implemented {
+		t.Skip("adapters.Implemented=true: run would start a real server, so this refusal test no longer applies")
+	}
+	var out bytes.Buffer
+	err := run(context.Background(),
+		[]string{"-config", "x402-facilitator.example.json", "-bech32-prefix", "cosmos"}, &out)
+	if err == nil || !strings.Contains(err.Error(), "Implemented") {
+		t.Fatalf("expected refusal to start while adapters.Implemented=false, got %v", err)
+	}
+}
+
+func TestRunRequiresBech32Prefix(t *testing.T) {
 	var out bytes.Buffer
 	err := run(context.Background(), []string{"-config", "x402-facilitator.example.json"}, &out)
-	if err == nil || !strings.Contains(err.Error(), "stubs") {
-		t.Fatalf("expected refusal to start with stub adapters, got %v", err)
+	if err == nil || !strings.Contains(err.Error(), "-bech32-prefix") {
+		t.Fatalf("expected -bech32-prefix error, got %v", err)
 	}
 }
 
@@ -130,5 +163,15 @@ func TestRunRequiresConfigFlag(t *testing.T) {
 	var out bytes.Buffer
 	if err := run(context.Background(), nil, &out); err == nil {
 		t.Fatal("expected error without -config")
+	}
+}
+
+func TestSplitList(t *testing.T) {
+	got := splitList(" a, b ,,c ")
+	if len(got) != 3 || got[0] != "a" || got[1] != "b" || got[2] != "c" {
+		t.Fatalf("got %q", got)
+	}
+	if len(splitList("")) != 0 {
+		t.Fatal("empty input must give an empty list")
 	}
 }
